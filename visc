@@ -1,0 +1,11 @@
+#! /usr/bin/env bash
+
+
+vim_prog=$(type -P vim)
+screen_prog=$(type -P screen)
+pwddir=`pwd`
+
+[[ -n $1 ]] && line=$1 && \
+[[ -f $2 ]] && file=$2 && \
+title=$(basename $file) && \
+$screen_prog -X screen -t $title /bin/sh -c "cd $pwddir; exec $vim_prog $line $file"

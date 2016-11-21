@@ -1,0 +1,11 @@
+#! /usr/bin/env bash
+
+
+vim_prog=$(type -P vim)
+tmux_prog=$(type -P tmux)
+pwddir=`pwd`
+
+[[ -n $1 ]] && line=$1 && \
+[[ -f $2 ]] && file=$2 && \
+title=$(basename $file) && \
+$tmux_prog new-window -n $title "$vim_prog $line $file"
