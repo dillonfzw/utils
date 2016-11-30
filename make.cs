@@ -34,6 +34,7 @@ get_src()
                           -o -name '*.cpp' \
                           -o -name '*.cc' \
                           -o -name '*.py' \
+                          -o -name '*.java' \
                        \) -print | grep -v release_dir | grep -v /usr/lpp/ | cut -d/ -f2-
 	cd $CURPWD
 }
