@@ -61,6 +61,7 @@ usage() {
 
 source ./terasort.util.sh
 
+USER=${USER:-`whoami`}
 DEFAULT_java_common_opts=${DEFAULT_java_common_opts}${DEFAULT_java_common_opts:+ }"-server"
 DEFAULT_java_common_opts=${DEFAULT_java_common_opts}${DEFAULT_java_common_opts:+ }"-Xcompressedrefs"
 #DEFAULT_java_common_opts=${DEFAULT_java_common_opts}${DEFAULT_java_common_opts:+ }"-Xcodecache4m"
@@ -78,6 +79,7 @@ DEFAULT_yarn=`command -v yarn`
 DEFAULT_hdfs=`command -v hdfs`
 
 HDP_HOME=/usr/hdp/current
+dfsTestHome=/user/$USER
 
 
 #########################
@@ -174,7 +176,7 @@ fi
 parameters="ds_size blk_size mapMxMem redMxMem mapTsks redTsks fparams errlog"
 
 # Collect environment information
-INPUT_DIR="$dfsMountPoint/terasort_$ds_size"
+INPUT_DIR="$dfsTestHome/terasort_$ds_size"
 OUTPUT_DIR="${INPUT_DIR}-out"
 REPORT_DIR="${INPUT_DIR}-rep"
 
