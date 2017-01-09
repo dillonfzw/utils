@@ -16,9 +16,12 @@ if [ -z "$LC_ALL" -o "$LC_ALL" = "UTF-8" ]; then
   echo "Set LC_ALL to $LC_ALL"
 fi
 
-# Token from dillonfzw@gmail.com, if not configured
-if [ -z "$HOMEBREW_GITHUB_API_TOKEN" ]; then
-  HOMEBREW_GITHUB_API_TOKEN=$(<~/.ssh/HOMEBREW_GITHUB_API_TOKEN.dillonfzw@github.com)
+# HOMEBREW token from dillonfzw@gmail.com, if not configured
+ftoken=~/.ssh/HOMEBREW_GITHUB_API_TOKEN.dillonfzw@github.com
+if [ "`uname -s`" = "Darwin" -a \
+     -z "$HOMEBREW_GITHUB_API_TOKEN" -a \
+     -f $ftoken ]; then
+  HOMEBREW_GITHUB_API_TOKEN=$(<$ftoken)
   export HOMEBREW_GITHUB_API_TOKEN
 fi
 
