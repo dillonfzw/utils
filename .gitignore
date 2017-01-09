@@ -1,0 +1,6 @@
+terasort.sh.pid_*.log
+terasort.sh.pid_*.xml
+terasort.sh.pid_*.xml.common
+mosh-client
+mosh-server
+mosh
