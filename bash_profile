@@ -4,11 +4,13 @@
 # Background:
 # - OSX default locale, UTF-8, is mostly invalid in Linux box,
 #   change it to en_US.UTF-8 if detected.
+DEFAULT_locale=en_US.UTF-8
 for item in LC_CTYPE LC_ALL
 do
   val=`locale 2>/dev/null | grep "^${item}=" | cut -d= -f2 | sed -e 's/\"//g'`
-  if ! locale -a 2>/dev/null | grep -sqFx "$val"; then
-    eval "$item=en_US.UTF-8"
+  if ! locale -a 2>/dev/null | grep -sqFx "$val" && \
+     [ "$val" != "$DEFAULT_locale" ]; then
+    eval "$item=$DEFAULT_locale"
     export $item
 
     echo "Change $item from \"$val\" to \""`eval "echo \\\$$item"`"\""
