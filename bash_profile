@@ -8,7 +8,7 @@ DEFAULT_locale=en_US.UTF-8
 for item in LC_CTYPE LC_ALL
 do
   val=`locale 2>/dev/null | grep "^${item}=" | cut -d= -f2 | sed -e 's/\"//g'`
-  if ! locale -a 2>/dev/null | grep -sqFx "$val" && \
+  if [ -z "$val" -o -z "$(locale -a 2>/dev/null | grep -sqFx "$val")" ] && \
      [ "$val" != "$DEFAULT_locale" ]; then
     eval "$item=$DEFAULT_locale"
     export $item
