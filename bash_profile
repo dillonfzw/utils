@@ -1,5 +1,10 @@
 #! /bin/bash
 
+# include user's bashrc
+if [ -f ~/.bashrc ]; then
+    source ~/.bashrc
+fi
+
 # Pick up a mostly valid locale, en_US.UTF-8, if current one is invalid.
 # Background:
 # - OSX default locale, UTF-8, is mostly invalid in Linux box,
