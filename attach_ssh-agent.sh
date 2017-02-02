@@ -6,7 +6,7 @@
 # rt
 # NOTE: assume agents uses default socket path
 function get_ssh_agent_sockets() {
-    ls -1 /tmp/ssh-*/agent.* | xargs
+    ls -1 /tmp/ssh-*/agent.* 2>/dev/null | xargs
 }
 # get the agend pid from agent socket
 # NOTE: only work for Linux procfs
@@ -79,6 +79,8 @@ function validate_ssh_agent_sockets() {
 }
 
 # main
+# attach agent if no valid agent connection
+! ssh-add -l >/dev/null 2>&1 && \
 if [ ! -f $SSH_AGENT_CONF ] || ! test_ssh_agent $SSH_AGENT_CONF; then
     agent_socket=`validate_ssh_agent_sockets` && \
     create_ssh_agent_profile $agent_socket >$SSH_AGENT_CONF
