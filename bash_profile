@@ -1,20 +1,26 @@
 #! /bin/bash
 
-# OSX default UTF-8 locale is mostly invalid in Linux box,
-# change it to en_US.UTF-8 if detected.
-if [ -z "$LC_CTYPE" -o "$LC_CTYPE" = "UTF-8" ]; then
-  LC_CTYPE=en_US.UTF-8
-  export LC_CTYPE
-
-  echo "Set LC_CTYPE to $LC_CTYPE"
+# include user's bashrc
+if [ -f ~/.bashrc ]; then
+    source ~/.bashrc
 fi
 
-if [ -z "$LC_ALL" -o "$LC_ALL" = "UTF-8" ]; then
-  LC_ALL=en_US.UTF-8
-  export LC_ALL
+# Pick up a mostly valid locale, en_US.UTF-8, if current one is invalid.
+# Background:
+# - OSX default locale, UTF-8, is mostly invalid in Linux box,
+#   change it to en_US.UTF-8 if detected.
+DEFAULT_locale=en_US.UTF-8
+for item in LC_ALL LC_CTYPE
+do
+  val=`locale 2>/dev/null | grep "^${item}=" | cut -d= -f2 | sed -e 's/\"//g'`
+  if [ -z "$val" -o -z "$(locale -a 2>/dev/null | grep -Fx "$val")" ] && \
+     [ "$val" != "$DEFAULT_locale" ]; then
+    eval "$item=$DEFAULT_locale"
+    export $item
 
-  echo "Set LC_ALL to $LC_ALL"
-fi
+    echo "Change $item from \"$val\" to \""`eval "echo \\\$$item"`"\""
+  fi
+done
 
 # HOMEBREW token from dillonfzw@gmail.com, if not configured
 ftoken=~/.ssh/HOMEBREW_GITHUB_API_TOKEN.dillonfzw@github.com
