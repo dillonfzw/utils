@@ -51,3 +51,8 @@ if [ "`type -t lsvirtualenv`" != "function" ] && command -v virtualenvwrapper.sh
 
   echo "Source virtualenvwrapper.sh with WORKON_HOME equals to $WORKON_HOME"
 fi
+
+# attach any existing ssh-agent
+if command -v attach_ssh-agent.sh >/dev/null 2>&1; then
+    source attach_ssh-agent.sh
+fi
