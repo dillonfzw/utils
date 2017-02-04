@@ -13,7 +13,9 @@ function get_ssh_agent_sockets() {
 function get_ssh_agent_pid() {
     local agent_socket=$1
 
-    local agent_pids=`ps -o pid,user -p `pidof ssh-agent` 2>/dev/null | \
+    local agent_pids=`pidof ssh-agent`
+    [ -n "$agent_pids" ] && \
+    agent_pids=`ps -o pid,user -p $agent_pids 2>/dev/null | \
         grep -w $USER | awk '{print $1}'`
 
     local rc=1
