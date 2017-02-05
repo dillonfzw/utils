@@ -50,7 +50,7 @@ function create_ssh_agent_profile() {
 function test_ssh_agent() {
     local agent_conf=$1
     # test the agent
-    bash -c "source $agent_conf; ssh-add -l" >/dev/null
+    bash -c 'source '$agent_conf'; line="$(ssh-add -l 2>&1)"; rc=$?; echo "$line"; if [ $rc -ne 0 ] && ! echo "$line" | grep -sq "The agent has no identities"; then false; fi' >/dev/null
 }
 # traverse agent sockets to pick a valid one
 function validate_ssh_agent_sockets() {
