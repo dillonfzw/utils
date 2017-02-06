@@ -40,7 +40,7 @@ if ! echo "$PATH" | tr ':' '\n' | grep -sqFx "$HOME/bin"; then
 fi
 
 # configure CSCOPE_EDITOR for development
-if [ -z "$CSCOPE_EDITOR" ]; then
+if [ -n "$TMUX" -a -z "$CSCOPE_EDITOR" ]; then
   CSCOPE_EDITOR=`command -v vitmux`
   export CSCOPE_EDITOR
 
