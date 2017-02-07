@@ -48,17 +48,22 @@ if [ -n "$TMUX" -a -z "$CSCOPE_EDITOR" ]; then
 fi
 
 # activate python virtualenv wrapper
+# NOTE:
+# - disable this procedure by setting "ACTIVATE_PYTHON_VIRTUALENV=no" in ~/.bashrc
 if [ -z "$WORKON_HOME" ]; then
   WORKON_HOME=~/.virtualenvs
   export WORKON_HOME
 fi
-if [ "`type -t lsvirtualenv`" != "function" ] && command -v virtualenvwrapper.sh >/dev/null 2>&1; then
+if [ "$ACTIVATE_PYTHON_VIRTUALENV" != "no" -a "`type -t lsvirtualenv`" != "function" ] && \
+   command -v virtualenvwrapper.sh >/dev/null 2>&1; then
   source virtualenvwrapper.sh
 
   echo "Source virtualenvwrapper.sh with WORKON_HOME equals to $WORKON_HOME"
 fi
 
 # attach any existing ssh-agent
-if command -v attach_ssh-agent.sh >/dev/null 2>&1; then
+# NOTE:
+# - disable this procedure by setting "ATTACH_SSH_AGENT=no" in ~/.bashrc
+if [ "$ATTACH_SSH_AGENT" != "no" ] && command -v attach_ssh-agent.sh >/dev/null 2>&1; then
     source attach_ssh-agent.sh
 fi
