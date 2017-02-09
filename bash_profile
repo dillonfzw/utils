@@ -79,10 +79,10 @@ if [ "$ATTACH_SSH_AGENT" != "no" ] && command -v attach_ssh-agent.sh >/dev/null 
 fi
 
 ############################################################
-# reset bcompare trial
-# TODO: only do this after 15 days
+# reset bcompare trial data after 15 days later
 if [ "$KERNEL" = "Darwin" ]; then
     fbcreg="$HOME/Library/Application Support/Beyond Compare/registry.dat"
+    fstamp_cmd="stat -f \"%a\" \"$fbcreg\""
 
 elif [ "$KERNEL" = "Linux" ]; then
     fbcreg="$HOME/.config/bcompare/registry.dat"
@@ -92,6 +92,7 @@ if [ -n "$fbcreg" -a -f "$fbcreg" ]; then
     fstamp=`eval "$fstamp_cmd"`
     stamp_now=`date "+%s"`
     sdiff=`expr $stamp_now - $fstamp`
+    unset fstamp stamp_now
     
     if [ $sdiff -gt $((15 * 24 * 3600)) ]; then
         echo "Reset BCompare trial data"
@@ -99,8 +100,9 @@ if [ -n "$fbcreg" -a -f "$fbcreg" ]; then
 
         echo rm -f "$fbcreg"
     fi
+    unset sdiff
 fi
-unset fbcreg
+unset fbcreg fstamp_cmd
 
 
 ############################################################
