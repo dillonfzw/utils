@@ -86,12 +86,19 @@ if [ "$KERNEL" = "Darwin" ]; then
 
 elif [ "$KERNEL" = "Linux" ]; then
     fbcreg="$HOME/.config/bcompare/registry.dat"
+    fstamp_cmd="stat -c \"%Y\" \"$fbcreg\""
 fi
 if [ -n "$fbcreg" -a -f "$fbcreg" ]; then
-    echo "Reset BCompare trial data"
-    ls -l "$fbcreg" | sed -e 's/^/>> /g'
+    fstamp=`eval "$fstamp_cmd"`
+    stamp_now=`date "+%s"`
+    sdiff=`expr $stamp_now - $fstamp`
+    
+    if [ $sdiff -gt $((15 * 24 * 3600)) ]; then
+        echo "Reset BCompare trial data"
+        ls -l "$fbcreg" | sed -e 's/^/>> /g'
 
-    rm -f "$fbcreg"
+        echo rm -f "$fbcreg"
+    fi
 fi
 unset fbcreg
 
