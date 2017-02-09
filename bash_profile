@@ -1,10 +1,14 @@
 #! /bin/bash
 
+KERNEL="`uname -s`"
+
+############################################################
 # include user's bashrc
 if [ -f ~/.bashrc ]; then
     source ~/.bashrc
 fi
 
+############################################################
 # Pick up a mostly valid locale, en_US.UTF-8, if current one is invalid.
 # Background:
 # - OSX default locale, UTF-8, is mostly invalid in Linux box,
@@ -21,16 +25,19 @@ do
     echo "Change $item from \"$val\" to \""`eval "echo \\\$$item"`"\""
   fi
 done
+unset DEFAULT_locale
 
+############################################################
 # HOMEBREW token from dillonfzw@gmail.com, if not configured
 ftoken=~/.ssh/HOMEBREW_GITHUB_API_TOKEN.dillonfzw@github.com
-if [ "`uname -s`" = "Darwin" -a \
+if [ "$KERNEL" = "Darwin" -a \
      -z "$HOMEBREW_GITHUB_API_TOKEN" -a \
      -f $ftoken ]; then
   HOMEBREW_GITHUB_API_TOKEN=$(<$ftoken)
   export HOMEBREW_GITHUB_API_TOKEN
 fi
 
+############################################################
 # append $HOME/bin if not configured
 if ! echo "$PATH" | tr ':' '\n' | grep -sqFx "$HOME/bin"; then
   PATH=$PATH:$HOME/bin
@@ -39,6 +46,7 @@ if ! echo "$PATH" | tr ':' '\n' | grep -sqFx "$HOME/bin"; then
   echo "Append $HOME/bin to PATH"
 fi
 
+############################################################
 # configure CSCOPE_EDITOR for development
 if [ -n "$TMUX" -a -z "$CSCOPE_EDITOR" ]; then
   CSCOPE_EDITOR=`command -v vitmux`
@@ -47,6 +55,7 @@ if [ -n "$TMUX" -a -z "$CSCOPE_EDITOR" ]; then
   echo "Define CSCOPE_EDITOR to $CSCOPE_EDITOR"
 fi
 
+############################################################
 # activate python virtualenv wrapper
 # NOTE:
 # - disable this procedure by setting "ACTIVATE_PYTHON_VIRTUALENV=no" in ~/.bashrc
@@ -61,9 +70,34 @@ if [ "$ACTIVATE_PYTHON_VIRTUALENV" != "no" -a "`type -t lsvirtualenv`" != "funct
   echo "Source virtualenvwrapper.sh with WORKON_HOME equals to $WORKON_HOME"
 fi
 
+############################################################
 # attach any existing ssh-agent
 # NOTE:
 # - disable this procedure by setting "ATTACH_SSH_AGENT=no" in ~/.bashrc
 if [ "$ATTACH_SSH_AGENT" != "no" ] && command -v attach_ssh-agent.sh >/dev/null 2>&1; then
     source attach_ssh-agent.sh
 fi
+
+############################################################
+# reset bcompare trial
+# TODO: only do this after 15 days
+if [ "$KERNEL" = "Darwin" ]; then
+    fbcreg="$HOME/Library/Application Support/Beyond Compare/registry.dat"
+
+elif [ "$KERNEL" = "Linux" ]; then
+    fbcreg="$HOME/.config/bcompare/registry.dat"
+fi
+if [ -n "$fbcreg" -a -f "$fbcreg" ]; then
+    echo "Reset BCompare trial data"
+    ls -l "$fbcreg" | sed -e 's/^/>> /g'
+
+    rm -f "$fbcreg"
+fi
+unset fbcreg
+
+
+############################################################
+# Post process which MUST be in the last of this profile
+#
+# - clean local variables when this profile was sourced.
+unset KERNEL
