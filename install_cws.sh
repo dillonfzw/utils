@@ -11,9 +11,9 @@ USER=${USER:-`whoami`}
 HOSTNAME_S=${HOSTNAME_S:-`hostname -s`}
 PWD=${PWD:-`pwd`}
 
-local sudo=""
+sudo_const="sudo -n"
 if [ "$USER" != "root" ]; then
-    sudo="sudo -n"
+    sudo="$sudo_const"
 fi
 
 
@@ -64,20 +64,20 @@ function create_egoadmin() {
     # create user and group on demand
     if [ -z "$gid_c" ]; then
         log_info "Add EGO administration group \"$egoadmin_gname\" with gid \"$egoadmin_gid\"."
-        groupadd -g $egoadmin_gid $egoadmin_gname
+        $sudo groupadd -g $egoadmin_gid $egoadmin_gname
 
     fi && \
     if [ -z "$uid_c" ]; then
         log_info "Add EGO administration user \"$egoadmin_uname\" with gid \"$egoadmin_uid\"."
-        useradd -g $egoadmin_gname -u $egoadmin_uid -c "EGO Administrator" $egoadmin_uname
+        $sudo useradd -g $egoadmin_gname -u $egoadmin_uid -c "EGO Administrator" $egoadmin_uname
 
     fi && { \
         fsudocfg=/etc/sudoers.d/$egoadmin_uname
-        if [ ! -f $fsudocfg ]; then
+        if ! $sudo test -f $fsudocfg; then
             log_info "Configure paswordless sudo for EGO administrator \"$egoadmin_uname\"."
-            echo "Defaults:$egoadmin_uname !requiretty" >$fsudocfg
-            echo "$egoadmin_uname ALL=(ALL) NOPASSWD:ALL" >>$fsudocfg
-            chmod go-rwx $fsudocfg
+            $sudo echo "Defaults:$egoadmin_uname !requiretty" >$fsudocfg
+            $sudo echo "$egoadmin_uname ALL=(ALL) NOPASSWD:ALL" >>$fsudocfg
+            $sudo chmod go-rwx $fsudocfg
         fi
     }
 
@@ -90,7 +90,7 @@ function create_egoadmin() {
 }
 function install_mn() {
     # invoke installer
-    env \
+    $sudo env \
         CLUSTERADMIN=$egoadmin_uname \
         BASEPORT=$BASEPORT \
         CLUSTERNAME=$CLUSTERNAME \
@@ -101,27 +101,27 @@ function install_mn() {
     local logon_cmd="egosh user logon -u Admin -x Admin"
 
     # join a ego cluster
-    su -l $egoadmin_uname bash -c "$source_cmd; egoconfig join $cwsmn -f"
+    $sudo_const -u $egoadmin_uname bash -c "$source_cmd; egoconfig join $cwsmn -f"
 
     # set only when not entitled
-    if ! su -l root bash -c "$source_cmd; $logon_cmd; ego entitlement info" | \
+    if ! $sudo bash -c "$source_cmd; $logon_cmd; ego entitlement info" | \
        grep -sq Entitled; then
-        su -l $egoadmin_uname bash -c "$source_cmd; egoconfig setentitlement $entitlement"
+        $sudo_const -u $egoadmin_uname bash -c "$source_cmd; egoconfig setentitlement $entitlement"
     fi
 
     # start ego
-    su -l root bash -c "$source_cmd; egosh ego start"
+    $sudo bash -c "$source_cmd; egosh ego start"
 
     # view MN status
     sleep 2
-    su -l root bash -c "$source_cmd; $logon_cmd; egosh resource list -l"
+    $sudo bash -c "$source_cmd; $logon_cmd; egosh resource list -l"
 
     # view web url for end user
-    su -l root bash -c "$source_cmd; $logon_cmd; egosh client view GUIURL_1"
+    $sudo bash -c "$source_cmd; $logon_cmd; egosh client view GUIURL_1"
 }
 function install_cn() {
     # invoke installer
-    env \
+    $sudo env \
         CLUSTERADMIN=$egoadmin_uname \
         BASEPORT=$BASEPORT \
         CLUSTERNAME=$CLUSTERNAME \
@@ -133,14 +133,14 @@ function install_cn() {
     local logon_cmd="egosh user logon -u Admin -x Admin"
 
     # join a ego cluster
-    su -l $egoadmin_uname bash -c "$source_cmd; egoconfig join $cwsmn -f"
+    $sudo_const -u $egoadmin_uname bash -c "$source_cmd; egoconfig join $cwsmn -f"
 
     # start ego
-    su -l root bash -c "$source_cmd; egosh ego start"
+    $sudo bash -c "$source_cmd; egosh ego start"
 
     # view MN status
     sleep 2
-    su -l root bash -c "$source_cmd; $logon_cmd; egosh resource list -l"
+    $sudo bash -c "$source_cmd; $logon_cmd; egosh resource list -l"
 }
 
 if [ "$cwsrole" = "mn" -a "$cwsmn" = `hostname -s` ]; then
