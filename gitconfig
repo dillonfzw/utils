@@ -1,0 +1,4 @@
+[status]
+	short = true
+[push]
+	default = simple
