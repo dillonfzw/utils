@@ -98,7 +98,7 @@ if [ -n "$fbcreg" -a -f "$fbcreg" ]; then
         echo "Reset BCompare trial data"
         ls -l "$fbcreg" | sed -e 's/^/>> /g'
 
-        echo rm -f "$fbcreg"
+        rm -f "$fbcreg"
     fi
     unset sdiff
 fi
