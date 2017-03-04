@@ -25,7 +25,7 @@ do
     echo "Change $item from \"$val\" to \""`eval "echo \\\$$item"`"\""
   fi
 done
-unset DEFAULT_locale
+unset DEFAULT_locale item
 
 ############################################################
 # HOMEBREW token from dillonfzw@gmail.com, if not configured
@@ -39,12 +39,16 @@ fi
 
 ############################################################
 # append $HOME/bin if not configured
-if ! echo "$PATH" | tr ':' '\n' | grep -sqFx "$HOME/bin"; then
-  PATH=$PATH:$HOME/bin
-  export PATH
+for item in $HOME/bin $HOME/.local/bin
+do
+  if [ -d "$item" ] && ! echo "$PATH" | tr ':' '\n' | grep -sqFx "$item"; then
+    PATH=$PATH:$item
 
-  echo "Append $HOME/bin to PATH"
-fi
+    echo "Append $item to PATH"
+  fi
+done
+unset item
+export PATH
 
 ############################################################
 # configure CSCOPE_EDITOR for development
