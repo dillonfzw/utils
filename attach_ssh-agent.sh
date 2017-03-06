@@ -6,9 +6,11 @@
 # rt
 # NOTE: assume agents uses default socket path
 function get_ssh_agent_sockets() {
-    ls -1 /tmp/ssh-*/agent.* 2>/dev/null | xargs
+    # /tmp/ssh-*/agent.*              <== ssh-agent, native or forwarded
+    # /run/user/`id -u`/keyring/ssh   <== gnome-keyring
+    ls -1 /tmp/ssh-*/agent.* /run/user/`id -u`/keyring/ssh 2>/dev/null | xargs
 }
-# get the agend pid from agent socket
+# get the agend pid from native agent socket
 # NOTE: only work for Linux procfs
 function get_ssh_agent_pid() {
     local agent_socket=$1
@@ -31,26 +33,40 @@ function get_ssh_agent_pid() {
 
     return $rc
 }
-# rt
-function create_ssh_agent_profile() {
-    local agent_socket=$1
-
-    # get agent's pid
-    local agent_pid=`get_ssh_agent_pid $agent_socket`
-
-    if [ -n "$agent_pid" ]; then
-        echo "SSH_AUTH_SOCK=$agent_socket; export SSH_AUTH_SOCK;"
-        echo "SSH_AGENT_PID=$agent_pid; export SSH_AGENT_PID;"
-        echo "echo Agent pid $agent_pid;"
-    else
-        false
-    fi
-}
 # test connection to the agent
 function test_ssh_agent() {
     local agent_conf=$1
     # test the agent
-    bash -c 'source '$agent_conf'; line="$(ssh-add -l 2>&1)"; rc=$?; echo "$line"; if [ $rc -ne 0 ] && ! echo "$line" | grep -sq "The agent has no identities"; then false; fi' >/dev/null
+    bash -c 'f='$agent_conf';
+    if [ -S "$f" ]; then
+        export SSH_AUTH_SOCK="$f";
+    else
+        source $f;
+    fi;
+    line="$(ssh-add -l 2>&1)";
+    rc=$?;
+    echo "$line";
+    if [ $rc -ne 0 ] && ! echo "$line" | grep -sq "The agent has no identities"; then
+        false;
+    fi' >/dev/null
+}
+# rt
+function create_ssh_agent_profile() {
+    local agent_socket=$1
+
+    if test_ssh_agent $agent_socket; then
+        echo "SSH_AUTH_SOCK=$agent_socket; export SSH_AUTH_SOCK;"
+
+        # get agent's pid
+        local agent_pid=`get_ssh_agent_pid $agent_socket`
+
+        if [ -n "$agent_pid" ]; then
+            echo "SSH_AGENT_PID=$agent_pid; export SSH_AGENT_PID;"
+            echo "echo Agent pid $agent_pid;"
+        fi
+    else
+        false
+    fi
 }
 # traverse agent sockets to pick a valid one
 function validate_ssh_agent_sockets() {
@@ -68,7 +84,7 @@ function validate_ssh_agent_sockets() {
         ftmp=`mktemp /tmp/ssh-agent.conf.XXXX` && \
         create_ssh_agent_profile $agent_socket >$ftmp && \
 
-        # test and set aagent conf
+        # test and set agent conf
         if test_ssh_agent $ftmp >/dev/null 2>&1; then
             echo $agent_socket $agent_pid
             rc=0
