@@ -1,12 +1,39 @@
 #! /bin/bash
 
+source log.sh
+
 fimg=$1
+if [ ! -f "$fimg" ]; then
+    log_error "Image file \"$fimg\" is NOT a valid file. Abort!"
+    exit 1
+fi
+
+function get_fdev() {
+    local fin=$1
+
+    [ -f "$fin" ] && \
+    fdev=`df -m $fin | grep -v ^Filesystem | awk '{print $1}'` && \
+    [ -b "$fdev" ] && \
+    fdev=/sys/class/block/$(basename `readlink -m $fdev`) && \
+    [ -d "$fdev" ] && \
+    udevadm info --query=property --path=$fdev | grep -E "^ID_MODEL_ID=|^ID_VENDOR_ID=" | \
+    sed -e 's/ID_MODEL_ID=/pid=0x/g' -e 's/ID_VENDOR_ID=/vid=0x/g'
+}
 
 [ -n "$entrypoint" ] || \
 entrypoint=${2:-dsm60}
 
-vid=${vid:-0x0781}
-pid=${pid:-0x5571}
+#vid=${vid:-0x0781}
+#pid=${pid:-0x5571}
+[ -z "$vid" -o -z "$pid" ] && \
+line=`get_fdev $fimg` && \
+if [ -n "$line" ]; then
+    eval "$line"
+else
+    log_error "Cannot get vid/pid of the usb block device which contains the image file, \"$fimg\". Abort!"
+    exit 1
+fi
+
 mac1=${mac1:-00:e0:4c:7a:e3:a7}
 mac1=`echo "$mac1" | sed -e 's/://g' | tr 'a-f' 'A-F'`
 
