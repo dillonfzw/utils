@@ -78,12 +78,11 @@ function dsm60() {
             -e 's/^set pid=.*$/set pid='$pid'/g' \
             -e 's/^set mac1=.*$/set mac1='$mac1'/g' \
             $ftmpd/grub/grub.cfg && \
-        $sudo sed -i.bak \
-            -e 's/^saved_entry=.*$/saved_entry=='"$saved_entry"'/g' \
-            $ftmpd/grub/grubenv && \
+        $sudo cp -f $ftmpd/grub/grubenv $ftmpd/grub/grubenv.bak && \
+        $sudo grub-editenv $ftmpd/grub/grubenv set saved_entry="$saved_entry" &&
         rc=0 && \
         for FILE in $ftmpd/grub/{grub.cfg,grubenv}; do
-            diff -u $FILE.bak $FILE; \
+            diff -u $FILE.bak $FILE
         done
 
         # output for debug
