@@ -14,6 +14,7 @@ fi
 # - OSX default locale, UTF-8, is mostly invalid in Linux box,
 #   change it to en_US.UTF-8 if detected.
 DEFAULT_locale=en_US.UTF-8
+if ! locale -a | grep -sqx "$DEFAULT_locale"; then DEFAULT_locale=C; fi
 for item in LC_ALL LC_CTYPE
 do
   val=`locale 2>/dev/null | grep "^${item}=" | cut -d= -f2 | sed -e 's/\"//g'`
