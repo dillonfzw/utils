@@ -109,6 +109,19 @@ if [ -n "$fbcreg" -a -f "$fbcreg" ]; then
 fi
 unset fbcreg fstamp_cmd
 
+############################################################
+# SCM tools
+if ! command -v lscm >/dev/null 2>&1; then
+    RTC_SCMTOOLS_HOME=${RTC_SCMTOOLS_HOME:-$HOME/bin/apps/RTC-scmTools}
+    RPATH=jazz/scmtools/eclipse
+    if [ -x $RTC_SCMTOOLS_HOME/$RPATH/lscm ]; then
+        export PATH=$PATH:$RTC_SCMTOOLS_HOME/$RPATH
+        export SCM_DAEMON_PATH="$RTC_SCMTOOLS_HOME/$RPATH/scm"
+
+        echo "Add RTC-scmTools to PATH as $RTC_SCMTOOLS_HOME/$RPATH"
+    fi
+fi
+unset RPATH
 
 ############################################################
 # Post process which MUST be in the last of this profile
