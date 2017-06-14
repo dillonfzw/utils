@@ -146,7 +146,7 @@ function commit_code_in_git() {
         git commit -F $tmpf && rm -f $tmpf
 
         git log -n2 | sed -e 's/^/>> /g' | log_lines info
-        git push
+        #git push
     else
         log_error "Fail to change directory to workspace in file system path \"$fs_workspace\""
         false
@@ -154,7 +154,7 @@ function commit_code_in_git() {
 }
 function unload_rtc_workspace() {
     log_info "Unload RTC workspace \"$rtc_workspace\"..."
-    $lscm unload -r $rtc_repo $rtc_workspace
+    $lscm unload -r $rtc_repo -w $rtc_workspace -C $rtc_component
 }
 function delete_rtc_workspace() {
     log_info "Delete RTC workspace \"$rtc_workspace\"..."
@@ -169,4 +169,6 @@ commit_code_in_git && \
 unload_rtc_workspace && \
 delete_rtc_workspace
 
-rm -rf $fs_workspace
+if [ -n "$fs_workspace" -a -n "$rtc_component" ]; then
+    rm -rf $fs_workspace/{$rtc_component, .jazz*}
+fi
