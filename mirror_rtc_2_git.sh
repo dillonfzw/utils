@@ -29,6 +29,9 @@ source $PROGDIR/getopt.sh
 export JAVA_HOME
 export PATH=$JAVA_HOME/bin:$PATH
 
+rtc_root=$fs_workspace/.rtc_root
+git_root=$fs_workspace/.git_root
+
 # RTC import dlm_trunk (13-Jun-2017 04:29 AM)
 function timestamp() {
     local args=$@
@@ -72,8 +75,8 @@ function create_rtc_workspace() {
     test $i -lt 2
 }
 function load_rtc_workspace() {
-    [ -d $fs_workspace ] || mkdir -p $fs_workspace
-    if cd $fs_workspace; then
+    [ -d $rtc_root ] || mkdir -p $rtc_root
+    if cd $rtc_root; then
         # [fuzhiwen@kvm-007800 tmp]$ lscm status
         # Workspace: (1031) "m_dlm_trunk_kvm-007800" <-> (1012) "dlm_trunk"
         #   Component: (1032) "dlm"
@@ -90,7 +93,7 @@ function load_rtc_workspace() {
                 { echo "$lines"; pwd; ls -la; } | sed -e 's/^/>> /g' | log_lines info
                 break
             elif [ $i -eq 0 ]; then
-                log_info "Load RTC component \"$rtc_component\" in workspace \"$rtc_workspace\" into directory \"$fs_workspace\"..."
+                log_info "Load RTC component \"$rtc_component\" in workspace \"$rtc_workspace\" into directory \"$rtc_root\"..."
                 lines=`$lscm load -r $rtc_repo --allow --force $rtc_workspace $rtc_component/ 2>&1`
                 if [ $? -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; fi
             fi
@@ -98,67 +101,97 @@ function load_rtc_workspace() {
         done
         test $i -lt 2
     else
-        log_error "Fail to change directory to workspace in file system path \"$fs_workspace\""
+        log_error "Fail to change directory to workspace in file system path \"$rtc_root\""
         false
     fi
 }
 function transfer_rtc_to_git() {
-    [ -d $fs_workspace ] || mkdir -p $fs_workspace
-    if cd $fs_workspace/$rtc_component; then
-        # stage rtc content
-        tmpd=`mktemp -d .XXXXXXXX`
-        ls -a1 | grep -Exv ".|..|.git|$tmpd" | xargs -I '{}' mv {} $tmpd/
-
+    # STEP_01: transfer rtc content to git local workspace
+    if [ ! -d $git_root/$rtc_component ]; then
+        mkdir -p $git_root/$rtc_component
+    fi && \
+    if cd $git_root/$rtc_component; then
         # initialize git
         if [ ! -d .git ]; then
+            log_info "Clone git branch \"$git_branch\" at repo \"$git_repo\" into \"$git_root/$rtc_component\"..."
             git init && \
             git remote add origin $git_repo;
+        else
+            log_info "Fetch git branch \"$git_branch\" at repo \"$git_repo\" into \"$git_root/$rtc_component\"..."
         fi && \
+        # sync with git server
         git fetch origin +$git_branch:remotes/origin/$git_branch && \
-        git checkout $git_branch
+        # update local copy
+        if git branch | grep -sq '^\* \+'"$git_branch *$"; then
+            if ! git status | grep -sq "working directory clean"; then git reset --hard; fi
+            git merge origin/$git_branch
+        else
+            git checkout $git_branch
+        fi
 
         # transfer rtc code to git
-        ls -a1 | grep -Exv ".|..|.git|$tmpd" | xargs -I '{}' rm -rf {}
-        if cd $tmpd; then
-            ls -a1 | grep -Exv ".|.." | xargs -I '{}' mv {} ../; 
-            cd - >/dev/null
-            rmdir $tmpd
-        fi
+        log_info "Transfer RTC code into git..."
+        ls -a1 | grep -Exv ".|..|.git" | xargs -I '{}' rm -rf {}
+        tar -C $rtc_root -cf - $rtc_component | tar -C $git_root -xf -
 
         git status -s 2>&1 | sed -e 's/^/>> /g' | log_lines debug
 
     else
-        log_error "Fail to change directory to workspace in file system path \"$fs_workspace\""
+        log_error "Fail to change directory to workspace in file system path \"$rtc_root\""
         false
     fi
 }
 function commit_code_in_git() {
-    if cd $fs_workspace/$rtc_component; then
+    if cd $git_root/$rtc_component; then
         tmpf=`mktemp /tmp/XXXXXXXX`
         {
             echo "RTC import dlm_trunk (`timestamp -u`)"
             echo
-            $lscm show history 2>&1
-        } >$tmpf
-        git add --all
-        git config user.email $git_user_email
-        git config user.name "$git_user_name"
-        git commit -F $tmpf && rm -f $tmpf
+            if cd $rtc_root/$rtc_component; then
+                lines=`$lscm show history -w $rtc_workspace -C $rtc_component 2>&1`
+                rc=$?
+                echo "$lines"
+                if [ $rc -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; false; fi
+                cd - >/dev/null
+                (exit $rc)
+            fi
+        } >$tmpf && {
+            log_info "Commit code to git \"`head -n1 $tmpf`\""
 
-        git log -n2 | sed -e 's/^/>> /g' | log_lines info
-        #git push
+            git add --all
+            git config user.email $git_user_email
+            git config user.name "$git_user_name"
+            git commit -F $tmpf
+
+            git log -n2 | sed -e 's/^/>> /g' | log_lines info
+            #git push
+        }
+        rm -f $tmpf
+
     else
-        log_error "Fail to change directory to workspace in file system path \"$fs_workspace\""
+        log_error "Fail to change directory to workspace in file system path \"$git_root\""
         false
     fi
 }
 function unload_rtc_workspace() {
     log_info "Unload RTC workspace \"$rtc_workspace\"..."
-    $lscm unload -r $rtc_repo -w $rtc_workspace -C $rtc_component
+    if cd $rtc_root; then
+        lines=`$lscm unload -r $rtc_repo -w $rtc_workspace -C $rtc_component 2>&1`
+        rc=$?
+        if [ $rc -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; false; fi
+        cd - >/dev/null
+        (exit $rc)
+    fi
 }
 function delete_rtc_workspace() {
     log_info "Delete RTC workspace \"$rtc_workspace\"..."
-    $lscm delete workspace -r $rtc_repo $rtc_workspace
+    if cd $rtc_root; then
+        lines=`$lscm delete workspace -r $rtc_repo $rtc_workspace 2>&1`
+        rc=$?
+        if [ $rc -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; false; fi
+        cd - >/dev/null
+        (exit $rc)
+    fi
 }
 
 rtc_login && \
@@ -169,6 +202,6 @@ commit_code_in_git && \
 unload_rtc_workspace && \
 delete_rtc_workspace
 
-if [ -n "$fs_workspace" -a -n "$rtc_component" ]; then
-    rm -rf $fs_workspace/{$rtc_component, .jazz*}
+if [ -n "$rtc_root" -a -n "$rtc_component" ]; then
+    rm -rf $rtc_root/{$rtc_component, .jazz*}
 fi
