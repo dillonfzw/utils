@@ -143,11 +143,11 @@ function install_cn() {
     $sudo bash -c "$source_cmd; $logon_cmd; egosh resource list -l"
 }
 
-if [ "$cwsrole" = "mn" -a "$cwsmn" = `hostname -s` ]; then
+if [ "$cwsrole" = "mn" -a "$cwsmn" = "$HOSTNAME_S" ]; then
     create_egoadmin && \
     install_mn
 
-elif [ "$cwsrole" = "cn" -a "$cwsmn" != `hostname -s` ]; then
+elif [ "$cwsrole" = "cn" -a "$cwsmn" != "$HOSTNAME_S" ]; then
     create_egoadmin && \
     install_cn
 fi
