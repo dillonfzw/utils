@@ -131,7 +131,7 @@ function transfer_rtc_to_git() {
 
         # transfer rtc code to git
         log_info "Transfer RTC code into git..."
-        ls -a1 | grep -Exv ".|..|.git" | xargs -I '{}' rm -rf {}
+        ls -a1 | grep -Exv "\.|\.\.|\.git" | xargs -I '{}' rm -rf {}
         tar -C $rtc_root -cf - $rtc_component | tar -C $git_root -xf -
 
         git status -s 2>&1 | sed -e 's/^/>> /g' | log_lines debug
