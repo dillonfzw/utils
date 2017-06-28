@@ -119,6 +119,7 @@ if ! command -v lscm >/dev/null 2>&1; then
         export SCM_DAEMON_PATH="$RTC_SCMTOOLS_HOME/$RPATH/scm"
         export RTC_SCRIPT_BASE="$RTC_SCMTOOLS_HOME/$RPATH/scripts"
         #unset SCM_ALLOW_INSECURE
+        export SHOW_DEPRECATED_HELP=1
 
         echo "Add RTC-scmTools to PATH as $RTC_SCMTOOLS_HOME/$RPATH"
     fi

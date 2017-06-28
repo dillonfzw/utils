@@ -16,6 +16,7 @@ DEFAULT_rtc_passwd_f=$HOME/.ssh/fuzhiwen@cn.ibm.com.rtc_passwd_f
 DEFAULT_rtc_stream=dlm_trunk
 DEFAULT_rtc_component=dlm
 DEFAULT_rtc_workspace=m_${DEFAULT_rtc_stream}_`hostname -s`
+DEFAULT_rtc_max_history=20
 
 DEFAULT_git_repo=git@github.ibm.com:platformcomputing/bluemind.git
 DEFAULT_git_branch=rtc-${DEFAULT_rtc_stream}
@@ -148,7 +149,7 @@ function commit_code_in_git() {
             echo "RTC import dlm_trunk (`timestamp -u`)"
             echo
             if cd $rtc_root/$rtc_component; then
-                lines=`$lscm show history -w $rtc_workspace -C $rtc_component 2>&1`
+                lines=`$lscm show history -w $rtc_workspace -C $rtc_component -m $rtc_max_history 2>&1`
                 rc=$?
                 echo "$lines"
                 if [ $rc -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; false; fi
