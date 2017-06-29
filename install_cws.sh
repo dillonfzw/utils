@@ -9,6 +9,7 @@ PROGVERSION=1.0.1
 # constant variables
 USER=${USER:-`whoami`}
 HOSTNAME_S=${HOSTNAME_S:-`hostname -s`}
+HOSTNAME_F=${HOSTNAME_F:-`hostname -f`}
 PWD=${PWD:-`pwd`}
 
 sudo_const="sudo -n"
@@ -29,7 +30,7 @@ DEFAULT_entitlement=$PWD/entitlement_file.dat
 DEFAULT_cwshome=/opt/ibm/spectrumcomputing
 DEFAULT_cwsrole=cn
 if [ "$DEFAULT_cwsrole" = "mn" ]; then
-    DEFAULT_cwsmn=$HOSTNAME_S
+    DEFAULT_cwsmn=$HOSTNAME_F
 else
     DEFAULT_cwsmn=""
 fi
@@ -75,8 +76,8 @@ function create_egoadmin() {
         fsudocfg=/etc/sudoers.d/$egoadmin_uname
         if ! $sudo test -f $fsudocfg; then
             log_info "Configure paswordless sudo for EGO administrator \"$egoadmin_uname\"."
-            $sudo echo "Defaults:$egoadmin_uname !requiretty" >$fsudocfg
-            $sudo echo "$egoadmin_uname ALL=(ALL) NOPASSWD:ALL" >>$fsudocfg
+            echo "Defaults:$egoadmin_uname !requiretty" | $sudo tee $fsudocfg
+            echo "$egoadmin_uname ALL=(ALL) NOPASSWD:ALL" | $sudo tee -a $fsudocfg
             $sudo chmod go-rwx $fsudocfg
         fi
     }
@@ -104,7 +105,7 @@ function install_mn() {
     $sudo_const -u $egoadmin_uname bash -c "$source_cmd; egoconfig join $cwsmn -f"
 
     # set only when not entitled
-    if ! $sudo bash -c "$source_cmd; $logon_cmd; ego entitlement info" | \
+    if ! $sudo bash -c "$source_cmd; $logon_cmd; egosh entitlement info" | \
        grep -sq Entitled; then
         $sudo_const -u $egoadmin_uname bash -c "$source_cmd; egoconfig setentitlement $entitlement"
     fi
@@ -143,11 +144,11 @@ function install_cn() {
     $sudo bash -c "$source_cmd; $logon_cmd; egosh resource list -l"
 }
 
-if [ "$cwsrole" = "mn" -a "$cwsmn" = `hostname -s` ]; then
+if [ "$cwsrole" = "mn" -a "$cwsmn" = "$HOSTNAME_F" ]; then
     create_egoadmin && \
     install_mn
 
-elif [ "$cwsrole" = "cn" -a "$cwsmn" != `hostname -s` ]; then
+elif [ "$cwsrole" = "cn" -a "$cwsmn" != "$HOSTNAME_F" ]; then
     create_egoadmin && \
     install_cn
 fi
