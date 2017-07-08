@@ -98,7 +98,30 @@ function create_egoadmin() {
     fi
     return $rc
 }
+function wait_for_ego_up() {
+    log_info "Wait EGO to be started up within 300 seconds"
+    let i=1
+    while [ $i -lt 300 ];
+    do
+        if ! $sudo bash -c "$ego_source_cmd; egosh ego info" 2>&1 | \
+            grep -sq "Cannot contact the master host"; then
+            break
+        fi
+        sleep 1
+        ((i+=1))
+    done
+    test $i -lt 300
+}
 function install_mn() {
+    if [ ! -f "$installerbin" ]; then
+        log_error "Installer binary \"$installerbin\" does not exist."
+        return 1
+    fi
+    if [ ! -f "$entitlement" ]; then
+        log_error "Entitlement \"$entitlement\" does not exist."
+        return 1
+    fi
+
     # invoke installer
     $sudo env \
         CLUSTERADMIN=$egoadmin_uname \
@@ -111,22 +134,32 @@ function install_mn() {
     $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig join $cwsmn -f"
 
     # set only when not entitled
-    if ! $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh entitlement info" | \
+    if ! $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh entitlement info" 2>&1 | \
        grep -sq Entitled; then
+        log_info "Set entitlement with \"$entitlement\""
         $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig setentitlement $entitlement"
     fi
 
     # start ego
     $sudo bash -c "$ego_source_cmd; egosh ego start"
+    if wait_for_ego_up; then
+        # view MN status
+        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh resource list -l"
 
-    # view MN status
-    sleep 2
-    $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh resource list -l"
-
-    # view web url for end user
-    $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh client view EGO_SERVICE_CONTROLLER"
+        # view web url for end user
+        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh client view EGO_SERVICE_CONTROLLER"
+    else
+        log_error "Cannot reach EGO master..."
+        $sudo bash -c "$ego_source_cmd; ego ego info" 2>&1 | sed -e 's/^/>> /g' | log_lines error
+        false
+    fi
 }
 function install_cn() {
+    if [ ! -f "$installerbin" ]; then
+        log_error "Installer binary \"$installerbin\" does not exist."
+        return 1
+    fi
+
     # invoke installer
     $sudo env \
         CLUSTERADMIN=$egoadmin_uname \
@@ -146,8 +179,13 @@ function install_cn() {
     $sudo bash -c "$ego_source_cmd; egosh ego start"
 
     # view MN status
-    sleep 2
-    $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh resource list -l"
+    if wait_for_ego_up; then
+        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh resource list -l"
+    else
+        log_error "Cannot reach EGO master..."
+        $sudo bash -c "$ego_source_cmd; ego ego info" 2>&1 | sed -e 's/^/>> /g' | log_lines error
+        false
+    fi
 }
 function stop_cws() {
     # stop ego services
@@ -159,11 +197,11 @@ function stop_cws() {
         while [ $i -le $cnt ];
         do
             lines=`$sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh service list" | \
-                   grep -vE " DEFINED |^SERVICE"`
+                   grep -vE " DEFINED |^SERVICE|Logged on successfully"`
             if [ -z "$lines" ]; then
                 break
             elif [ $((i % interval_disp)) -eq 0 ]; then
-                echo "$lines" | sed -e '/^/>> /g' | log_lines debug
+                echo "$lines" | sed -e 's/^/>> /g' | log_lines debug
             fi
     
             log_debug "Wait $i/$cnt of sleep $interval_sleep interval..."
