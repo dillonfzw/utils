@@ -23,6 +23,7 @@ DEFAULT_git_branch=rtc-${DEFAULT_rtc_stream}
 DEFAULT_fs_workspace=$HOME/workspace/tmp
 DEFAULT_git_user_email=fuzhiwen@cn.ibm.com
 DEFAULT_git_user_name="Zhiwen Fu"
+DEFAULT_sshKey="50:6b:02:cb:27:c6:3c:45:18:14:21:0a:22:ad:e2:59"
 
 source $PROGDIR/log.sh
 source $PROGDIR/getopt.sh
@@ -106,6 +107,21 @@ function load_rtc_workspace() {
         false
     fi
 }
+function get_ssh_key() {
+    let i=0
+    while [ $i -lt 2 ];
+    do
+        if ssh-add -l | grep -wF -sq "$sshKey"; then
+            break
+        elif [ $i -eq 0 ]; then
+            source attach_ssh-agent.sh
+        elif [ $i -eq 1 ]; then
+            log_error "Cannot find ssh key to github. Abort!"
+        fi
+        ((i+=1))
+    done
+    test $i -lt 2
+}
 function transfer_rtc_to_git() {
     # STEP_01: transfer rtc content to git local workspace
     if [ ! -d $git_root/$rtc_component ]; then
@@ -120,6 +136,7 @@ function transfer_rtc_to_git() {
         else
             log_info "Fetch git branch \"$git_branch\" at repo \"$git_repo\" into \"$git_root/$rtc_component\"..."
         fi && \
+        get_ssh_key && \
         # sync with git server
         git fetch origin +$git_branch:remotes/origin/$git_branch && \
         # update local copy
@@ -164,8 +181,10 @@ function commit_code_in_git() {
             git config user.name "$git_user_name"
             git commit -F $tmpf
 
-            git log -n2 | sed -e 's/^/>> /g' | log_lines info
-            #git push
+            { git log -n2; git log --oneline -n10 --graph; } | sed -e 's/^/>> /g' | log_lines info
+
+            log_info "Push code back to up-stream \"`head -n1 $tmpf`\""
+            git push
         }
         rm -f $tmpf
 
