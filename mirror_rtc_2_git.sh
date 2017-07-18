@@ -13,17 +13,28 @@ DEFAULT_rtc_repo=https://jazz07.rchland.ibm.com:21443/jazz/
 DEFAULT_rtc_repo_alias=jazz
 DEFAULT_rtc_user=fuzhiwen@cn.ibm.com
 DEFAULT_rtc_passwd_f=$HOME/.ssh/fuzhiwen@cn.ibm.com.rtc_passwd_f
-DEFAULT_rtc_stream=dlm_trunk
-DEFAULT_rtc_component=dlm
-DEFAULT_rtc_workspace=m_${DEFAULT_rtc_stream}_`hostname -s`
-DEFAULT_rtc_max_history=20
 
-DEFAULT_git_repo=git@github.ibm.com:platformcomputing/bluemind.git
+DEFAULT_project=${DEFAULT_project:-dlm}
+if [ "$DEFAULT_project" = "dlm" ]; then
+    DEFAULT_rtc_stream=dlm_trunk
+    DEFAULT_rtc_component=dlm
+    
+    DEFAULT_git_repo=git@github.ibm.com:platformcomputing/bluemind.git
+elif [ "$DEFAULT_project" = "dlmfabric" ]; then
+    DEFAULT_rtc_stream=dlmfabric_trunk
+    DEFAULT_rtc_component=dlmfabric
+    
+    DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
+fi
+DEFAULT_rtc_max_history=20
+DEFAULT_rtc_workspace=m_${DEFAULT_rtc_stream}_`hostname -s`
+
 DEFAULT_git_branch=rtc-${DEFAULT_rtc_stream}
-DEFAULT_fs_workspace=$HOME/workspace/tmp
 DEFAULT_git_user_email=fuzhiwen@cn.ibm.com
 DEFAULT_git_user_name="Zhiwen Fu"
 DEFAULT_sshKey="50:6b:02:cb:27:c6:3c:45:18:14:21:0a:22:ad:e2:59"
+
+DEFAULT_fs_workspace=$HOME/${DEFAULT_rtc_workspace}
 
 source $PROGDIR/log.sh
 source $PROGDIR/getopt.sh
@@ -145,14 +156,13 @@ function transfer_rtc_to_git() {
             git merge origin/$git_branch
         else
             git checkout $git_branch
-        fi
-
-        # transfer rtc code to git
-        log_info "Transfer RTC code into git..."
-        ls -a1 | grep -Exv "\.|\.\.|\.git" | xargs -I '{}' rm -rf {}
-        tar -C $rtc_root -cf - $rtc_component | tar -C $git_root -xf -
-
-        git status -s 2>&1 | sed -e 's/^/>> /g' | log_lines debug
+        fi && {
+            # transfer rtc code to git
+            log_info "Transfer RTC code into git..."
+            ls -a1 | grep -Exv "\.|\.\.|\.git" | xargs -I '{}' rm -rf {}
+            tar -C $rtc_root -cf - $rtc_component | tar -C $git_root -xf -
+            git status -s 2>&1 | sed -e 's/^/>> /g' | log_lines debug
+        }
 
     else
         log_error "Fail to change directory to workspace in file system path \"$rtc_root\""
@@ -218,9 +228,9 @@ rtc_login && \
 create_rtc_workspace && \
 load_rtc_workspace && \
 transfer_rtc_to_git && \
-commit_code_in_git && \
-unload_rtc_workspace && \
-delete_rtc_workspace
+echo commit_code_in_git && \
+echo unload_rtc_workspace && \
+echo delete_rtc_workspace
 
 if [ -n "$rtc_root" -a -n "$rtc_component" ]; then
     rm -rf $rtc_root/{$rtc_component, .jazz*}
