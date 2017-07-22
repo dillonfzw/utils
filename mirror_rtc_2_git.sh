@@ -228,9 +228,9 @@ rtc_login && \
 create_rtc_workspace && \
 load_rtc_workspace && \
 transfer_rtc_to_git && \
-echo commit_code_in_git && \
-echo unload_rtc_workspace && \
-echo delete_rtc_workspace
+commit_code_in_git && \
+unload_rtc_workspace && \
+delete_rtc_workspace
 
 if [ -n "$rtc_root" -a -n "$rtc_component" ]; then
     rm -rf $rtc_root/{$rtc_component, .jazz*}
