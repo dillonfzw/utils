@@ -5,6 +5,16 @@ PROGNAME=${0##*/}
 PROGDIR=${0%/*}
 PROGVERSION=0.1.0
 
+##############################################
+# Procedure to enable crontab for mirror tasks
+#
+# [fuzhiwen@kvm-007800 ~]$ crontab -e
+# SHELL=/bin/bash
+# MAILTO=fuzhiwen@cn.ibm.com
+# CRON_TZ=Asia/Shanghai
+# 
+# 10 4,16 * * * for prj in dlm dlmfabric; do env DEFAULT_project=$prj /u/fuzhiwen/bin/mirror_rtc_2_git.sh; done
+
 # constant variables
 DEFAULT_lscm=lscm
 DEFAULT_JAVA_HOME=${JAVA_HOME:-/opt/ibm/java-x86_64-80}
