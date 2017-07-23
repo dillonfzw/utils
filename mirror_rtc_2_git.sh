@@ -162,9 +162,16 @@ function transfer_rtc_to_git() {
         git fetch origin +$git_branch:remotes/origin/$git_branch && \
         # update local copy
         if git branch | grep -sq '^\* \+'"$git_branch *$"; then
-            if ! git status | grep -sq "working directory clean"; then git reset --hard; fi
+            lines=`git status`
+            if ! echo "$lines" | grep -sq "working directory clean"; then
+                log_warn "Working directory isn't clean. Let's do a hard reset..."
+                echo "$lines" | sed -e 's/^/>> /g' | log_lines debug
+                git reset --hard
+            fi
+            log_debug "Merge with up-stream branch \"$git_branch\""
             git merge origin/$git_branch
         else
+            log_debug "Check out up-stream branch \"$git_branch\""
             git checkout $git_branch
         fi && {
             # transfer rtc code to git
@@ -199,12 +206,16 @@ function commit_code_in_git() {
             git add --all
             git config user.email $git_user_email
             git config user.name "$git_user_name"
-            git commit -F $tmpf
+            lines=`git commit -F $tmpf`
+            echo "$lines"
 
-            { git log -n2; git log --oneline -n10 --graph; } | sed -e 's/^/>> /g' | log_lines info
+            if ! echo "$lines" | grep -sq "nothing to commit"; then
+                { git log -n2; } | sed -e 's/^/>> /g' | log_lines info
 
-            log_info "Push code back to up-stream \"`head -n1 $tmpf`\""
-            git push
+                log_info "Push code back to up-stream \"`head -n1 $tmpf`\""
+                git push
+            fi
+            { git log --oneline -n10 --graph; } | sed -e 's/^/>> /g' | log_lines info
         }
         rm -f $tmpf
 
