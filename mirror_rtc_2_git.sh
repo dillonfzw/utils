@@ -36,7 +36,7 @@ elif [ "$DEFAULT_project" = "dlmfabric" ]; then
     
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
 fi
-DEFAULT_rtc_max_history=20
+DEFAULT_rtc_max_history=100
 DEFAULT_rtc_workspace=m_${DEFAULT_rtc_stream}_`hostname -s`
 
 DEFAULT_git_branch=rtc-${DEFAULT_rtc_stream}
@@ -192,11 +192,17 @@ function commit_code_in_git() {
         {
             echo "RTC import dlm_trunk (`timestamp -u`)"
             echo
+            last_changeset=`git log -n1 | grep -A 1 "Change sets:" | sed -e 's/^ *\(.*\) *Added By: .*$/\1/g'`
             if cd $rtc_root/$rtc_component; then
                 lines=`$lscm show history -w $rtc_workspace -C $rtc_component -m $rtc_max_history 2>&1`
                 rc=$?
-                echo "$lines"
-                if [ $rc -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; false; fi
+                if [ -n "$last_changeset" ]; then
+                    lines_new=`echo "$lines" | grep -B9999 -F "${last_changeset}"`
+                else
+                    lines_new="$lines"
+                fi
+                echo "$lines_new"
+                if [ $rc -ne 0 ]; then echo "$lines_new" | sed -e 's/^/>> /g' | log_lines error; false; fi
                 cd - >/dev/null
                 (exit $rc)
             fi
