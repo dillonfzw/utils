@@ -24,19 +24,25 @@ DEFAULT_rtc_repo_alias=jazz
 DEFAULT_rtc_user=fuzhiwen@cn.ibm.com
 DEFAULT_rtc_passwd_f=$HOME/.ssh/fuzhiwen@cn.ibm.com.rtc_passwd_f
 
-DEFAULT_project=${DEFAULT_project:-dlm}
-if [ "$DEFAULT_project" = "dlm" ]; then
-    DEFAULT_rtc_stream=dlm_trunk
+DEFAULT_project=${DEFAULT_project:-dlm_trunk}
+DEFAULT_rtc_stream=$DEFAULT_project
+if [ "$DEFAULT_project" = "dlm_trunk" ]; then
     DEFAULT_rtc_component=dlm
-    
     DEFAULT_git_repo=git@github.ibm.com:platformcomputing/bluemind.git
-elif [ "$DEFAULT_project" = "dlmfabric" ]; then
-    DEFAULT_rtc_stream=dlmfabric_trunk
+
+elif [ "$DEFAULT_project" = "dlm_tp0.4" ]; then
+    DEFAULT_rtc_component=dlm
+    DEFAULT_git_repo=git@github.ibm.com:platformcomputing/bluemind.git
+
+elif [ "$DEFAULT_project" = "dlmfabric_trunk" ]; then
     DEFAULT_rtc_component=dlmfabric
-    
+    DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
+
+elif [ "$DEFAULT_project" = "dlmfabric_tp0.4" ]; then
+    DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
 fi
-DEFAULT_rtc_max_history=100
+DEFAULT_rtc_max_history=500
 DEFAULT_rtc_workspace=m_${DEFAULT_rtc_stream}_`hostname -s`
 
 DEFAULT_git_branch=rtc-${DEFAULT_rtc_stream}
@@ -44,7 +50,7 @@ DEFAULT_git_user_email=fuzhiwen@cn.ibm.com
 DEFAULT_git_user_name="Zhiwen Fu"
 DEFAULT_sshKey="50:6b:02:cb:27:c6:3c:45:18:14:21:0a:22:ad:e2:59"
 
-DEFAULT_fs_workspace=$HOME/${DEFAULT_rtc_workspace}
+DEFAULT_fs_workspace=$HOME/rtc2git/${DEFAULT_rtc_workspace}
 
 source $PROGDIR/log.sh
 source $PROGDIR/getopt.sh
