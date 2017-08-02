@@ -196,7 +196,7 @@ function commit_code_in_git() {
     if cd $git_root/$rtc_component; then
         tmpf=`mktemp /tmp/XXXXXXXX`
         {
-            echo "RTC import dlm_trunk (`timestamp -u`)"
+            echo "RTC import $rtc_stream (`timestamp -u`)"
             echo
             last_changeset=`git log -n1 | grep -A 1 "Change sets:" | sed -e 's/^ *\(.*\) *Added By: .*$/\1/g'`
             if cd $rtc_root/$rtc_component; then
