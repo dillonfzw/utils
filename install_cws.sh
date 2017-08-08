@@ -31,8 +31,8 @@ DEFAULT_installerbin=$PWD/cws-2.2.1.0_ppc64le.bin
 DEFAULT_entitlement=$PWD/entitlement-cws221.dat
 DEFAULT_cwshome=/opt/ibm/spectrumcomputing
 DEFAULT_cwsrole=cn
-DEFAULT_uninstall=false
 DEFAULT_enforce=false
+DEFAULT_cmd=""
 if [ "$DEFAULT_cwsrole" = "mn" ]; then
     DEFAULT_cwsmn=$HOSTNAME_F
 else
@@ -46,17 +46,25 @@ source $PROGDIR/log.sh
 source $PROGDIR/getopt.sh
 
 
-# logic to valid input parameter
-if [ "$cwsrole" = "cn" -a -z "$cwsmn" ]; then
-    log_error "You must specify a valid CwS MN, \"cwsmn\", in order to install and setup a CwS CN" >&2
-    exit 1
-fi
-
 
 # shared commands
 ego_source_cmd="source $cwshome/profile.platform"
 ego_logon_cmd="egosh user logon -u Admin -x Admin"
 
+function pstree() {
+    pids="$@"
+    pids_old=""
+    while [ "$pids" != "$pids_old" ];
+    do
+        pids_old="$pids"
+        pids=`ps --pid "$pids" --ppid "$pids" -o pid --no-headers | awk '{print $1}' | sort -u | xargs`
+    done
+    echo "$pids"
+}
+function usage() {
+    echo "Usage $PROGNAME"
+    exit 0
+}
 function create_egoadmin() {
     local uid_c=`id -u $egoadmin_uname 2>/dev/null`
     local gid_c=`id -g $egoadmin_gname 2>/dev/null`
@@ -112,7 +120,116 @@ function wait_for_ego_up() {
     done
     test $i -lt 300
 }
+function wait_for_ego_down() {
+    log_info "Wait EGO to be shutdown within 100 seconds"
+    let i=1
+    let cnt=100
+    while [ $i -le $cnt ];
+    do
+        lines=`$sudo bash -c "$ego_source_cmd; egosh ego info" 2>&1`
+        if echo "$lines" | grep -sq "Cannot contact the master"; then
+            break
+        fi
+        ((i+=1))
+        sleep 1
+    done
+    test $i -le $cnt
+}
+function enable_gpu() {
+    let i=0
+    while [ $i -lt 2 ];
+    do
+        if grep -sq -xF "EGO_GPU_ENABLED=Y" $cwshome/kernel/conf/ego.conf; then
+            break
+        elif [ $i -eq 0 ]; then
+            log_info "Enable GPU monitoring feature..."
+            $sudo bash -c "$ego_source_cmd; $ego_logon_cmd;"'$EGO_TOP/conductorspark/2.2.1/etc/gpuconfig.sh enable'
+        elif [ $i -eq 1 ]; then
+            log_error "Fail to enable GPU monitoring feature..."
+        fi
+        sleep 1
+        ((i+=1))
+    done
+    test $i -lt 2
+}
+function start_cws() {
+    # start ego
+    $sudo bash -c "$ego_source_cmd; egosh ego start -f all"
+    if ! wait_for_ego_up; then
+        log_error "Cannot reach EGO master..."
+        $sudo bash -c "$ego_source_cmd; ego ego info" 2>&1 | sed -e 's/^/>> /g' | log_lines error
+        false
+    fi
+}
+function wait_for_ego_services_down() {
+    let i=1
+    let interval_sleep=2
+    let interval_disp=5
+    let cnt=150
+    while [ $i -le $cnt ];
+    do
+        lines=`$sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh service list" | \
+               grep -vE " DEFINED |^SERVICE|Logged on successfully"`
+        if [ -z "$lines" ]; then
+            break
+        elif [ $((i % interval_disp)) -eq 1 ]; then
+            echo "$lines" | sed -e 's/^/>> /g' | log_lines debug
+        fi
+
+        log_debug "Wait $i/$cnt of sleep $interval_sleep interval..."
+        sleep $interval_sleep
+        ((i+=1))
+    done
+    test $i -le $cnt
+}
+function stop_cws() {
+    # stop ego services
+    if $sudo bash -c "$ego_source_cmd; egosh service stop all"; then
+        wait_for_ego_services_down
+    else
+        log_error "Fail to issue \"service stop all\" command to ego..."
+        false
+    fi && \
+    # shutdown ego cluster
+    if $sudo bash -c "$ego_source_cmd; egosh ego shutdown -f all"; then
+        wait_for_ego_down
+    else
+        log_error "Fail to issue \"ego shutdown -f all\" command to ego..."
+        false
+    fi
+}
+function get_cws_pids() {
+    lines=`ps -N --pid 2 -N --ppid 2 --no-headers -o pid,cmd`
+    pids=`echo "$lines" | grep -w "$cwshome" | awk '{print $1}' | sort -u | xargs`
+    pstree $pids
+}
+function kill_cws_pids() {
+    let i=0
+    # 0-1: term, 2-3: kill, 4: verify
+    while [ $i -lt 5 ];
+    do
+        pids=`get_cws_pids`
+        if [ -z "$pids" ]; then
+            break
+        elif [ $i -lt 2 ]; then
+            ps -fH -o "$pids" | sed -e 's/^/>> [TERM_'$i']: /g' | log_lines info
+            kill -TERM $pids
+        elif [ $i -lt 4 ]; then
+            ps -fH -o "$pids" | sed -e 's/^/>> [KILL_'$i']: /g' | log_lines info
+            kill -KILL $pids
+        fi
+        sleep 1
+        ((i+=1))
+    done
+    test $i -lt 5
+}
+function restart_cws() {
+    stop_cws && \
+    start_cws
+}
 function install_mn() {
+    create_egoadmin || return 1
+
     if [ ! -f "$installerbin" ]; then
         log_error "Installer binary \"$installerbin\" does not exist."
         return 1
@@ -141,20 +258,22 @@ function install_mn() {
     fi
 
     # start ego
-    $sudo bash -c "$ego_source_cmd; egosh ego start"
-    if wait_for_ego_up; then
+    if start_cws; then
         # view MN status
-        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh resource list -l"
+        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh resource list -l; egosh rg;"
 
         # view web url for end user
         $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh client view EGO_SERVICE_CONTROLLER"
+
+        enable_gpu && \
+        restart_cws
     else
-        log_error "Cannot reach EGO master..."
-        $sudo bash -c "$ego_source_cmd; ego ego info" 2>&1 | sed -e 's/^/>> /g' | log_lines error
         false
     fi
 }
 function install_cn() {
+    create_egoadmin || return 1
+
     if [ ! -f "$installerbin" ]; then
         log_error "Installer binary \"$installerbin\" does not exist."
         return 1
@@ -187,87 +306,6 @@ function install_cn() {
         false
     fi
 }
-function stop_cws() {
-    # stop ego services
-    if $sudo bash -c "$ego_source_cmd; egosh service stop all"; then
-        let i=1
-        let interval_sleep=2
-        let interval_disp=5
-        let cnt=150
-        while [ $i -le $cnt ];
-        do
-            lines=`$sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh service list" | \
-                   grep -vE " DEFINED |^SERVICE|Logged on successfully"`
-            if [ -z "$lines" ]; then
-                break
-            elif [ $((i % interval_disp)) -eq 0 ]; then
-                echo "$lines" | sed -e 's/^/>> /g' | log_lines debug
-            fi
-    
-            log_debug "Wait $i/$cnt of sleep $interval_sleep interval..."
-            sleep $interval_sleep
-            ((i+=1))
-        done
-        test $i -le $cnt
-
-    else
-        log_error "Fail to issue \"service stop all\" command to ego..."
-        false
-    fi && \
-    # shutdown ego cluster
-    if $sudo bash -c "$ego_source_cmd; egosh ego shutdown -f all"; then
-        let i=1
-        let cnt=100
-        while [ $i -le $cnt ];
-        do
-            lines=`$sudo bash -c "$ego_source_cmd; egosh ego info" 2>&1`
-            if echo "$lines" | grep -sq "Cannot contact the master"; then
-                break
-            fi
-            ((i+=1))
-            sleep 1
-        done
-        test $i -le $cnt
-    else
-        log_error "Fail to issue \"ego shutdown -f all\" command to ego..."
-        false
-    fi
-}
-function pstree() {
-    pids="$@"
-    pids_old=""
-    while [ "$pids" != "$pids_old" ];
-    do
-        pids_old="$pids"
-        pids=`ps --pid "$pids" --ppid "$pids" -o pid --no-headers | awk '{print $1}' | sort -u | xargs`
-    done
-    echo "$pids"
-}
-function get_cws_pids() {
-    lines=`ps -N --pid 2 -N --ppid 2 --no-headers -o pid,cmd`
-    pids=`echo "$lines" | grep -w "$cwshome" | awk '{print $1}' | sort -u | xargs`
-    pstree $pids
-}
-function kill_cws_pids() {
-    let i=0
-    # 0-1: term, 2-3: kill, 4: verify
-    while [ $i -lt 5 ];
-    do
-        pids=`get_cws_pids`
-        if [ -z "$pids" ]; then
-            break
-        elif [ $i -lt 2 ]; then
-            ps -fH -o "$pids" | sed -e 's/^/>> [TERM_'$i']: /g' | log_lines info
-            kill -TERM $pids
-        elif [ $i -lt 4 ]; then
-            ps -fH -o "$pids" | sed -e 's/^/>> [KILL_'$i']: /g' | log_lines info
-            kill -KILL $pids
-        fi
-        sleep 1
-        ((i+=1))
-    done
-    test $i -lt 5
-}
 function clean_cws_files() {
     if [ -n "$cwshome" -a -d "$cwshome" ]; then
         log_warn "Clean up CwS home directory \"$cwshome\".."
@@ -293,14 +331,21 @@ function uninstall_cws() {
     uninstall_cws_enforce
 }
 
-if $uninstall; then
-    uninstall_cws
-    
-elif [ "$cwsrole" = "mn" -a "$cwsmn" = "$HOSTNAME_F" ]; then
-    create_egoadmin && \
-    install_mn
+# logic to valid input parameter
+if [ "$cwsrole" = "cn" -a -z "$cwsmn" ]; then
+    log_error "You must specify a valid CwS MN, \"cwsmn\", in order to install and setup a CwS CN" >&2
+    exit 1
+fi
 
-elif [ "$cwsrole" = "cn" -a "$cwsmn" != "$HOSTNAME_F" ]; then
-    create_egoadmin && \
-    install_cn
+if [ -n "$cmd" ]; then
+    eval "$cmd $@"
+
+elif [ "$cmd" = "install" -a "$cwsrole" = "mn" -a "$cwsmn" = "$HOSTNAME_F" ]; then
+    install_mn $@
+
+elif [ "$cmd" = "install" -a "$cwsrole" = "cn" -a "$cwsmn" != "$HOSTNAME_F" ]; then
+    install_cn $@
+
+else
+    log_error "Invalid command line, no action had been taken."
 fi
