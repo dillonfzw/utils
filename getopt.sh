@@ -3,7 +3,6 @@ for item in $@
 do
     if [ "$item" = "--" ]; then
         shift
-        bench_args="$@"
         break
 
     elif [ "$item" = "-h" -o "$item" = "--help" ]; then
