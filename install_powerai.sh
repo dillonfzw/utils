@@ -60,6 +60,7 @@ if [ "$OS_ID" = "rhel" ]; then
 else
     is_rhel=false; is_ubuntu=true;
 fi
+install_nvidia_dirver=${install_nvidia_driver:-true}
 
 #############################
 # app related variables
@@ -103,8 +104,10 @@ function print_title() {
     echo -e "\n"
 }
 function install_nvidia() {
-    print_title "Install nvidia-dirver" | log_lines info && \
-    download_and_install $nvidia_repo_baseurl/nvidia-driver-local-repo-ubuntu1604-384.59_1.0-1_ppc64el.deb && \
+    if [ "$install_nvidia_dirver" = "true" ]; then
+        print_title "Install nvidia-dirver" | log_lines info && \
+        download_and_install $nvidia_repo_baseurl/nvidia-driver-local-repo-ubuntu1604-384.59_1.0-1_ppc64el.deb
+    fi && \
 
     print_title "Install cuda-repo" | log_lines info && \
     download_and_install $nvidia_repo_baseurl/cuda-repo-ubuntu1604-8-0-local-ga2v2_8.0.61-1_ppc64el.deb && \
