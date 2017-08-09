@@ -51,7 +51,8 @@ fi
 # common constant variables
 USER=`whoami`
 # add prefix "sudo" if NOT root
-if [ "$USER" = "root" ]; then sudo=""; else sudo=sudo; fi
+flags=${DEBIAN_FRONTEND:+DEBIAN_FRONTEND=}$DEBIAN_FRONTEND
+if [ "$USER" = "root" ]; then sudo=""; else sudo="sudo $flags"; fi
 
 eval "OS_ID=`grep "^ID=" /etc/os-release | cut -d= -f2-`"
 eval "OS_VER=`grep "^VERSION_ID=" /etc/os-release | cut -d= -f2-`"
