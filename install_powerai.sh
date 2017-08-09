@@ -26,7 +26,7 @@
 # load base library
 #
 declare log_sh=log.sh
-declare log_sh_path=${cache_dir:-$HOME/.cache}/utils/$log_sh
+declare log_sh_path=${cache_home:-$HOME/.cache}/utils/$log_sh
 declare log_sh_url=https://github.com/dillonfzw/utils/raw/master/$log_sh
 if command -v $log_sh >/dev/null; then
     source $log_sh
@@ -71,17 +71,17 @@ install_nvidia_dirver=${install_nvidia_driver:-true}
 r4_repo_url="https://public.dhe.ibm.com/software/server/POWER/Linux/mldl/ubuntu/mldl-repo-network_4.0.0_ppc64el.deb"
 nvidia_repo_baseurl=ftp://bejgsa.ibm.com/gsa/home/f/u/fuzhiwen/Public/nvidia
 
-cache_dir=$HOME/.cache/powerai
-cache_dir_download=$cache_dir/download
+cache_home=${cache_home:-$HOME/.cache}
+cache_powerai_download=${cache_powerai_download:-$cache_home/powerai/download}
 
 
 function download_and_install() {
     url=$1
     f=`basename $url`
-    [ -d $cache_dir_download ] || mkdir -p $cache_dir_download
+    [ -d $cache_powerai_download ] || mkdir -p $cache_powerai_download
 
-    if [ ! -f $cache_dir_download/$f ]; then
-        if cd $cache_dir_download; then
+    if [ ! -f $cache_powerai_download/$f ]; then
+        if cd $cache_powerai_download; then
             log_info "Download and cache \"$f\" from url \"$url\""
 
             curl -SL $url -O
@@ -90,8 +90,8 @@ function download_and_install() {
             (exit $rc)
         fi
     fi
-    if [ -f $cache_dir_download/$f ]; then
-        $sudo dpkg -i $cache_dir_download/$f
+    if [ -f $cache_powerai_download/$f ]; then
+        $sudo dpkg -i $cache_powerai_download/$f
     else
         log_error "Fail to download and install \"$url\""
     fi
