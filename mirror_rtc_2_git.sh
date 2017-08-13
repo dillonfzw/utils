@@ -175,7 +175,7 @@ function transfer_rtc_to_git() {
                 git reset --hard
             fi
             log_debug "Merge with up-stream branch \"$git_branch\""
-            git merge origin/$git_branch
+            git merge origin/$git_branch | sed -e 's/^/>> /g' | log_lines debug
         else
             log_debug "Check out up-stream branch \"$git_branch\""
             git checkout $git_branch
@@ -219,7 +219,7 @@ function commit_code_in_git() {
             git config user.email $git_user_email
             git config user.name "$git_user_name"
             lines=`git commit -F $tmpf`
-            echo "$lines"
+            echo "$lines" | sed -e 's/^/>> /g' | log_lines debug
 
             if ! echo "$lines" | grep -sq "nothing to commit"; then
                 { git log -n2; } | sed -e 's/^/>> /g' | log_lines info
@@ -256,6 +256,17 @@ function delete_rtc_workspace() {
         (exit $rc)
     fi
 }
+
+echo "
+
++-----------------------------------------------------------
+| Mirror project \"$project\" from RTC to git
+|
+| RTC_stream:    \"$rtc_stream\"
+| RTC_component: \"$rtc_component\"
++-----------------------------------------------------------
+
+" | log_lines info
 
 rtc_login && \
 create_rtc_workspace && \
