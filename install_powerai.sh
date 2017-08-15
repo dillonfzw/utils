@@ -61,7 +61,8 @@ if [ "$OS_ID" = "rhel" ]; then
 else
     is_rhel=false; is_ubuntu=true;
 fi
-install_nvidia_dirver=${install_nvidia_driver:-true}
+install_nvidia_driver=${install_nvidia_driver:-true}
+exit 0
 
 #############################
 # app related variables
@@ -71,6 +72,11 @@ install_nvidia_dirver=${install_nvidia_driver:-true}
 # https://public.dhe.ibm.com/software/server/POWER/Linux/mldl/ubuntu/README.html
 r4_repo_url="https://public.dhe.ibm.com/software/server/POWER/Linux/mldl/ubuntu/mldl-repo-network_4.0.0_ppc64el.deb"
 nvidia_repo_baseurl=ftp://bejgsa.ibm.com/gsa/home/f/u/fuzhiwen/Public/nvidia
+nvidia_driver_fname="nvidia-driver-local-repo-ubuntu1604-384.59_1.0-1_ppc64el.deb"
+cuda_repo_fname="cuda-repo-ubuntu1604-8-0-local-ga2v2_8.0.61-1_ppc64el.deb"
+cudnn_fnames=${cudnn_fnames}${cudnn_fnames:+ }"libcudnn6_6.0.20-1+cuda8.0_ppc64el.deb"
+cudnn_fnames=${cudnn_fnames}${cudnn_fnames:+ }"libcudnn6-dev_6.0.20-1+cuda8.0_ppc64el.deb"
+cudnn_fnames=${cudnn_fnames}${cudnn_fnames:+ }"libcudnn6-doc_6.0.20-1+cuda8.0_ppc64el.deb"
 
 cache_home=${cache_home:-$HOME/.cache}
 cache_powerai_download=${cache_powerai_download:-$cache_home/powerai/download}
@@ -105,13 +111,14 @@ function print_title() {
     echo -e "\n"
 }
 function install_nvidia() {
-    if [ "$install_nvidia_dirver" = "true" ]; then
+    if [ "$install_nvidia_driver" = "true" ]; then
         print_title "Install nvidia-dirver" | log_lines info && \
-        download_and_install $nvidia_repo_baseurl/nvidia-driver-local-repo-ubuntu1604-384.59_1.0-1_ppc64el.deb
+        exit 1 && \
+        download_and_install $nvidia_repo_baseurl/$nvidia_driver_fname
     fi && \
 
     print_title "Install cuda-repo" | log_lines info && \
-    download_and_install $nvidia_repo_baseurl/cuda-repo-ubuntu1604-8-0-local-ga2v2_8.0.61-1_ppc64el.deb && \
+    download_and_install $nvidia_repo_baseurl/$cuda_repo_fname \
 
     print_title "Upgrade OS" | log_lines info && \
     $sudo apt-get update && \
@@ -119,12 +126,16 @@ function install_nvidia() {
     $sudo unattended-upgrades -v && \
 
     print_title "Install cuda-drivers" | log_lines info && \
-    $sudo apt-get install -y cuda-drivers &&
+    $sudo apt-get install -y --allow-unauthenticated cuda-drivers &&
 
-    print_title "Install cudnn6" | log_lines info && \
-    download_and_install $nvidia_repo_baseurl/libcudnn6_6.0.20-1+cuda8.0_ppc64el.deb && \
-    download_and_install $nvidia_repo_baseurl/libcudnn6-dev_6.0.20-1+cuda8.0_ppc64el.deb && \
-    download_and_install $nvidia_repo_baseurl/libcudnn6-doc_6.0.20-1+cuda8.0_ppc64el.deb
+    print_title "Install cudnn" | log_lines info && \
+    let scnt_max=`echo "$cudnn_fnames" | awk -F'[, ]' '{print NF}'` && \
+    let scnt=0 && \
+    for FILE in $cudnn_fnames;
+    do
+        if download_and_install $nvidia_repo_baseurl/$FILE; then ((scnt+=1)); else break; fi
+    done && \
+    test $scnt -eq $scnt_max
 }
 function install_powerai() {
     print_title "Install mldl-repo" | log_lines info && \
