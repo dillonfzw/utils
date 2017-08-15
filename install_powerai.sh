@@ -62,7 +62,6 @@ else
     is_rhel=false; is_ubuntu=true;
 fi
 install_nvidia_driver=${install_nvidia_driver:-true}
-exit 0
 
 #############################
 # app related variables
