@@ -176,15 +176,15 @@ function install_cuda_pkgs() {
             cuda-npp-$CUDA_PKG_VERSION \
             cuda-cudart-$CUDA_PKG_VERSION && \
         if [ ! -d /usr/local/cuda ]; then
-            ln -s cuda-$CUDA_VERSION /usr/local/cuda
+            $sudo ln -s cuda-$CUDA_VERSION /usr/local/cuda
         fi && \
         f=/etc/ld.so.conf.d/cuda.conf && if [ ! -f $f ]; then
-            echo "/usr/local/cuda/lib" >> $f
-            echo "/usr/local/cuda/lib64" >> $f
+            echo "/usr/local/cuda/lib" | $sudo tee -a $f
+            echo "/usr/local/cuda/lib64" | $sudo tee -a $f
         fi && \
         f=/etc/ld.so.conf.d/nvidia.conf && if [ ! -f $f ]; then
-            echo "/usr/local/nvidia/lib" >> $f
-            echo "/usr/local/nvidia/lib64" >> $f
+            echo "/usr/local/nvidia/lib" | $sudo tee -a $f
+            echo "/usr/local/nvidia/lib64" | $sudo tee -a $f
         fi
     } && \
 
@@ -279,6 +279,14 @@ function install_powerai() {
 
     print_title "Install power-mldl" | log_lines info && \
     $sudo $apt_get update && \
+    # remove uncompatible packages
+    {
+        # That OpenMPI package conflicts with Ubuntu's non-CUDA-enabled OpenMPI packages.
+        # Please uninstall any openmpi or libopenmpi packages before installing IBM Caffe
+        # or DDL custom operator for TensorFlow. Purge any configuration files to avoid interference
+        $sudo $apt_get purge -y '*openmpi*'
+        if dpkg -l '*openmpi*' | grep -sq "^i.*openmpi"; then false; fi
+    } && \
     $sudo $apt_get install $apt_get_install_options power-mldl
 }
 function install_nvidia_driver() {
@@ -287,6 +295,7 @@ function install_nvidia_driver() {
             download_and_install $nvidia_repo_baseurl/$nvidia_driver_fname
         }
     fi && \
+    $sudo $apt_get update && \
     $sudo $apt_get install $apt_get_install_options cuda-drivers
 }
 

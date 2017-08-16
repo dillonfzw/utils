@@ -184,7 +184,7 @@ function wait_for_ego_services_down() {
 }
 function stop_cws() {
     # stop ego services
-    if $sudo bash -c "$ego_source_cmd; egosh service stop all"; then
+    if $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh service stop all"; then
         wait_for_ego_services_down
     else
         log_error "Fail to issue \"service stop all\" command to ego..."
@@ -213,10 +213,10 @@ function kill_cws_pids() {
             break
         elif [ $i -lt 2 ]; then
             ps -fH -o "$pids" | sed -e 's/^/>> [TERM_'$i']: /g' | log_lines info
-            kill -TERM $pids
+            $sudo kill -TERM $pids
         elif [ $i -lt 4 ]; then
             ps -fH -o "$pids" | sed -e 's/^/>> [KILL_'$i']: /g' | log_lines info
-            kill -KILL $pids
+            $sudo kill -KILL $pids
         fi
         sleep 1
         ((i+=1))
