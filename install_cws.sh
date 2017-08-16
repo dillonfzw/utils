@@ -45,8 +45,6 @@ unset t_uid t_gid
 source $PROGDIR/log.sh
 source $PROGDIR/getopt.sh
 
-
-
 # shared commands
 ego_source_cmd="source $cwshome/profile.platform"
 ego_logon_cmd="egosh user logon -u Admin -x Admin"
@@ -143,7 +141,8 @@ function enable_gpu() {
             break
         elif [ $i -eq 0 ]; then
             log_info "Enable GPU monitoring feature..."
-            $sudo bash -c "$ego_source_cmd; $ego_logon_cmd;"'$EGO_TOP/conductorspark/2.2.1/etc/gpuconfig.sh enable'
+            # NOTE: following script is interactive!
+            $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; `$ego_source_cmd; echo $EGO_TOP`/conductorspark/2.2.1/etc/gpuconfig.sh enable"
         elif [ $i -eq 1 ]; then
             log_error "Fail to enable GPU monitoring feature..."
         fi
@@ -244,7 +243,7 @@ function install_mn() {
         CLUSTERADMIN=$egoadmin_uname \
         BASEPORT=$BASEPORT \
         CLUSTERNAME=$CLUSTERNAME \
-    bash $installerbin --quiet
+    bash `readlink -m $installerbin` --quiet
 
 
     # join a ego cluster
@@ -337,14 +336,14 @@ if [ "$cwsrole" = "cn" -a -z "$cwsmn" ]; then
     exit 1
 fi
 
-if [ -n "$cmd" ]; then
-    eval "$cmd $@"
-
-elif [ "$cmd" = "install" -a "$cwsrole" = "mn" -a "$cwsmn" = "$HOSTNAME_F" ]; then
+if [ "$cmd" = "install" -a "$cwsrole" = "mn" -a "$cwsmn" = "$HOSTNAME_F" ]; then
     install_mn $@
 
 elif [ "$cmd" = "install" -a "$cwsrole" = "cn" -a "$cwsmn" != "$HOSTNAME_F" ]; then
     install_cn $@
+
+elif [ -n "$cmd" ]; then
+    eval "$cmd $@"
 
 else
     log_error "Invalid command line, no action had been taken."
