@@ -27,8 +27,8 @@ t_gid=`id -g ${DEFAULT_egoadmin_uname}`
 DEFAULT_egoadmin_gid=${t_gid:-537693}
 DEFAULT_BASEPORT=17869
 DEFAULT_CLUSTERNAME=cluster_dl_`hostname -s`
-DEFAULT_installerbin=$PWD/cws-2.2.1.0_ppc64le.bin
-DEFAULT_entitlement=$PWD/entitlement-cws221.dat
+DEFAULT_installerbin=`ls -1at cws{,eval}-*.bin 2>/dev/null | head -n1`
+DEFAULT_entitlement=`ls -1at $HOME/bin/entitlement-cws221* entitlement* 2>/dev/null | head -n1`
 DEFAULT_cwshome=/opt/ibm/spectrumcomputing
 DEFAULT_cwsrole=cn
 DEFAULT_enforce=false
@@ -41,9 +41,20 @@ fi
 unset t_uid t_gid
 
 
+function listFunctions() {
+    grep "^function " $PROGDIR/$PROGCLI | sed -e 's/^.*function *\(.*\)(.*$/\1/g'
+}
+function usage() {
+    echo "Usage $PROGNAME"
+    listFunctions | sed -e 's/^/[cmd] >> /g' | log_lines info
+    exit 0
+}
+
 # import common libraries
 source $PROGDIR/log.sh
 source $PROGDIR/getopt.sh
+
+[ -n "$cmd" ] || cmd="install_$cwsrole"
 
 # shared commands
 ego_source_cmd="source $cwshome/profile.platform"
@@ -57,11 +68,7 @@ function pstree() {
         pids_old="$pids"
         pids=`ps --pid "$pids" --ppid "$pids" -o pid --no-headers | awk '{print $1}' | sort -u | xargs`
     done
-    echo "$pids"
-}
-function usage() {
-    echo "Usage $PROGNAME"
-    exit 0
+    [ -n "$pids" ] && echo "$pids"
 }
 function create_egoadmin() {
     local uid_c=`id -u $egoadmin_uname 2>/dev/null`
@@ -307,6 +314,20 @@ function install_cn() {
 }
 function clean_cws_files() {
     if [ -n "$cwshome" -a -d "$cwshome" ]; then
+        log_warn "Uninstall cws package enforcely"
+        # egocore-3.6.0.1-439659.ppc64le
+        # egowlp-17.0.0.1-439659.noarch
+        # egomgmt-3.6.0.1-439659.noarch
+        # egogpfsmonitor-3.6.0.1-439659.noarch
+        # conductormgmt-2.2.1.0-439659.noarch
+        # conductorsparkmgmt-2.2.1.0-439659.noarch
+        # egojre-8.0.3.21-439659.ppc64le
+        # egorest-3.6.0.1-439659.noarch
+        # egoelastic-1.4.0.0-1.ppc64le
+        # ascd-2.2.1.0-439659.noarch
+        # conductorsparkcore-2.2.1.0-439659.ppc64le
+        $sudo rpm -qa | grep -E "ego|conductor|ascd" | xargs $sudo rpm -e
+
         log_warn "Clean up CwS home directory \"$cwshome\".."
         $sudo_const -u $egoadmin_uname rm -rf $cwshome 2>/dev/null
         $sudo rm -i -rf $cwshome
@@ -331,15 +352,15 @@ function uninstall_cws() {
 }
 
 # logic to valid input parameter
-if [ "$cwsrole" = "cn" -a -z "$cwsmn" ]; then
+if [ `expr match "$cmd" "^install_"` -eq 8 -a "$cwsrole" = "cn" -a -z "$cwsmn" ]; then
     log_error "You must specify a valid CwS MN, \"cwsmn\", in order to install and setup a CwS CN" >&2
     exit 1
 fi
 
-if [ "$cmd" = "install" -a "$cwsrole" = "mn" -a "$cwsmn" = "$HOSTNAME_F" ]; then
+if [ "$cmd" = "install_mn" -a "$cwsrole" = "mn" -a "$cwsmn" = "$HOSTNAME_F" ]; then
     install_mn $@
 
-elif [ "$cmd" = "install" -a "$cwsrole" = "cn" -a "$cwsmn" != "$HOSTNAME_F" ]; then
+elif [ "$cmd" = "install_cn" -a "$cwsrole" = "cn" -a "$cwsmn" != "$HOSTNAME_F" ]; then
     install_cn $@
 
 elif [ -n "$cmd" ]; then
