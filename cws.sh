@@ -42,7 +42,7 @@ unset t_uid t_gid
 
 
 function listFunctions() {
-    grep "^function " $PROGDIR/$PROGCLI | sed -e 's/^.*function *\(.*\)(.*$/\1/g'
+    grep "^function " $PROGCLI | sed -e 's/^.*function *\(.*\)(.*$/\1/g'
 }
 function usage() {
     echo "Usage $PROGNAME"
