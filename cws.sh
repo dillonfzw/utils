@@ -350,6 +350,18 @@ function uninstall_cws() {
     fi
     uninstall_cws_enforce
 }
+function dlpdOp() {
+    act=${1:-start}
+
+    # shared commands
+    local source_cmd="source $cwshome/profile.platform"
+    local logon_cmd="egosh user logon -u Admin -x Admin"
+
+    $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; $logon_cmd; egosh service $act dlpd"
+}
+function restart_dlpd() {
+    dlpdOp "instance restart -s"
+}
 
 # logic to valid input parameter
 if [ `expr match "$cmd" "^install_"` -eq 8 -a "$cwsrole" = "cn" -a -z "$cwsmn" ]; then
