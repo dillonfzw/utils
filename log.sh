@@ -31,7 +31,9 @@ function log_lines {
         done
     fi
 }
-declare -F log_error &>/dev/null || function log_error { [ -n "$@" ] && log_lines error "$@"; }
-declare -F log_warn  &>/dev/null || function log_warn  { [ -n "$@" ] && log_lines warn  "$@"; }
-declare -F log_info  &>/dev/null || function log_info  { [ -n "$@" ] && log_lines info  "$@"; }
-declare -F log_debug &>/dev/null || function log_debug { [ -n "$@" ] && log_lines debug "$@"; }
+declare -F log_error &>/dev/null || function log_error { [ -n "$*" ] && log_lines error "$@"; }
+declare -F log_warn  &>/dev/null || function log_warn  { [ -n "$*" ] && log_lines warn  "$@"; }
+declare -F log_info  &>/dev/null || function log_info  { [ -n "$*" ] && log_lines info  "$@"; }
+declare -F log_debug &>/dev/null || function log_debug { [ -n "$*" ] && log_lines debug "$@"; }
+
+log_error hello world
