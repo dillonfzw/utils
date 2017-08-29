@@ -286,12 +286,20 @@ function install_powerai() {
         # That OpenMPI package conflicts with Ubuntu's non-CUDA-enabled OpenMPI packages.
         # Please uninstall any openmpi or libopenmpi packages before installing IBM Caffe
         # or DDL custom operator for TensorFlow. Purge any configuration files to avoid interference
-        $sudo $apt_get purge -y '*openmpi*'
-        if dpkg -l '*openmpi*' | grep -sq "^i.*openmpi"; then
-            log_error "Fail to remove legacy \"openmpi\" related packages before installing powerai's own"
-            dpkg -l '*openmpi*' | grep "^i.*openmpi" | sed -e 's/^/>> /g' | log_lines debug
-            false
-        fi
+        local i=0
+        while [ $i -lt 2 ];
+        do
+            local pkgs=`dpkg -l '*openmpi*' | grep "^i.*openmpi" | grep -v ibm | awk '{print $2}' | cut -d: -f1`
+            if [ -z "$pkgs" ]; then break; fi
+            if [ $i -eq 0 ]; then
+                $sudo $apt_get purge -y $pkgs
+            else
+                log_error "Fail to remove legacy \"openmpi\" related packages before installing powerai's own"
+                echo "$lines" | sed -e 's/^/>> /g' | log_lines debug
+            fi
+            ((i+=1))
+        done
+        test $i -lt 2
     } && \
 
     print_title "Install powerai packages" | log_lines info && \
