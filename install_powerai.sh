@@ -108,7 +108,7 @@ DEFAULT_nvidia_repo_src=online
 DEFAULT_nvidia_repo_baseurl="ftp://bejgsa.ibm.com/gsa/home/f/u/fuzhiwen/Public/nvidia"
 DEFAULT_nvidia_driver_fname="nvidia-driver-local-repo-ubuntu1604-384.59_1.0-1_ppc64el.deb"
 DEFAULT_cuda_repo_fname="cuda-repo-ubuntu1604-8-0-local-ga2v2_8.0.61-1_ppc64el.deb"
-DEFAULT_cudnn_repo_baseurl="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/${ARCH}"
+DEFAULT_cudnn_repo_baseurl="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/ppc64el"
 DEFAULT_cudnn_repo_fname="nvidia-machine-learning-repo-ubuntu1604_1.0.0-1_ppc64el.deb"
 DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6_6.0.20-1+cuda8.0_ppc64el.deb"
 DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-dev_6.0.20-1+cuda8.0_ppc64el.deb"
@@ -212,20 +212,22 @@ function install_cuda_pkgs() {
             cuda-driver-dev-$CUDA_PKG_VERSION
     }
 }
-function install_cudnn6_tar() {
-    print_title "Install cudnn online" | log_lines info && {
-        # https://github.com/dillonfzw/nvidia-docker/blob/ppc64le/ubuntu-16.04/cuda/8.0/devel/cudnn6/Dockerfile.ppc64le
-        CUDNN_DOWNLOAD_SUM=bb32b7eb8bd1edfd63b39fb8239bba2e9b4d0b3b262043a5c6b41fa1ea1c1472 && \
-        URL=http://developer.download.nvidia.com/compute/redist/cudnn/v6.0/cudnn-8.0-linux-ppc64le-v6.0.tgz && \
-            curl -fSL $URL -O && \
-        FILE=${URL##*/} && \
-            echo "$CUDNN_DOWNLOAD_SUM  $FILE" | sha256sum -c --strict - && \
-            $sudo tar -xzf $FILE -C /usr/local && \
-            rm $FILE && \
-        $sudo ldconfig
-    }
-}
-function install_cudnn6_deb() {
+# tar format of cudnn6 cannot be used as dependency of powerai since
+# it verify the deb package during its installation.
+#function install_cudnn6_tar() {
+#    print_title "Install cudnn online" | log_lines info && {
+#        # https://github.com/dillonfzw/nvidia-docker/blob/ppc64le/ubuntu-16.04/cuda/8.0/devel/cudnn6/Dockerfile.ppc64le
+#        CUDNN_DOWNLOAD_SUM=bb32b7eb8bd1edfd63b39fb8239bba2e9b4d0b3b262043a5c6b41fa1ea1c1472 && \
+#        URL=http://developer.download.nvidia.com/compute/redist/cudnn/v6.0/cudnn-8.0-linux-ppc64le-v6.0.tgz && \
+#            curl -fSL $URL -O && \
+#        FILE=${URL##*/} && \
+#            echo "$CUDNN_DOWNLOAD_SUM  $FILE" | sha256sum -c --strict - && \
+#            $sudo tar -xzf $FILE -C /usr/local && \
+#            rm $FILE && \
+#        $sudo ldconfig
+#    }
+#}
+function install_cudnn_deb_offline() {
     print_title "Install offline cudnn" | log_lines info && {
         let scnt_max=`echo "$cudnn6_fnames" | awk -F'[, ]' '{print NF}'`
         let scnt=0
@@ -236,16 +238,25 @@ function install_cudnn6_deb() {
         test $scnt -eq $scnt_max
     }
 }
-#http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/ppc64el/nvidia-machine-learning-repo-ubuntu1604_1.0.0-1_ppc64el.deb
 function install_cudnn_online() {
     print_title "Install online cudnn repo" | log_lines info && {
         download_and_install $cudnn_repo_baseurl/$cudnn_repo_fname
     } && \
     print_title "Install cudnn online" | log_lines info && {
         $sudo $apt_get update && \
-        $sudo $apt_get $apt_get_install_options libcudnn6 libcudnn6-dev && \
+        $sudo $apt_get install $apt_get_install_options libcudnn6 libcudnn6-dev && \
         test `dpkg -l libcudnn6 libcudnn6-dev | grep "^ii" | wc -l` -eq 2
     }
+}
+function install_cudnn() {
+    if [ "$nvidia_repo_src" = "online" ]; then
+        install_cudnn_online
+    elif [ "$nvidia_repo_src" = "offline" ]; then
+        install_cudnn_deb
+    else
+        log_error  "Unknown type of repo source, \"$nvidia_repo_src\""
+        false
+    fi
 }
 function install_cuda_online() {
     print_title "Install online cuda repo" | log_lines info && \
@@ -341,7 +352,7 @@ fi
 install_cuda && \
 # NOTE: powerai package requires libcudnn to be installed as deb
 # or, we could use the "*_tar" version
-install_cudnn6_deb && \
+install_cudnn && \
 install_powerai && \
 if $need_nvidia_driver; then
     install_nvidia_driver
