@@ -277,16 +277,24 @@ function install_powerai() {
     print_title "Install mldl-repo" | log_lines info && \
     download_and_install $r4_repo_url && \
 
-    print_title "Install power-mldl" | log_lines info && \
+    print_title "Update OS before installing power-mldl" | log_lines info && \
     $sudo $apt_get update && \
+
     # remove uncompatible packages
+    print_title "Remove legacy openmpi related packages" | log_lines info && \
     {
         # That OpenMPI package conflicts with Ubuntu's non-CUDA-enabled OpenMPI packages.
         # Please uninstall any openmpi or libopenmpi packages before installing IBM Caffe
         # or DDL custom operator for TensorFlow. Purge any configuration files to avoid interference
         $sudo $apt_get purge -y '*openmpi*'
-        if dpkg -l '*openmpi*' | grep -sq "^i.*openmpi"; then false; fi
+        if dpkg -l '*openmpi*' | grep -sq "^i.*openmpi"; then
+            log_error "Fail to remove legacy \"openmpi\" related packages before installing powerai's own"
+            dpkg -l '*openmpi*' | grep "^i.*openmpi" | sed -e 's/^/>> /g' | log_lines debug
+            false
+        fi
     } && \
+
+    print_title "Install powerai packages" | log_lines info && \
     $sudo $apt_get install $apt_get_install_options power-mldl
 }
 function install_nvidia_driver() {
