@@ -29,6 +29,8 @@ USER=`whoami`
 flags=${DEBIAN_FRONTEND:+DEBIAN_FRONTEND=}$DEBIAN_FRONTEND
 if [ "$USER" = "root" ]; then sudo=""; else sudo="sudo $flags"; fi
 
+ARCH=${ARCH:-`uname -m`}
+
 eval "OS_ID=`grep "^ID=" /etc/os-release | cut -d= -f2-`"
 eval "OS_VER=`grep "^VERSION_ID=" /etc/os-release | cut -d= -f2-`"
 if [ "$OS_ID" = "rhel" ]; then
@@ -106,9 +108,11 @@ DEFAULT_nvidia_repo_src=online
 DEFAULT_nvidia_repo_baseurl="ftp://bejgsa.ibm.com/gsa/home/f/u/fuzhiwen/Public/nvidia"
 DEFAULT_nvidia_driver_fname="nvidia-driver-local-repo-ubuntu1604-384.59_1.0-1_ppc64el.deb"
 DEFAULT_cuda_repo_fname="cuda-repo-ubuntu1604-8-0-local-ga2v2_8.0.61-1_ppc64el.deb"
-DEFAULT_cudnn_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6_6.0.20-1+cuda8.0_ppc64el.deb"
-DEFAULT_cudnn_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-dev_6.0.20-1+cuda8.0_ppc64el.deb"
-DEFAULT_cudnn_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-doc_6.0.20-1+cuda8.0_ppc64el.deb"
+DEFAULT_cudnn_repo_baseurl="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/${ARCH}"
+DEFAULT_cudnn_repo_fname="nvidia-machine-learning-repo-ubuntu1604_1.0.0-1_ppc64el.deb"
+DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6_6.0.20-1+cuda8.0_ppc64el.deb"
+DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-dev_6.0.20-1+cuda8.0_ppc64el.deb"
+DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-doc_6.0.20-1+cuda8.0_ppc64el.deb"
 DEFAULT_cache_home=$HOME/.cache
 DEFAULT_need_nvidia_driver=false
 
@@ -117,7 +121,9 @@ nvidia_repo_src=${nvidia_repo_src:-$DEFAULT_nvidia_repo_src}
 nvidia_repo_baseurl=${nvidia_repo_baseurl:-$DEFAULT_nvidia_repo_baseurl}
 nvidia_driver_fname=${nvidia_driver_fname:-$DEFAULT_nvidia_driver_fname}
 cuda_repo_fname=${cuda_repo_fname:-$DEFAULT_cuda_repo_fname}
-cudnn_fnames=${cudnn_fnames:-$DEFAULT_cudnn_fnames}
+cudnn_repo_baseurl=${cudnn_repo_baseurl:-$DEFAULT_cudnn_repo_baseurl}
+cudnn_repo_fname=${cudnn_repo_fname:-$DEFAULT_cudnn_repo_fname}
+cudnn6_fnames=${cudnn_fnames:-$DEFAULT_cudnn_fnames}
 
 # Cache directory is used to cache the content which downloaded remotely.
 # For example: nvidia cuda, cudnn, driver pkgs in offline mode and powerai pkgs
@@ -221,13 +227,24 @@ function install_cudnn6_tar() {
 }
 function install_cudnn6_deb() {
     print_title "Install offline cudnn" | log_lines info && {
-        let scnt_max=`echo "$cudnn_fnames" | awk -F'[, ]' '{print NF}'`
+        let scnt_max=`echo "$cudnn6_fnames" | awk -F'[, ]' '{print NF}'`
         let scnt=0
-        for FILE in $cudnn_fnames
+        for FILE in $cudnn6_fnames
         do
             if download_and_install $nvidia_repo_baseurl/$FILE; then ((scnt+=1)); else break; fi
         done
         test $scnt -eq $scnt_max
+    }
+}
+#http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/ppc64el/nvidia-machine-learning-repo-ubuntu1604_1.0.0-1_ppc64el.deb
+function install_cudnn_online() {
+    print_title "Install online cudnn repo" | log_lines info && {
+        download_and_install $cudnn_repo_baseurl/$cudnn_repo_fname
+    } && \
+    print_title "Install cudnn online" | log_lines info && {
+        $sudo $apt_get update && \
+        $sudo $apt_get $apt_get_install_options libcudnn6 libcudnn6-dev && \
+        test `dpkg -l libcudnn6 libcudnn6-dev | grep "^ii" | wc -l` -eq 2
     }
 }
 function install_cuda_online() {
