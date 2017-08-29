@@ -289,7 +289,7 @@ function install_powerai() {
         local i=0
         while [ $i -lt 2 ];
         do
-            local pkgs=`dpkg -l '*openmpi*' | grep "^i.*openmpi" | grep -v ibm | awk '{print $2}' | cut -d: -f1`
+            local pkgs=`dpkg -l '*openmpi*' | grep "^ii.*openmpi" | grep -v ibm | awk '{print $2}' | cut -d: -f1`
             if [ -z "$pkgs" ]; then break; fi
             if [ $i -eq 0 ]; then
                 $sudo $apt_get purge -y $pkgs
