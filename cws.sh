@@ -251,6 +251,9 @@ function install_mn() {
     if [ ! -f "$entitlement" ]; then
         log_error "Entitlement \"$entitlement\" does not exist."
         return 1
+    elif [ -z "$cwsmn" ]; then
+        log_error "cwsmn should not be empty!"
+        return 1
     fi
 
     # invoke installer
@@ -290,6 +293,9 @@ function install_cn() {
 
     if [ ! -f "$installerbin" ]; then
         log_error "Installer binary \"$installerbin\" does not exist."
+        return 1
+    elif [ -z "$cwsmn" ]; then
+        log_error "cwsmn should not be empty!"
         return 1
     fi
 
