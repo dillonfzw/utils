@@ -29,6 +29,8 @@ USER=`whoami`
 flags=${DEBIAN_FRONTEND:+DEBIAN_FRONTEND=}$DEBIAN_FRONTEND
 if [ "$USER" = "root" ]; then sudo=""; else sudo="sudo $flags"; fi
 
+ARCH=${ARCH:-`uname -m`}
+
 eval "OS_ID=`grep "^ID=" /etc/os-release | cut -d= -f2-`"
 eval "OS_VER=`grep "^VERSION_ID=" /etc/os-release | cut -d= -f2-`"
 if [ "$OS_ID" = "rhel" ]; then
@@ -106,9 +108,11 @@ DEFAULT_nvidia_repo_src=online
 DEFAULT_nvidia_repo_baseurl="ftp://bejgsa.ibm.com/gsa/home/f/u/fuzhiwen/Public/nvidia"
 DEFAULT_nvidia_driver_fname="nvidia-driver-local-repo-ubuntu1604-384.59_1.0-1_ppc64el.deb"
 DEFAULT_cuda_repo_fname="cuda-repo-ubuntu1604-8-0-local-ga2v2_8.0.61-1_ppc64el.deb"
-DEFAULT_cudnn_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6_6.0.20-1+cuda8.0_ppc64el.deb"
-DEFAULT_cudnn_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-dev_6.0.20-1+cuda8.0_ppc64el.deb"
-DEFAULT_cudnn_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-doc_6.0.20-1+cuda8.0_ppc64el.deb"
+DEFAULT_cudnn_repo_baseurl="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/ppc64el"
+DEFAULT_cudnn_repo_fname="nvidia-machine-learning-repo-ubuntu1604_1.0.0-1_ppc64el.deb"
+DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6_6.0.20-1+cuda8.0_ppc64el.deb"
+DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-dev_6.0.20-1+cuda8.0_ppc64el.deb"
+DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-doc_6.0.20-1+cuda8.0_ppc64el.deb"
 DEFAULT_cache_home=$HOME/.cache
 DEFAULT_need_nvidia_driver=false
 
@@ -117,7 +121,9 @@ nvidia_repo_src=${nvidia_repo_src:-$DEFAULT_nvidia_repo_src}
 nvidia_repo_baseurl=${nvidia_repo_baseurl:-$DEFAULT_nvidia_repo_baseurl}
 nvidia_driver_fname=${nvidia_driver_fname:-$DEFAULT_nvidia_driver_fname}
 cuda_repo_fname=${cuda_repo_fname:-$DEFAULT_cuda_repo_fname}
-cudnn_fnames=${cudnn_fnames:-$DEFAULT_cudnn_fnames}
+cudnn_repo_baseurl=${cudnn_repo_baseurl:-$DEFAULT_cudnn_repo_baseurl}
+cudnn_repo_fname=${cudnn_repo_fname:-$DEFAULT_cudnn_repo_fname}
+cudnn6_fnames=${cudnn_fnames:-$DEFAULT_cudnn_fnames}
 
 # Cache directory is used to cache the content which downloaded remotely.
 # For example: nvidia cuda, cudnn, driver pkgs in offline mode and powerai pkgs
@@ -206,29 +212,51 @@ function install_cuda_pkgs() {
             cuda-driver-dev-$CUDA_PKG_VERSION
     }
 }
-function install_cudnn6_tar() {
-    print_title "Install cudnn online" | log_lines info && {
-        # https://github.com/dillonfzw/nvidia-docker/blob/ppc64le/ubuntu-16.04/cuda/8.0/devel/cudnn6/Dockerfile.ppc64le
-        CUDNN_DOWNLOAD_SUM=bb32b7eb8bd1edfd63b39fb8239bba2e9b4d0b3b262043a5c6b41fa1ea1c1472 && \
-        URL=http://developer.download.nvidia.com/compute/redist/cudnn/v6.0/cudnn-8.0-linux-ppc64le-v6.0.tgz && \
-            curl -fSL $URL -O && \
-        FILE=${URL##*/} && \
-            echo "$CUDNN_DOWNLOAD_SUM  $FILE" | sha256sum -c --strict - && \
-            $sudo tar -xzf $FILE -C /usr/local && \
-            rm $FILE && \
-        $sudo ldconfig
-    }
-}
-function install_cudnn6_deb() {
+# tar format of cudnn6 cannot be used as dependency of powerai since
+# it verify the deb package during its installation.
+#function install_cudnn6_tar() {
+#    print_title "Install cudnn online" | log_lines info && {
+#        # https://github.com/dillonfzw/nvidia-docker/blob/ppc64le/ubuntu-16.04/cuda/8.0/devel/cudnn6/Dockerfile.ppc64le
+#        CUDNN_DOWNLOAD_SUM=bb32b7eb8bd1edfd63b39fb8239bba2e9b4d0b3b262043a5c6b41fa1ea1c1472 && \
+#        URL=http://developer.download.nvidia.com/compute/redist/cudnn/v6.0/cudnn-8.0-linux-ppc64le-v6.0.tgz && \
+#            curl -fSL $URL -O && \
+#        FILE=${URL##*/} && \
+#            echo "$CUDNN_DOWNLOAD_SUM  $FILE" | sha256sum -c --strict - && \
+#            $sudo tar -xzf $FILE -C /usr/local && \
+#            rm $FILE && \
+#        $sudo ldconfig
+#    }
+#}
+function install_cudnn_deb_offline() {
     print_title "Install offline cudnn" | log_lines info && {
-        let scnt_max=`echo "$cudnn_fnames" | awk -F'[, ]' '{print NF}'`
+        let scnt_max=`echo "$cudnn6_fnames" | awk -F'[, ]' '{print NF}'`
         let scnt=0
-        for FILE in $cudnn_fnames
+        for FILE in $cudnn6_fnames
         do
             if download_and_install $nvidia_repo_baseurl/$FILE; then ((scnt+=1)); else break; fi
         done
         test $scnt -eq $scnt_max
     }
+}
+function install_cudnn_online() {
+    print_title "Install online cudnn repo" | log_lines info && {
+        download_and_install $cudnn_repo_baseurl/$cudnn_repo_fname
+    } && \
+    print_title "Install cudnn online" | log_lines info && {
+        $sudo $apt_get update && \
+        $sudo $apt_get install $apt_get_install_options libcudnn6 libcudnn6-dev && \
+        test `dpkg -l libcudnn6 libcudnn6-dev | grep "^ii" | wc -l` -eq 2
+    }
+}
+function install_cudnn() {
+    if [ "$nvidia_repo_src" = "online" ]; then
+        install_cudnn_online
+    elif [ "$nvidia_repo_src" = "offline" ]; then
+        install_cudnn_deb
+    else
+        log_error  "Unknown type of repo source, \"$nvidia_repo_src\""
+        false
+    fi
 }
 function install_cuda_online() {
     print_title "Install online cuda repo" | log_lines info && \
@@ -277,16 +305,32 @@ function install_powerai() {
     print_title "Install mldl-repo" | log_lines info && \
     download_and_install $r4_repo_url && \
 
-    print_title "Install power-mldl" | log_lines info && \
+    print_title "Update OS before installing power-mldl" | log_lines info && \
     $sudo $apt_get update && \
+
     # remove uncompatible packages
+    print_title "Remove legacy openmpi related packages" | log_lines info && \
     {
         # That OpenMPI package conflicts with Ubuntu's non-CUDA-enabled OpenMPI packages.
         # Please uninstall any openmpi or libopenmpi packages before installing IBM Caffe
         # or DDL custom operator for TensorFlow. Purge any configuration files to avoid interference
-        $sudo $apt_get purge -y '*openmpi*'
-        if dpkg -l '*openmpi*' | grep -sq "^i.*openmpi"; then false; fi
+        local i=0
+        while [ $i -lt 2 ];
+        do
+            local pkgs=`dpkg -l '*openmpi*' | grep "^ii.*openmpi" | grep -v ibm | awk '{print $2}' | cut -d: -f1`
+            if [ -z "$pkgs" ]; then break; fi
+            if [ $i -eq 0 ]; then
+                $sudo $apt_get purge -y $pkgs
+            else
+                log_error "Fail to remove legacy \"openmpi\" related packages before installing powerai's own"
+                echo "$lines" | sed -e 's/^/>> /g' | log_lines debug
+            fi
+            ((i+=1))
+        done
+        test $i -lt 2
     } && \
+
+    print_title "Install powerai packages" | log_lines info && \
     $sudo $apt_get install $apt_get_install_options power-mldl
 }
 function install_nvidia_driver() {
@@ -308,7 +352,7 @@ fi
 install_cuda && \
 # NOTE: powerai package requires libcudnn to be installed as deb
 # or, we could use the "*_tar" version
-install_cudnn6_deb && \
+install_cudnn && \
 install_powerai && \
 if $need_nvidia_driver; then
     install_nvidia_driver

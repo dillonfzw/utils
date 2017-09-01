@@ -111,6 +111,13 @@ function create_egoadmin() {
     fi
     return $rc
 }
+function egoServiceOp() {
+    local source_cmd="source $cwshome/profile.platform"
+    local logon_cmd="egosh user logon -u Admin -x Admin"
+
+    #$sudo_const -u $egoadmin_uname \
+    eval "bash -c '$ego_source_cmd; $logon_cmd; egosh service $@'"
+}
 function wait_for_ego_up() {
     log_info "Wait EGO to be started up within 300 seconds"
     let i=1
@@ -126,9 +133,10 @@ function wait_for_ego_up() {
     test $i -lt 300
 }
 function wait_for_ego_down() {
-    log_info "Wait EGO to be shutdown within 100 seconds"
-    let i=1
+    let interval=1
     let cnt=100
+    log_info "Wait EGO to be shutdown within $((interval * cnt)) seconds"
+    let i=1
     while [ $i -le $cnt ];
     do
         lines=`$sudo bash -c "$ego_source_cmd; egosh ego info" 2>&1`
@@ -136,7 +144,7 @@ function wait_for_ego_down() {
             break
         fi
         ((i+=1))
-        sleep 1
+        sleep $interval
     done
     test $i -le $cnt
 }
@@ -174,7 +182,7 @@ function wait_for_ego_services_down() {
     let cnt=150
     while [ $i -le $cnt ];
     do
-        lines=`$sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh service list" | \
+        lines=`egoServiceOp list | \
                grep -vE " DEFINED |^SERVICE|Logged on successfully"`
         if [ -z "$lines" ]; then
             break
@@ -190,7 +198,7 @@ function wait_for_ego_services_down() {
 }
 function stop_cws() {
     # stop ego services
-    if $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh service stop all"; then
+    if egoServiceOp stop all; then
         wait_for_ego_services_down
     else
         log_error "Fail to issue \"service stop all\" command to ego..."
@@ -243,6 +251,9 @@ function install_mn() {
     if [ ! -f "$entitlement" ]; then
         log_error "Entitlement \"$entitlement\" does not exist."
         return 1
+    elif [ -z "$cwsmn" ]; then
+        log_error "cwsmn should not be empty!"
+        return 1
     fi
 
     # invoke installer
@@ -282,6 +293,9 @@ function install_cn() {
 
     if [ ! -f "$installerbin" ]; then
         log_error "Installer binary \"$installerbin\" does not exist."
+        return 1
+    elif [ -z "$cwsmn" ]; then
+        log_error "cwsmn should not be empty!"
         return 1
     fi
 
@@ -350,17 +364,9 @@ function uninstall_cws() {
     fi
     uninstall_cws_enforce
 }
-function dlpdOp() {
-    act=${1:-start}
-
-    # shared commands
-    local source_cmd="source $cwshome/profile.platform"
-    local logon_cmd="egosh user logon -u Admin -x Admin"
-
-    $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; $logon_cmd; egosh service $act dlpd"
-}
 function restart_dlpd() {
-    dlpdOp "instance restart -s"
+    seqid=${1:-1}
+    egoServiceOp "instance restart -s dlpd $seqid"
 }
 
 # logic to valid input parameter
