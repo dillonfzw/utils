@@ -115,6 +115,7 @@ DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn
 DEFAULT_cudnn6_fnames=${DEFAULT_cudnn_fnames}${DEFAULT_cudnn_fnames:+ }"libcudnn6-doc_6.0.20-1+cuda8.0_ppc64el.deb"
 DEFAULT_cache_home=$HOME/.cache
 DEFAULT_need_nvidia_driver=false
+DEFAULT_update_kernel=false
 
 r4_repo_url=${r4_repo_url:-$DEFAULT_r4_repo_url}
 nvidia_repo_src=${nvidia_repo_src:-$DEFAULT_nvidia_repo_src}
@@ -134,6 +135,12 @@ cache_powerai_download=${cache_powerai_download:-$cache_home/powerai/download}
 # nvidia driver is not required in development only environment, such as a docker container
 # It only required by runtime environment.
 need_nvidia_driver=${need_nvidia_driver:-$DEFAULT_need_nvidia_driver}
+
+# NOTE:
+# update kernel on-demand during os update to
+# prevent kernel update in case there are kernel dependent softwares,
+# such as gpfs, might fail to start in next reboot
+update_kernel=${update_kernel:-$DEFAULT_update_kernel}
 
 #########################################
 # Utility functions
@@ -169,6 +176,25 @@ function print_title() {
 # end of utility functions
 #########################################
 
+function upgrade_os() {
+    local holdpkgs_exp="linux-image-generic linux-headers-generic"
+    local holdpkgs_cur=`apt-mark showhold | grep -Ex "$(echo $holdpkgs_exp | tr ' ' '|')" | xargs`
+    print_title "Upgrade OS" | log_lines info && {
+        $sudo $apt_get update && \
+        $sudo $apt_get install $apt_get_install_options unattended-upgrades && \
+        # take care if needs to update kernel
+        if $update_kernel; then
+            $sudo apt-mark unhold $holdpkgs_exp
+        elif
+            $sudo apt-mark hold $holdpkgs_exp
+        fi && \
+        # install security (and other) upgrades
+        $sudo unattended-upgrades -v && \
+        # restore the kernel apt selection
+        if ! $update_kernel; then $sudo apt-mark unhold $holdpkgs_exp; fi && \
+        if [ -n "$holdpkgs_cur" ]; then $sudo apt-mark hold $holdpkgs_cur; fi
+    }
+}
 function install_cuda_pkgs() {
     print_title "Install $1 cuda runtime pkgs" | log_lines info && {
         $sudo $apt_get install $apt_get_install_options \
@@ -269,26 +295,14 @@ function install_cuda_online() {
         echo "$NVIDIA_GPGKEY_SUM  cudasign.pub" | sha256sum -c --strict - && rm cudasign.pub && \
         echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/ppc64el /" | $sudo tee /etc/apt/sources.list.d/cuda.list
     fi && \
-
-    print_title "Upgrade OS" | log_lines info && {
-        $sudo $apt_get update && \
-        $sudo $apt_get install $apt_get_install_options unattended-upgrades && \
-        $sudo unattended-upgrades -v
-    } && \
-
+    upgrade_os && \
     install_cuda_pkgs "online"
 }
 function install_cuda_offline() {
     print_title "Install offline cuda-repo" | log_lines info && {
         download_and_install $nvidia_repo_baseurl/$cuda_repo_fname
     } && \
-
-    print_title "Upgrade OS" | log_lines info && {
-        $sudo $apt_get update && \
-        $sudo $apt_get install $apt_get_install_options unattended-upgrades && \
-        $sudo unattended-upgrades -v
-    } && \
-
+    upgrade_os && \
     install_cuda_pkgs "offline"
 }
 function install_cuda() {
