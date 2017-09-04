@@ -185,7 +185,7 @@ function upgrade_os() {
         # take care if needs to update kernel
         if $update_kernel; then
             $sudo apt-mark unhold $holdpkgs_exp
-        elif
+        else
             $sudo apt-mark hold $holdpkgs_exp
         fi && \
         # install security (and other) upgrades
