@@ -1,8 +1,8 @@
 #! /bin/bash
 
-PROGCLI=$0
-PROGNAME=${0##*/}
-PROGDIR=${0%/*}
+PROGCLI=`command -v $0`
+PROGNAME=${PROGCLI##*/}
+PROGDIR=${PROGCLI%/*}
 PROGVERSION=1.0.1
 
 

@@ -1,8 +1,8 @@
 #! /usr/bin/env bash
 
-PROGCLI=$0
-PROGNAME=${0##*/}
-PROGDIR=${0%/*}
+PROGCLI=`command -v $0`
+PROGNAME=${PROGCLI##*/}
+PROGDIR=${PROGCLI%/*}
 PROGVERSION=0.1.0
 
 ##############################################
