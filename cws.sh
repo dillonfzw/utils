@@ -7,6 +7,7 @@ PROGVERSION=1.0.1
 
 
 # constant variables
+ARCH=${ARCH:-`uname -m`}
 USER=${USER:-`whoami`}
 HOSTNAME_S=${HOSTNAME_S:-`hostname -s`}
 HOSTNAME_F=${HOSTNAME_F:-`hostname -f`}
@@ -27,12 +28,14 @@ t_gid=`id -g ${DEFAULT_egoadmin_uname}`
 DEFAULT_egoadmin_gid=${t_gid:-537693}
 DEFAULT_BASEPORT=17869
 DEFAULT_CLUSTERNAME=cluster_dl_`hostname -s`
-DEFAULT_installerbin=`ls -1at cws{,eval}-*.bin 2>/dev/null | head -n1`
+DEFAULT_installerbin=`ls -1at cws{,eval}-*${ARCH}.bin 2>/dev/null | head -n1`
+DEFAULT_installerbin_dli=${DEFAULT_installerbin_dli:-`ls -1at dli-*${ARCH}.bin 2>/dev/null | sort -V | tail -n1`}
 DEFAULT_entitlement=`ls -1at $HOME/bin/entitlement-cws221* entitlement* 2>/dev/null | head -n1`
 DEFAULT_cwshome=/opt/ibm/spectrumcomputing
 DEFAULT_cwsrole=cn
 DEFAULT_enforce=false
 DEFAULT_cmd=""
+DEFAULT_DLI_SHARED_FS=/gpfs/dlfs1/$HOSTNAME_S
 if [ "$DEFAULT_cwsrole" = "mn" ]; then
     DEFAULT_cwsmn=$HOSTNAME_F
 else
@@ -54,7 +57,10 @@ function usage() {
 source $PROGDIR/log.sh
 source $PROGDIR/getopt.sh
 
-[ -n "$cmd" ] || cmd="install_$cwsrole"
+if [ -z "$cmd" ]; then
+    cmd="install_$cwsrole"
+    log_info "Default variable \"cmd\" to \"$cmd\""
+fi
 
 # shared commands
 ego_source_cmd="source $cwshome/profile.platform"
@@ -112,15 +118,12 @@ function create_egoadmin() {
     return $rc
 }
 function egoServiceOp() {
-    local source_cmd="source $cwshome/profile.platform"
-    local logon_cmd="egosh user logon -u Admin -x Admin"
-
     #$sudo_const -u $egoadmin_uname \
-    eval "bash -c '$ego_source_cmd; $logon_cmd; egosh service $@'"
+    eval "bash -c '$ego_source_cmd; $ego_logon_cmd; egosh service $@'"
 }
 function wait_for_ego_up() {
     log_info "Wait EGO to be started up within 300 seconds"
-    let i=1
+    local i=1
     while [ $i -lt 300 ];
     do
         if ! $sudo bash -c "$ego_source_cmd; egosh ego info" 2>&1 | \
@@ -133,10 +136,10 @@ function wait_for_ego_up() {
     test $i -lt 300
 }
 function wait_for_ego_down() {
-    let interval=1
-    let cnt=100
+    local interval=1
+    local cnt=100
     log_info "Wait EGO to be shutdown within $((interval * cnt)) seconds"
-    let i=1
+    local i=1
     while [ $i -le $cnt ];
     do
         lines=`$sudo bash -c "$ego_source_cmd; egosh ego info" 2>&1`
@@ -149,7 +152,7 @@ function wait_for_ego_down() {
     test $i -le $cnt
 }
 function enable_gpu() {
-    let i=0
+    local i=0
     while [ $i -lt 2 ];
     do
         if grep -sq -xF "EGO_GPU_ENABLED=Y" $cwshome/kernel/conf/ego.conf; then
@@ -176,10 +179,12 @@ function start_cws() {
     fi
 }
 function wait_for_ego_services_down() {
-    let i=1
-    let interval_sleep=2
-    let interval_disp=5
-    let cnt=150
+    local i=1
+    local interval_sleep=2
+    local interval_disp=5
+    local cnt=150
+
+    log_info "Wait until all ego services were shutdown in $((cnt * interval_sleep)) seconds."
     while [ $i -le $cnt ];
     do
         lines=`egoServiceOp list | \
@@ -215,10 +220,10 @@ function stop_cws() {
 function get_cws_pids() {
     lines=`ps -N --pid 2 -N --ppid 2 --no-headers -o pid,cmd`
     pids=`echo "$lines" | grep -w "$cwshome" | awk '{print $1}' | sort -u | xargs`
-    pstree $pids
+    [ -n "$pids" ] && pstree $pids
 }
 function kill_cws_pids() {
-    let i=0
+    local i=0
     # 0-1: term, 2-3: kill, 4: verify
     while [ $i -lt 5 ];
     do
@@ -241,81 +246,145 @@ function restart_cws() {
     stop_cws && \
     start_cws
 }
-function install_mn() {
-    create_egoadmin || return 1
+function install_dli() {
+    if [ "$cwsmn" != "$HOSTNAME_F" ]; then
+        log_error "DLI only needs to be uninstalled in MN"
+        false
 
-    if [ ! -f "$installerbin" ]; then
-        log_error "Installer binary \"$installerbin\" does not exist."
-        return 1
-    fi
-    if [ ! -f "$entitlement" ]; then
-        log_error "Entitlement \"$entitlement\" does not exist."
-        return 1
-    elif [ -z "$cwsmn" ]; then
-        log_error "cwsmn should not be empty!"
-        return 1
-    fi
+    elif [ -z "$DLI_SHARED_FS" -o ! -d "$DLI_SHARED_FS" ]; then
+        log_error "DLI_SHARED_FS \"$DLI_SHARED_FS\" does not exists!"
+        false
+
+    fi && \
 
     # invoke installer
-    $sudo env \
+    # source ego profile is not mandatory. but just in case there are bug in the rpm installer
+    # which might depends on those EGO related settings.
+    if ! $sudo bash -c "$ego_source_cmd; env \
+        CLUSTERADMIN=$egoadmin_uname \
+        DLI_SHARED_FS=$DLI_SHARED_FS \
+        ${CAFFE_HOME:+"CAFFE_HOME=$CAFFE_HOME"} \
+        bash `readlink -m $installerbin_dli` --prefix=$cwshome --quiet"; then
+
+        log_error "Fail to install DLI"
+        false
+    fi && \
+
+    restart_cws
+}
+function uninstall_dli() {
+    local uninstaller=$cwshome/dli/uninstall/cws_dl_uninstall.sh
+
+    if ! $sudo $uninstaller && ! $enforce; then
+        log_error "Fail to uninstall DLI"
+        false
+    fi && \
+    if $enforce; then
+        log_warn "Uninstall dli rpm package enforcely"
+        $sudo rpm -qa | grep -E "^dli" | xargs $sudo rpm -e
+
+        log_warn "Clean dli directory"
+        $sudo rm -rf $cwshome/dli
+    fi
+}
+function install_mn() {
+    if [ ! -f "$installerbin" ]; then
+        log_error "CwS installer binary \"$installerbin\" does not exist."
+        false
+
+    elif [ -n "$installerbin_dli" -a ! -f "$installerbin_dli" ]; then
+        log_error "DLI installer binary \"$installerbin_dli\" does not exist."
+        false
+
+    elif [ ! -f "$entitlement" ]; then
+        log_error "Entitlement \"$entitlement\" does not exist."
+        false
+
+    elif ! grep -sq "^conductor_deep_learning" $entitlement; then
+        log_error "DLI Entitlement does not provided in entitlement \"$entitlement\""
+        false
+
+    elif [ -z "$cwsmn" ]; then
+        log_error "cwsmn should not be empty!"
+        false
+
+    fi && \
+
+    create_egoadmin && \
+
+    # invoke installer
+    if ! $sudo env \
         CLUSTERADMIN=$egoadmin_uname \
         BASEPORT=$BASEPORT \
         CLUSTERNAME=$CLUSTERNAME \
-    bash `readlink -m $installerbin` --quiet
+        bash `readlink -m $installerbin` --quiet; then
 
+        log_error "Fail to install CWS in MN"
+        false
+    fi && \
 
     # join a ego cluster
-    $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig join $cwsmn -f"
+    $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig join $cwsmn -f" && \
 
-    # set only when not entitled
-    if ! $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh entitlement info" 2>&1 | \
+    # set only when not entitled, or enforced.
+    if $enforce || \
+       ! $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh entitlement info" 2>&1 | \
        grep -sq Entitled; then
+
         log_info "Set entitlement with \"$entitlement\""
         $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig setentitlement $entitlement"
-    fi
+    fi && \
 
     # start ego
     if start_cws; then
         # view MN status
-        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh resource list -l; egosh rg;"
+        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh resource list -l; egosh rg;" && \
 
         # view web url for end user
-        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh client view EGO_SERVICE_CONTROLLER"
+        $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh client view EGO_SERVICE_CONTROLLER" && \
 
         enable_gpu && \
         restart_cws
     else
         false
+    fi && \
+
+    # install DLI
+    if [ -n "$installerbin_dli" ]; then
+        install_dli && \
+        restart_cws
     fi
 }
 function install_cn() {
-    create_egoadmin || return 1
-
     if [ ! -f "$installerbin" ]; then
         log_error "Installer binary \"$installerbin\" does not exist."
-        return 1
+        false
+
     elif [ -z "$cwsmn" ]; then
         log_error "cwsmn should not be empty!"
-        return 1
-    fi
+        false
+
+    fi && \
+
+    create_egoadmin && \
 
     # invoke installer
-    $sudo env \
+    if ! $sudo env \
         CLUSTERADMIN=$egoadmin_uname \
         BASEPORT=$BASEPORT \
         CLUSTERNAME=$CLUSTERNAME \
         EGOCOMPUTEHOST=Y \
-    bash $installerbin --quiet
+        bash `readlink -m $installerbin` --quiet; then
 
-    # shared commands
-    local source_cmd="source $cwshome/profile.platform"
-    local logon_cmd="egosh user logon -u Admin -x Admin"
+        log_error "Fail to install CwS in CN"
+        false
+    fi && \
 
     # join a ego cluster
-    $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig join $cwsmn -f"
+    $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig join $cwsmn -f" && \
 
     # start ego
-    $sudo bash -c "$ego_source_cmd; egosh ego start"
+    $sudo bash -c "$ego_source_cmd; egosh ego start" && \
 
     # view MN status
     if wait_for_ego_up; then
@@ -340,7 +409,8 @@ function clean_cws_files() {
         # egoelastic-1.4.0.0-1.ppc64le
         # ascd-2.2.1.0-439659.noarch
         # conductorsparkcore-2.2.1.0-439659.ppc64le
-        $sudo rpm -qa | grep -E "ego|conductor|ascd" | xargs $sudo rpm -e
+        # dli{core,mgmt}
+        $sudo rpm -qa | grep -E "ego|conductor|ascd|dli" | xargs $sudo rpm -e
 
         log_warn "Clean up CwS home directory \"$cwshome\".."
         $sudo_const -u $egoadmin_uname rm -rf $cwshome 2>/dev/null
@@ -352,17 +422,21 @@ function uninstall_cws_enforce() {
     clean_cws_files
 }
 function uninstall_cws() {
+    uninstall_dli && \
+
     if ! stop_cws && ! $enforce; then
         log_error "Stop CwS failed, use enforce=true to uninstall if you really knows what that means."
-        return 1
-    fi
+        false
+    fi && \
 
-    uninstaller=`ls -1 $cwshome/uninstall/*uninstall*.sh 2>/dev/null | head -n1`
-    if [ -n "$uninstaller" ] && ! $sudo $uninstaller && ! $enforce; then
-        log_error "Uninstall failed, use enforce=true to uninstall if you really knows what that means."
-        return 1
-    fi
-    uninstall_cws_enforce
+    {
+        uninstaller=`ls -1 $cwshome/uninstall/*uninstall*.sh 2>/dev/null | head -n1`
+        if [ -n "$uninstaller" ] && ! $sudo $uninstaller && ! $enforce; then
+            log_error "Uninstall failed, use enforce=true to uninstall if you really knows what that means."
+            false
+        fi && \
+        uninstall_cws_enforce
+    }
 }
 function restart_dlpd() {
     seqid=${1:-1}
