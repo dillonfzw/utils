@@ -287,6 +287,14 @@ function uninstall_dli() {
         $sudo rm -rf $cwshome/dli
     fi
 }
+function setup_os() {
+    local f=/etc/sysctl.d/cws.conf
+    if ! $sudo test -f $f; then
+        local val=`{ sysctl vm.max_map_count | awk '{print $3}'; echo "262144"; } | sort -n | tail -n1`
+        echo "vm.max_map_count=$val" | $sudo tee $f
+    fi && \
+    $sudo sysctl --load $f
+}
 function install_mn() {
     if [ ! -f "$installerbin" ]; then
         log_error "CwS installer binary \"$installerbin\" does not exist."
@@ -311,6 +319,7 @@ function install_mn() {
     fi && \
 
     create_egoadmin && \
+    setup_os && \
 
     # invoke installer
     if ! $sudo env \
