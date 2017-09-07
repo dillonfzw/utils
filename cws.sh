@@ -332,7 +332,7 @@ function install_mn() {
        grep -sq Entitled; then
 
         log_info "Set entitlement with \"$entitlement\""
-        $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig setentitlement $entitlement"
+        $sudo_const -u $egoadmin_uname bash -c "$ego_source_cmd; egoconfig setentitlement `readlink -m $entitlement`"
     fi && \
 
     # start ego
