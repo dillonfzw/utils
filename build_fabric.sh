@@ -2,7 +2,7 @@
 
 # dlmfabric home
 # .../pcc/build_two/bldsrv/cws/dli_mainline/dli_fabric/linux-rh7_ppc64le/dlmfabric
-dlmfabric_home=${dlmfabric:-`pwd`}
+dlmfabric_home=${dlmfabric_home:-`pwd`}
 
 # dlm_home
 # .../pcc/build_two/bldsrv/cws/dli_mainline/dli_bld/linux-ppc64le/dlm
