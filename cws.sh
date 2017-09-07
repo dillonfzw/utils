@@ -448,7 +448,15 @@ function uninstall_cws() {
 
     {
         uninstaller=`ls -1 $cwshome/uninstall/*uninstall*.sh 2>/dev/null | head -n1`
-        if [ -n "$uninstaller" ] && ! $sudo $uninstaller && ! $enforce; then
+        function auto_cws_uninstall() {
+            echo '
+set timeout 20
+spawn '"$sudo $uninstaller"'
+expect "Please input Y or N:" { send "Y\r"; }
+interact
+' | expect -f -
+        }
+        if [ -n "$uninstaller" ] && ! $auto_cws_uninstaller && ! $enforce; then
             log_error "Uninstall failed, use enforce=true to uninstall if you really knows what that means."
             false
         fi && \
