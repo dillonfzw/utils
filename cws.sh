@@ -160,7 +160,15 @@ function enable_gpu() {
         elif [ $i -eq 0 ]; then
             log_info "Enable GPU monitoring feature..."
             # NOTE: following script is interactive!
-            $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; `$ego_source_cmd; echo $EGO_TOP`/conductorspark/2.2.1/etc/gpuconfig.sh enable"
+            echo '
+set timeout 20
+spawn '"$sudo bash -c \"$ego_source_cmd; $ego_logon_cmd; `$ego_source_cmd; echo $EGO_TOP`/conductorspark/2.2.1/etc/gpuconfig.sh enable\""'
+expect "user account:" { send "Admin\r"; }
+expect "password:" { send "Admin\r"; }
+expect "Do you want to continue?(Y/N)" { send "Y\r"; }
+expect "Do you want to restart cluster now?(Y/N)" { send "Y\r"; }
+expect "Do you really want to restart LIMs on all hosts? *y/n]" { send "y\r"; }
+interact' | expect -f -
         elif [ $i -eq 1 ]; then
             log_error "Fail to enable GPU monitoring feature..."
         fi
