@@ -360,17 +360,18 @@ function install_mn() {
         # view web url for end user
         $sudo bash -c "$ego_source_cmd; $ego_logon_cmd; egosh client view EGO_SERVICE_CONTROLLER" && \
 
-        enable_gpu && \
-        restart_cws
+        enable_gpu
     else
         false
     fi && \
 
     # install DLI
     if [ -n "$installerbin_dli" ]; then
-        install_dli && \
-        restart_cws
-    fi
+        install_dli
+    fi && \
+
+    # final cws restart
+    restart_cws
 }
 function install_cn() {
     if [ ! -f "$installerbin" ]; then
