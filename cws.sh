@@ -1,5 +1,7 @@
 #! /bin/bash
 
+if [ "$DEBUG" = "true" ]; then set -x; fi
+
 PROGCLI=`command -v $0`
 PROGNAME=${PROGCLI##*/}
 PROGDIR=${PROGCLI%/*}
@@ -66,6 +68,21 @@ fi
 ego_source_cmd="source $cwshome/profile.platform"
 ego_logon_cmd="egosh user logon -u Admin -x Admin"
 
+function getUserShell() {
+    local in_user=${1:-$egoadmin_uname}
+    $sudo_const -u $in_user -i echo '$SHELL'
+}
+function checkAndFixDashIssue() {
+    if getUserShell | grep -sq -w dash; then
+        if $enforce; then
+            log_info "Replace egoadmin user \"$egoadmin_uname\" shell from \"dash\" to \"bash\""
+            $sudo usermod -s `command -v bash` $egoadmin_uname
+        else
+            log_error "egoadmin user \"$egoadmin_uname\" shell should NOT be \"dash\""
+            false
+        fi
+    fi
+}
 function pstree() {
     pids="$@"
     pids_old=""
@@ -98,9 +115,14 @@ function create_egoadmin() {
     fi && \
     if [ -z "$uid_c" ]; then
         log_info "Add EGO administration user \"$egoadmin_uname\" with gid \"$egoadmin_uid\"."
-        $sudo useradd -g $egoadmin_gname -u $egoadmin_uid -c "EGO Administrator" $egoadmin_uname
+        $sudo useradd -g $egoadmin_gname -u $egoadmin_uid -c "EGO Administrator" -s `command -v bash` $egoadmin_uname
 
-    fi && { \
+    fi && \
+
+    checkAndFixDashIssue && \
+
+    # config password less sudo
+    {
         fsudocfg=/etc/sudoers.d/$egoadmin_uname
         if ! $sudo test -f $fsudocfg; then
             log_info "Configure paswordless sudo for EGO administrator \"$egoadmin_uname\"."
