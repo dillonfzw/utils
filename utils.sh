@@ -126,6 +126,7 @@ function do_and_verify() {
 }
 # download by checking cache first
 function download_by_cache() {
+    # pick up command line argument "cache_home", if there is
     local cache_home=${cache_home}
     if [ "$1" = "--cache_home" ]; then
         cache_home=$2
@@ -138,6 +139,7 @@ function download_by_cache() {
         false
     fi && \
 
+    # calculate target hash location in the cache
     local url=$1 && \
     if [ "${url:0:1}" = "/" ]; then url="file://$url"; fi && \
 
@@ -150,9 +152,20 @@ function download_by_cache() {
     local cache_dir=${cache_home}/$dsum/$fsum && \
     if [ ! -d $cache_dir ]; then mkdir -p $cache_dir; fi && \
 
+    # try downloading checksum first
+    local url_sum=$2 && \
+    local fcksum="" && \
+    if [ -n "$url_sum" ]; then
+        fcksum=`download_by_cache $url_sum`
+        test -n "$fcksum"
+    fi && \
+
+    # try download target if not hit in cache
+    local first_download=false
     if [ ! -f $cache_dir/$f ]; then
         log_info "Download and cache url \"$url\""
         local tmpn=`mktemp -u XXXX`
+        first_download=true
 
         curl -SL $url -o $cache_dir/.$f.$tmpn
         local rc=$?
@@ -166,11 +179,24 @@ function download_by_cache() {
         fi && \
 
         (exit $rc)
-    else
-        log_debug "Cache hit for url \"$url\""
     fi && \
 
     if [ -f $cache_dir/$f ]; then
+        # verify checksum and clean cache if failed
+        if [ -n "$fcksum" -a -f "$fcksum" ]; then
+            if ! (cd $cache_dir && sha256sum -c $fcksum;); then
+                log_error "Checksum mismatch for cached content of \"$cache_dir/$f\""
+                if $first_download; then
+                    log_info "Clean invalid cache content for \"$url\""
+                    rm -f $cache_dir/$f
+                    rmdir $cache_dir 2>/dev/null
+                fi
+                false
+            fi
+        # warn if purely cache hit w/o cksum verify
+        elif ! $first_download; then
+            log_warn "Cache hit w/o checksum verification for \"$cache_dir/$f\""
+        fi && \
         echo "$cache_dir/$f"
     else
         false
