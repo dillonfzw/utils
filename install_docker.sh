@@ -12,10 +12,15 @@ ARCH=`uname -m`
 
 eval "OS_ID=`grep "^ID=" /etc/os-release | cut -d= -f2-`"
 eval "OS_VER=`grep "^VERSION_ID=" /etc/os-release | cut -d= -f2-`"
-PKGNAME=docker-engine
+if [ "$OS_ID" = "ubuntu" ]; then
+    PKGNAME=docker-engine
+elif [ "$OS_ID" = "rhel" ]; then
+    PKGNAME=docker-ce
+fi
 typeset -A docker_repo_urls
 docker_repo_urls["ubuntu-16.04-ppc64le"]="deb http://ftp.unicamp.br/pub/ppc64el/ubuntu/16_04/docker-1.12.6-ppc64el/ xenial main"
 docker_repo_urls["ubuntu-14.04-ppc64le"]="deb http://ftp.unicamp.br/pub/ppc64el/ubuntu/14_04/docker-ppc64el/ trusty main"
+docker_repo_urls["rhel-7.4-ppc64le"]="http://ftp.unicamp.br/pub/ppc64el/rhel/7/docker-ppc64el/"
 TOKEN="${OS_ID}-${OS_VER}-${ARCH}"
 docker_repo_url=${docker_repo_urls[$TOKEN]}
 
@@ -43,6 +48,17 @@ fi
 setup_repo="setup_repo_${OS_ID}"
 install_pkg="install_pkg_${OS_ID}"
 
+function setup_repo_rhel() {
+    ( cat - << EOF
+[docker]
+name=Docker
+baseurl=$docker_repo_url
+enabled=1
+gpgcheck=0
+EOF
+    ) | $sudo tee -a /etc/yum.repos.d/docker.repo
+    $sudo yum repolist | grep ^docker
+}
 function setup_repo_ubuntu() {
     local i=0
     while [ $i -lt 2 ];
@@ -66,6 +82,9 @@ function setup_repo_ubuntu() {
         ((i+=1))
     done
     test $i -lt 2
+}
+function install_pkg_rhel() {
+    $sudo yum install $PKGNAME
 }
 function install_pkg_ubuntu() {
     local i=0
