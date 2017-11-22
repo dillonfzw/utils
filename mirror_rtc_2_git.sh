@@ -27,37 +27,38 @@ DEFAULT_rtc_user=fuzhiwen@cn.ibm.com
 DEFAULT_rtc_passwd_f=$HOME/.ssh/fuzhiwen@cn.ibm.com.rtc_passwd_f
 
 DEFAULT_project=${DEFAULT_project:-dlm_trunk}
-DEFAULT_rtc_stream=$DEFAULT_project
-if [ "$DEFAULT_project" = "dlm_trunk" ]; then
+project=${project:-$DEFAULT_project}
+if [ "$project" = "dlm_trunk" ]; then
     DEFAULT_rtc_component=dlm
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
-elif [ "$DEFAULT_project" = "dlm_tp0.4" ]; then
+elif [ "$project" = "dlm_tp0.4" ]; then
     DEFAULT_rtc_component=dlm
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
-elif [ "$DEFAULT_project" = "dlm_1_1_0_Gold_Patch" ]; then
+elif [ "$project" = "dlm_1_1_0_Gold_Patch" ]; then
     DEFAULT_rtc_component=dlm
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
     DEFAULT_git_branch=rtc-dlm_r110
 
-elif [ "$DEFAULT_project" = "dlmfabric_trunk" ]; then
+elif [ "$project" = "dlmfabric_trunk" ]; then
     DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
 
-elif [ "$DEFAULT_project" = "dlmfabric_tp0.4" ]; then
+elif [ "$project" = "dlmfabric_tp0.4" ]; then
     DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
 
-elif [ "$DEFAULT_project" = "dlmfabric_1_1_0_Gold_Patch" ]; then
+elif [ "$project" = "dlmfabric_1_1_0_Gold_Patch" ]; then
     DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
     DEFAULT_git_branch=rtc-dlmfabric_r110
 
 else
-    log_error "Unknown project \"$DEFAULT_project\""
+    log_error "Unknown project \"$project\""
     exit 1
 fi
+DEFAULT_rtc_stream=$project
 DEFAULT_rtc_max_history=500
 DEFAULT_rtc_workspace=m_${DEFAULT_rtc_stream}_`hostname -s`
 
@@ -251,8 +252,10 @@ function commit_code_in_git() {
 
                 log_info "Push code back to up-stream \"`head -n1 $tmpf`\""
                 git push
+            else
+                { git log -n1; } | sed -e 's/^/>> /g' | log_lines debug
             fi
-            { git log --oneline -n10 --graph; } | sed -e 's/^/>> /g' | log_lines info
+            { git log --oneline -n10 --graph; } | sed -e 's/^/>> /g' | log_lines debug
         }
         rm -f $tmpf
 
