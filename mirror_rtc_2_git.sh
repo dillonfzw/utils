@@ -15,6 +15,8 @@ PROGVERSION=0.1.0
 # 
 # 10 4,16 * * * for prj in dlm dlmfabric; do env DEFAULT_project=$prj /u/fuzhiwen/bin/mirror_rtc_2_git.sh; done
 
+source $PROGDIR/log.sh
+
 # constant variables
 DEFAULT_lscm=lscm
 DEFAULT_JAVA_HOME=${JAVA_HOME:-/opt/ibm/java-x86_64-80}
@@ -28,11 +30,16 @@ DEFAULT_project=${DEFAULT_project:-dlm_trunk}
 DEFAULT_rtc_stream=$DEFAULT_project
 if [ "$DEFAULT_project" = "dlm_trunk" ]; then
     DEFAULT_rtc_component=dlm
-    DEFAULT_git_repo=git@github.ibm.com:platformcomputing/bluemind.git
+    DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
 elif [ "$DEFAULT_project" = "dlm_tp0.4" ]; then
     DEFAULT_rtc_component=dlm
-    DEFAULT_git_repo=git@github.ibm.com:platformcomputing/bluemind.git
+    DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
+
+elif [ "$DEFAULT_project" = "dlm_1_1_0_Gold_Patch" ]; then
+    DEFAULT_rtc_component=dlm
+    DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
+    DEFAULT_git_branch=rtc-dlm_r110
 
 elif [ "$DEFAULT_project" = "dlmfabric_trunk" ]; then
     DEFAULT_rtc_component=dlmfabric
@@ -41,18 +48,26 @@ elif [ "$DEFAULT_project" = "dlmfabric_trunk" ]; then
 elif [ "$DEFAULT_project" = "dlmfabric_tp0.4" ]; then
     DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
+
+elif [ "$DEFAULT_project" = "dlmfabric_1_1_0_Gold_Patch" ]; then
+    DEFAULT_rtc_component=dlmfabric
+    DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
+    DEFAULT_git_branch=rtc-dlmfabric_r110
+
+else
+    log_error "Unknown project \"$DEFAULT_project\""
+    exit 1
 fi
 DEFAULT_rtc_max_history=500
 DEFAULT_rtc_workspace=m_${DEFAULT_rtc_stream}_`hostname -s`
 
-DEFAULT_git_branch=rtc-${DEFAULT_rtc_stream}
+DEFAULT_git_branch=${DEFAULT_git_branch:-rtc-${DEFAULT_rtc_stream}}
 DEFAULT_git_user_email=fuzhiwen@cn.ibm.com
 DEFAULT_git_user_name="Zhiwen Fu"
 DEFAULT_sshKey="50:6b:02:cb:27:c6:3c:45:18:14:21:0a:22:ad:e2:59"
 
 DEFAULT_fs_workspace=$HOME/rtc2git/${DEFAULT_rtc_workspace}
 
-source $PROGDIR/log.sh
 source $PROGDIR/getopt.sh
 
 export JAVA_HOME
@@ -117,14 +132,20 @@ function load_rtc_workspace() {
         while [ $i -lt 2 ];
         do
             #log_info "Check RTC status at current directory \"`pwd`\" in round $i..."
-            lines=`$lscm status 2>&1`
+            # need "-w" in case the line was too long and shrinked by lscm command
+            lines=`$lscm status -w 2>&1`
             if echo "$lines" | grep -sq "Workspace: .* \"$rtc_workspace\" .* \"$rtc_stream\""; then
                 { echo "$lines"; pwd; ls -la; } | sed -e 's/^/>> /g' | log_lines info
                 break
+
             elif [ $i -eq 0 ]; then
                 log_info "Load RTC component \"$rtc_component\" in workspace \"$rtc_workspace\" into directory \"$rtc_root\"..."
                 lines=`$lscm load -r $rtc_repo --allow --force $rtc_workspace $rtc_component/ 2>&1`
                 if [ $? -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; fi
+
+            elif [ $i -eq 1 ]; then
+                log_error "Fail to load RTC components \"$rtc_component\""
+                echo "$lines" | sed -e 's/^/>> /g' | log_lines error
             fi
             ((i+=1))
         done
