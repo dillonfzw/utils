@@ -1,8 +1,8 @@
 #! /usr/bin/env bash
 
-PROGCLI=$0
-PROGNAME=${0##*/}
-PROGDIR=${0%/*}
+PROGCLI=`command -v $0`
+PROGNAME=${PROGCLI##*/}
+PROGDIR=${PROGCLI%/*}
 PROGVERSION=0.1.0
 
 ##############################################
@@ -121,6 +121,10 @@ function create_rtc_workspace() {
 function load_rtc_workspace() {
     [ -d $rtc_root ] || mkdir -p $rtc_root
     if cd $rtc_root; then
+        # clean first
+        [ -d $rtc_component ] && \
+        rm -rf $rtc_component
+
         # [fuzhiwen@kvm-007800 tmp]$ lscm status
         # Workspace: (1031) "m_dlm_trunk_kvm-007800" <-> (1012) "dlm_trunk"
         #   Component: (1032) "dlm"
