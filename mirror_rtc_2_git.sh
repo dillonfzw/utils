@@ -28,41 +28,58 @@ DEFAULT_rtc_passwd_f=$HOME/.ssh/fuzhiwen@cn.ibm.com.rtc_passwd_f
 
 DEFAULT_project=${DEFAULT_project:-dlm_trunk}
 project=${project:-$DEFAULT_project}
+# DLI core and mgmt
 if [ "$project" = "dlm_trunk" ]; then
+    DEFAULT_rtc_stream=dlm_trunk
     DEFAULT_rtc_component=dlm
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
 elif [ "$project" = "dlm_tp0.4" ]; then
+    DEFAULT_rtc_stream=dlm_tp0.4
     DEFAULT_rtc_component=dlm
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
-elif [ "$project" = "dlm_1_1_0_Gold_Patch" ]; then
+elif [ "$project" = "dlm_r110" ]; then
+    DEFAULT_rtc_stream=dlm_1_1_0_Gold_Patch
     DEFAULT_rtc_component=dlm
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
-    DEFAULT_git_branch=rtc-dlm_r110
 
+# Fabric
 elif [ "$project" = "dlmfabric_trunk" ]; then
+    DEFAULT_rtc_stream=dlmfabric_trunk
     DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
 
 elif [ "$project" = "dlmfabric_tp0.4" ]; then
+    DEFAULT_rtc_stream=dlmfabric_tp0.4
     DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
 
-elif [ "$project" = "dlmfabric_1_1_0_Gold_Patch" ]; then
+elif [ "$project" = "dlmfabric_r110" ]; then
+    DEFAULT_rtc_stream=dlmfabric_1_1_0_Gold_Patch
     DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
-    DEFAULT_git_branch=rtc-dlmfabric_r110
+
+# Install
+elif [ "$project" = "install_trunk" ]; then
+    DEFAULT_rtc_stream=install_36_cws_working
+    DEFAULT_rtc_component=install
+    DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
+
+elif [ "$project" = "install_r110" ]; then
+    DEFAULT_rtc_stream=install_dlm_1_1_0_Gold_Patch
+    DEFAULT_rtc_component=install
+    DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
 else
     log_error "Unknown project \"$project\""
     exit 1
 fi
-DEFAULT_rtc_stream=$project
+DEFAULT_rtc_stream=${DEFAULT_rtc_stream:-$project}
 DEFAULT_rtc_max_history=500
 DEFAULT_rtc_workspace=m_${DEFAULT_rtc_stream}_`hostname -s`
 
-DEFAULT_git_branch=${DEFAULT_git_branch:-rtc-${DEFAULT_rtc_stream}}
+DEFAULT_git_branch=${DEFAULT_git_branch:-rtc-${project}}
 DEFAULT_git_user_email=fuzhiwen@cn.ibm.com
 DEFAULT_git_user_name="Zhiwen Fu"
 DEFAULT_sshKey="50:6b:02:cb:27:c6:3c:45:18:14:21:0a:22:ad:e2:59"
