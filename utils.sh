@@ -127,7 +127,7 @@ function do_and_verify() {
 # download by checking cache first
 function download_by_cache() {
     # pick up command line argument "cache_home", if there is
-    local cache_home=${cache_home}
+    local cache_home=${cache_home} && \
     if [ "$1" = "--cache_home" ]; then
         cache_home=$2
         shift 2
@@ -137,6 +137,16 @@ function download_by_cache() {
     elif [ -z "$cache_home" ]; then
         log_error "Variable \"cache_home\" should not be empty for function \"${FUNCNAME[0]}\""
         false
+    fi && \
+
+    # dry-run to pick up hash location
+    local dry_run=${dry_run:-false} && \
+    if [ "$1" = "--dry-run" ]; then
+        dry_run=true
+        shift
+    elif [ `expr match "$1" "--dry-run="` -eq 9 ]; then
+        dry_run="`echo "$1" | cut -d= -f2-`"
+        shift
     fi && \
 
     # calculate target hash location in the cache
@@ -150,7 +160,11 @@ function download_by_cache() {
     local fsum=`echo "$f" | sum -r` && fsum=${fsum:0:2} && \
     local dsum=`echo "$d" | sum -r` && dsum=${dsum:0:2} && \
     local cache_dir=${cache_home}/$dsum/$fsum && \
-    if [ ! -d $cache_dir ]; then mkdir -p $cache_dir; fi && \
+
+    # it's dry-run's exit now
+    if $dry_run; then echo "$cache_dir/$f"; return 0; fi && \
+
+    if [ ! -d "$cache_dir" ]; then mkdir -p $cache_dir; fi && \
 
     # try downloading checksum first
     local url_sum=$2 && \
@@ -161,7 +175,7 @@ function download_by_cache() {
     fi && \
 
     # try download target if not hit in cache
-    local first_download=false
+    local first_download=false && \
     if [ ! -f $cache_dir/$f ]; then
         log_info "Download and cache url \"$url\""
         local tmpn=`mktemp -u XXXX`
