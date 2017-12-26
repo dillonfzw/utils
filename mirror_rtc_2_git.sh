@@ -71,6 +71,12 @@ elif [ "$project" = "install_r110" ]; then
     DEFAULT_rtc_component=install
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
+# inference as service
+elif [ "$project" = "dlminference_trunk" ]; then
+    DEFAULT_rtc_stream=dlminference_redhare_trunk
+    DEFAULT_rtc_component=dlminference_redhare
+    DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
+
 else
     log_error "Unknown project \"$project\""
     exit 1
