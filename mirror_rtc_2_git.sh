@@ -77,6 +77,12 @@ elif [ "$project" = "dlminference_trunk" ]; then
     DEFAULT_rtc_component=dlminference_redhare
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
+# inference as service UI
+elif [ "$project" = "dlminference_ui_trunk" ]; then
+    DEFAULT_rtc_stream=dlminference_ui_trunk
+    DEFAULT_rtc_component=dlminference_ui
+    DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
+
 else
     log_error "Unknown project \"$project\""
     exit 1
