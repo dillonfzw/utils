@@ -291,7 +291,7 @@ function commit_code_in_git() {
                 else
                     # log for debug, when there are:
                     # - abnormal case when nothing to commit, but seems new change sets found
-                    grep -A9999 "Change sets:" $tmpf | sed -e 's/[ncs]: >> /g' | log_lines warn
+                    grep -A9999 "Change sets:" $tmpf | sed -e 's/^/[ncs]: >> /g' | log_lines warn
                 fi
             fi
             { git log --oneline -n10 --graph; } | sed -e 's/^/>> /g' | log_lines debug
