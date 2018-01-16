@@ -77,6 +77,12 @@ elif [ "$project" = "dlminference_trunk" ]; then
     DEFAULT_rtc_component=dlminference_redhare
     DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
 
+# inference as service UI
+elif [ "$project" = "dlminference_ui_trunk" ]; then
+    DEFAULT_rtc_stream=dlminference_ui_trunk
+    DEFAULT_rtc_component=dlminference_ui
+    DEFAULT_git_repo=git@github.ibm.com:fuzhiwen/bluemind.git
+
 else
     log_error "Unknown project \"$project\""
     exit 1
@@ -242,12 +248,19 @@ function transfer_rtc_to_git() {
     fi
 }
 function commit_code_in_git() {
+    local lines=""
     if cd $git_root/$rtc_component; then
+        # Change sets:
+        #   (6137) ----$ "enable auth ..." Created By: LIN DONG (28-Dec-2017 09:53 PM) Added By: ZHI WEN FU (29-Dec-2017 06:36 AM)
+        #   (6138) ----$ "Update model ..." Created By: De Gao Chu (28-Dec-2017 05:41 PM) Added By: ZHI WEN FU (29-Dec-2017 06:36 AM)
+        #   (6139) ----$ "add metrix ..." Created By: Jian Liu (28-Dec-2017 05:24 PM) Added By: ZHI WEN FU (29-Dec-2017 06:36 AM)
         tmpf=`mktemp /tmp/XXXXXXXX`
         {
-            echo "RTC import $rtc_stream (`timestamp -u`)"
-            echo
-            last_changeset=`git log -n1 | grep -A 1 "Change sets:" | sed -e 's/^ *\(.*\) *Added By: .*$/\1/g'`
+            echo "RTC import $rtc_stream (`timestamp -u`)" >$tmpf
+            echo >>$tmpf
+            last_changeset=`git log | \
+                            grep -A 1 "Change sets:" | grep "Added By:" | head -n1 | \
+                            sed -e 's/^.*-\$ \(".*)\) *Added By: .*$/\1/g'`
             if cd $rtc_root/$rtc_component; then
                 lines=`$lscm show history -w $rtc_workspace -C $rtc_component -m $rtc_max_history 2>&1`
                 rc=$?
@@ -256,12 +269,12 @@ function commit_code_in_git() {
                 else
                     lines_new="$lines"
                 fi
-                echo "$lines_new"
+                echo "$lines_new" >>$tmpf
                 if [ $rc -ne 0 ]; then echo "$lines_new" | sed -e 's/^/>> /g' | log_lines error; false; fi
                 cd - >/dev/null
                 (exit $rc)
             fi
-        } >$tmpf && {
+        } && {
             log_info "Commit code to git \"`head -n1 $tmpf`\""
 
             git add --all
@@ -275,8 +288,17 @@ function commit_code_in_git() {
 
                 log_info "Push code back to up-stream \"`head -n1 $tmpf`\""
                 git push
+
             else
-                { git log -n1; } | sed -e 's/^/>> /g' | log_lines debug
+                lines=`git log -n1`
+                if echo "$lines" | grep -sq "Change sets:"; then
+                    # log for trace
+                    echo "$lines" | sed -e 's/^/>> /g' | log_lines debug
+                else
+                    # log for debug, when there are:
+                    # - abnormal case when nothing to commit, but seems new change sets found
+                    grep -A9999 "Change sets:" $tmpf | sed -e 's/^/[ncs]: >> /g' | log_lines warn
+                fi
             fi
             { git log --oneline -n10 --graph; } | sed -e 's/^/>> /g' | log_lines debug
         }
