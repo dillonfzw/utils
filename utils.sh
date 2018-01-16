@@ -220,7 +220,7 @@ function filter_pkgs_groupby() {
     local default_grp=${1:-"10"}
 
     # put to default group, "10", if entry has no group specified
-    awk -v default_grp=$default_grp '!/^[[:digit:]]+:/ { print default_grp":"$0; next; } { print; }' | \
+    awk -v default_grp=$default_grp '!/^[0-9]+:/ { print default_grp":"$0; next; } { print; }' | \
     # group by
     awk -F":" '
     {
@@ -235,7 +235,21 @@ function filter_pkgs_groupby() {
 }
 # different pip version has different command line options
 function setup_pip_flags() {
-    local pip_version=`pip --version | awk '{print $2}' | head -n1`
+    if $use_conda && command -v conda >/dev/null 2>&1; then
+        local env_activated=false
+        if [ "${CONDA_DEFAULT_ENV}" = "$conda_env_name" ]; then
+            env_activated=true
+        fi
+        if $env_activated || source activate ${conda_env_name}; then
+            G_pip_bin=`command -v pip`
+            $env_activated || source deactivate
+        fi
+    else
+        G_pip_bin=`command -v pip`
+    fi
+
+    local pip=$G_pip_bin
+    local pip_version=`$pip --version | awk '{print $2}' | head -n1`
     if [ -n "$pip_version" ] && version_cmp pip ">=" "$pip_version" "9.0.1"; then
         G_pip_install_flags="--upgrade --upgrade-strategy only-if-needed"
         G_pip_list_flags="--format freeze"
@@ -243,7 +257,7 @@ function setup_pip_flags() {
         G_pip_install_flags="--upgrade"
         G_pip_list_flags=""
     fi
-    log_debug "${FUNCNAME[0]}: pip_install=\"$G_pip_install_flags\", pip_list=\"$G_pip_list_flags\""
+    set | grep "^G_pip" | sort -t= -k1 | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
 # clean cache directory to make docker image efficient
 function clean_pip_cache() {
@@ -252,13 +266,13 @@ function clean_pip_cache() {
 function filter_pkgs_yum() {
     echo "$@" | sed -e 's/#[^[:space:]]\+//g' -e 's/ \+/ /g' | tr ' ' '\n' | \
     # pick "rpm:" and non prefix pkgs
-    grep -Ev "^deb:|^pip:" | sed -e 's/^rpm://g' | \
+    grep -Ev "^deb:|^pip:|^conda:" | sed -e 's/^rpm://g' | \
     filter_pkgs_groupby 10
 }
 function filter_pkgs_deb() {
     echo "$@" | sed -e 's/#[^[:space:]]\+//g' -e 's/ \+/ /g' | tr ' ' '\n' | \
     # pick "deb:" and non prefix pkgs
-    grep -Ev "^rpm:|^pip" | sed -e 's/^deb://g' | \
+    grep -Ev "^rpm:|^pip:|^conda:" | sed -e 's/^deb://g' | \
     filter_pkgs_groupby 10
 }
 function filter_pkgs_pip() {
@@ -267,21 +281,41 @@ function filter_pkgs_pip() {
     awk '/^pip:/ { sub(/^pip:/,""); print; }' | \
     filter_pkgs_groupby 10
 }
+function filter_pkgs_conda() {
+    if ! $use_conda; then return; fi
+    echo "$@" | sed -e 's/#[^[:space:]]\+//g' -e 's/ \+/ /g' | tr ' ' '\n' | \
+    # pick "conda:" prefix only pkgs
+    awk '/^conda:/ { sub(/^conda:/,""); print; }' | \
+    filter_pkgs_groupby 10
+}
 function pkg_install_yum() {
     local pkgs="$@"
     $sudo yum $G_yum_flags install -y $pkgs
+    local rc=$?
+
+    if echo "$pkgs" | grep -sq -Ew "python2-pip"; then
+        setup_pip_flags
+    fi
+    return $rc
 }
 function pkg_install_deb() {
     local pkgs="$@"
     $sudo $apt_get install $apt_get_install_options $pkgs
+    local rc=$?
+
+    if echo "$pkgs" | grep -sq -Ew "python-pip"; then
+        setup_pip_flags
+    fi
+    return $rc
 }
 function pkg_install_pip() {
+    local pip=$G_pip_bin
     local pkgs="$@"
     if ! $sudo test -z "$PYTHONUSERBASE" -o -d "$PYTHONUSERBASE"; then
         $sudo mkdir -p $PYTHONUSERBASE
     fi && \
     $sudo ${sudo:+"-i"} env ${PYTHONUSERBASE:+"PYTHONUSERBASE=$PYTHONUSERBASE"} \
-        pip install ${PYTHONUSERBASE:+"--user"} $G_pip_install_flags $pkgs
+        $pip install ${PYTHONUSERBASE:+"--user"} $G_pip_install_flags $pkgs
     local rc=$?
 
     if echo "$pkgs" | grep -sq -Ew "pip"; then
@@ -289,25 +323,51 @@ function pkg_install_pip() {
     fi
     return $rc
 }
+function pkg_install_conda() {
+    if ! $use_conda; then return; fi
+    local pkgs="$@"
+    $sudo $conda install ${conda_env_name:+"-n"} ${conda_env_name} $conda_install_options $pkgs
+}
 function pkg_list_installed_yum() {
     local pkgs="$@"
     $sudo yum $G_yum_flags list installed $pkgs
 }
 function pkg_list_installed_deb() {
     local pkgs="$@"
-    dpkg -l $pkgs
+    local pkgs_m=`echo "$pkgs" | tr ' ' '\n' | sed -e 's/=.*$//g' | xargs`
+    dpkg -l $pkgs_m
 }
 function pkg_list_installed_pip() {
+    local pip=$G_pip_bin
     local pkgs="$@"
     local regex=`echo "$pkgs" | tr ' ' '\n' | \
                  sed -e 's/[<=>]=.*$//g' -e 's/[<>].*$//g' -e 's/^\(.*\)$/^\1==/g' | \
                  xargs | tr ' ' '|'`
     local cnt=`echo "$pkgs" | wc -w`
-    local lines=`$sudo ${sudo:+"-i"} env ${PYTHONUSERBASE:+"PYTHONUSERBASE=$PYTHONUSERBASE"} \
-                   pip list ${PYTHONUSERBASE:+"--user"} $G_pip_list_flags | \
+    local lines=`{ if [ -n "$PYTHONUSERBASE" ]; then
+                       $sudo ${sudo:+"-i"} env PYTHONUSERBASE=$PYTHONUSERBASE \
+                         $pip list --user $G_pip_list_flags;
+                   fi; \
+                   $sudo ${sudo:+"-i"} $pip list $G_pip_list_flags; \
+                 } | \
+                 sed -e 's/ *(\(.*\))$/==\1/g' | \
+                 sort -u | \
+                 grep -E "$regex"`
+    local lcnt=`echo "$lines" | grep -v "^$" | wc -l`
+    echo "$lines"
+    test $lcnt -eq $cnt
+}
+function pkg_list_installed_conda() {
+    if ! $use_conda; then return; fi
+    local pkgs="$@"
+    local regex=`echo "$pkgs" | tr ' ' '\n' | \
+                 sed -e 's/[<=>]=.*$//g' -e 's/[<>].*$//g' -e 's/^\(.*\)$/^\1==/g' | \
+                 xargs | tr ' ' '|'`
+    local cnt=`echo "$pkgs" | wc -w`
+    local lines=`$sudo ${sudo:+"-i"} $conda list ${conda_env_name:+"-n"} ${conda_env_name} | awk '{print $1"=="$2}' | \
                    sed -e 's/ *(\(.*\))$/==\1/g' | \
                    grep -E "$regex"`
-    local lcnt=`echo "$lines" | wc -l`
+    local lcnt=`echo "$lines" | grep -v "^$" | wc -l`
     echo "$lines"
     test $lcnt -eq $cnt
 }
@@ -317,7 +377,8 @@ function pkg_verify_yum() {
 }
 function pkg_verify_deb() {
     local pkgs="$@"
-    local out_lines=`$sudo dpkg -V $pkgs 2>&1`
+    local pkgs_m=`echo "$pkgs" | tr ' ' '\n' | sed -e 's/=.*$//g' | xargs`
+    local out_lines=`$sudo dpkg -V $pkgs_m 2>&1`
     if [ -n "$out_lines" ]; then
         log_error "Fail to verify packages \"$pkgs\""
         echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
@@ -326,7 +387,10 @@ function pkg_verify_deb() {
 }
 function pkg_verify_pip() {
     local pkgs="$@"
-    local out_lines="`pkg_list_installed_pip $pkgs`" || return 1
+    # pkg_verify_conda will reuse most of logic of this function
+    # so, we pick the fake conda pkg list output as faked pip output
+    local out_lines=${conda_out_lines:-"`pkg_list_installed_pip $pkgs`"}
+    if [ -z "$out_lines" ]; then return 1; fi
     #echo "$out_lines" | sed -e 's/^/>> [pip]: /g' | log_lines debug
 
     local cnt=`echo "$pkgs" | wc -w`
@@ -343,11 +407,22 @@ function pkg_verify_pip() {
         local pkg_op=`  echo "$pkg_line" | cut -d'|' -f2  -s`
         local pkg_verE=`echo "$pkg_line" | cut -d'|' -f3- -s`
         local pkg_verR=`echo "$out_lines" | grep "^$pkg_name==" | sed -e 's/^.*==//g'`
-        version_cmp "$pkg_name" "$pkg_op" "$pkg_verR" "$pkg_verE" || break
+        if [ -n "$pkg_verE" ]; then
+            version_cmp "$pkg_name" "$pkg_op" "$pkg_verR" "$pkg_verE"
+        else
+            true
+        fi || break
 
         ((i+=1))
     done
+    if [ $i -ne $cnt ]; then log_error "i=$i, cnt=$cnt"; fi
     test $i -eq $cnt
+}
+function pkg_verify_conda() {
+    if ! $use_conda; then return; fi
+    local pkgs="$@"
+    local conda_out_lines="`pkg_list_installed_conda $pkgs`"
+    pkg_verify_pip $@
 }
 function filter_pkgs() {
     if $is_rhel; then
@@ -356,6 +431,9 @@ function filter_pkgs() {
         filter_pkgs_deb $@
     fi
     filter_pkgs_pip $@
+    if $use_conda; then
+        filter_pkgs_conda $@
+    fi
 }
 # meta functions
 for item in pkg_install pkg_list_installed pkg_verify
@@ -363,9 +441,15 @@ do
     eval 'function '$item'() {
     if $is_rhel; then
         for_each_line_op '$item'_yum "`filter_pkgs_yum $@`" && \
+        if $use_conda; then
+            for_each_line_op '$item'_conda "`filter_pkgs_conda $@`"
+        fi && \
         for_each_line_op '$item'_pip "`filter_pkgs_pip $@`"
     elif $is_ubuntu; then
         for_each_line_op '$item'_deb "`filter_pkgs_deb $@`" && \
+        if $use_conda; then
+            for_each_line_op '$item'_conda "`filter_pkgs_conda $@`"
+        fi && \
         for_each_line_op '$item'_pip "`filter_pkgs_pip $@`"
     else
         false
@@ -378,3 +462,37 @@ function pkg_install() { true; }
 function pkg_list_installed() { true; }
 function pkg_verify() { true; }
 ' >/dev/null
+function urlencode() {
+    local string="${1}"
+    local strlen=${#string}
+    local encoded=""
+    local pos c o
+
+    for (( pos=0 ; pos<strlen ; pos++ )); do
+       c=${string:$pos:1}
+       case "$c" in
+          [-_.~a-zA-Z0-9] ) o="${c}" ;;
+          * )               printf -v o '%%%02x' "'$c"
+       esac
+       encoded+="${o}"
+    done
+    echo "${encoded}"    # You can either set a return variable (FASTER)
+    REPLY="${encoded}"   #+or echo the result (EASIER)... or both... :p
+}
+function urlencode2() {
+    echo -ne $1 | hexdump -v -e '/1 "%02x"' | sed 's/\(..\)/%\1/g'
+}
+# Returns a string in which the sequences with percent (%) signs followed by
+# two hex digits have been replaced with literal characters.
+function urldecode() {
+  # This is perhaps a risky gambit, but since all escape characters must be
+  # encoded, we can replace %NN with \xNN and pass the lot to printf -b, which
+  # will decode hex for us
+
+  printf -v REPLY '%b' "${1//%/\\x}" # You can either set a return variable (FASTER)
+
+  echo "${REPLY}"  #+or echo the result (EASIER)... or both... :p
+}
+function urldecode2() {
+    printf '%b' "${1//%/\\x}"
+}
