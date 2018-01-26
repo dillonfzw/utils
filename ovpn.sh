@@ -7,29 +7,23 @@
 PROGCLI=`command -v $0`
 PROGNAME=${0##*/}
 PROGDIR=${0%/*}
-PROGVERSION=1.0.1
-
-function listFunctions() {
-    grep "^function " $PROGCLI | sed -e 's/^.*function *\(.*\)(.*$/\1/g'
-}
-function usage() {
-    echo "Usage $PROGNAME"
-    listFunctions | sed -e 's/^/[cmd] >> /g' | log_lines info
-    exit 0
-}
+PROGVERSION=1.0.0
 
 source log.sh
-source getopt.sh
 source utils.sh
 
 [ "$DEBUG" = "true" ] && set -x
 
 [ `whoami` = 'root' ] || sudo=sudo
-workspace=$HOME/workspace
+
+DEFAULT_workspace=$HOME/workspace
+DEFAULT_ovpn_server_dir=/etc/openvpn/server
+
+source getopt.sh
 
 function initialize_ovpn_server() {
     # install openvpn
-    ovpn_server_dir=/etc/openvpn/server && \
+    local ovpn_server_dir=$ovpn_server_dir && \
 
     mkdir -p $ovpn_server_dir && \
     rsync -av /usr/share/easy-rsa $ovpn_server_dir/ && \
@@ -54,11 +48,59 @@ function initialize_ovpn_server() {
         cd - >/dev/null
     fi && \
 
-
-    $sudo ln -s $ovpn_server_dir/server.conf /etc/openvpn && \
+    # start service
+    do_and_verify \
+       "test -L /etc/openvpn/server.conf"  \
+       "$sudo ln -s $ovpn_server_dir/server.conf /etc/openvpn" \
+       "true" && \
     $sudo systemctl enable openvpn@server.service && \
-    $sudo systemctl start openvpn@server.service && \
-    $sudo systemctl status openvpn@server.service
+    if do_and_verify \
+        "$sudo systemctl status openvpn@server.service | grep -sq 'Active: active'" \
+        "$sudo systemctl start openvpn@server.service" \
+        "sleep 10"; then
+        $sudo systemctl status openvpn@server.service | log_lines debug
+    else
+        log_error "Fail to start openvpn@server.service" | log_lines error
+        false
+    fi
+}
+function install_pam_google_authenticator() {
+    # install libpam-google-authenticator
+    if cd $workspace; then
+        git clone https://github.com/google/google-authenticator-libpam.git && \
+        cd google-authenticator-libpam && \
+        ./bootstrap.sh && \
+        ./configure && \
+        make dist && \
+        if [ -d $HOME/rpmbuild/SOURCES ]; then mkdir -p $HOME/rpmbuild/SOURCES; fi && \
+        cp google-authenticator-*.tar.gz $HOME/rpmbuild/SOURCES/ && \
+        rpmbuild -bb ./contrib/rpm.spec && \
+        $sudo yum install ~/rpmbuild/RPMS/$ARCH/google-authenticator-*.rpm && \
+        cd - >/dev/null
+    fi
+}
+function setup_route() {
+    # enable ip forwarding
+    local cmd=""
+    local cmds="
+        #enable
+        configure terminal
+        ip forwarding
+        exit
+        show running
+        write
+    "
+    IFS_OLD="$IFS"
+    IFS=$'\n'
+    for cmd in $cmds
+    do
+        IFS="$IFS_OLD"
+        cmd=`echo "$cmd" | sed -e 's/^ *\(.*\) *$/\1/g'`
+        [ -n "$cmd" ] || continue
+        echo "$cmd" | grep -sq "^ *#" && continue
+        log_info "Execute vtysh cmd \"$cmd\""
+        $sudo vtysh -d zebra -c "$cmd"
+    done
 }
 
 function main() {
@@ -86,42 +128,12 @@ function main() {
         mkdir -p $workspace
     fi && \
 
-    # install libpam-google-authenticator
-    if cd $workspace; then
-        git clone https://github.com/google/google-authenticator-libpam.git && \
-        cd google-authenticator-libpam && \
-        ./bootstrap.sh && \
-        ./configure && \
-        make dist && \
-        if [ -d $HOME/rpmbuild/SOURCES ]; then mkdir -p $HOME/rpmbuild/SOURCES; fi && \
-        cp google-authenticator-*.tar.gz $HOME/rpmbuild/SOURCES/ && \
-        rpmbuild -bb ./contrib/rpm.spec && \
-        $sudo yum install ~/rpmbuild/RPMS/$ARCH/google-authenticator-*.rpm && \
-        cd - >/dev/null
-    fi && \
+    echo install_pam_google_authenticator && \
 
-
-
-    # enable ip forwarding
-    cmds="enable
-    configure terminal
-    ip forwarding
-    exit
-    show running
-    write"
-    IFS_OLD="$IFS"
-    IFS=$'\n'
-    for cmd in $cmds
-    do
-        IFS="$IFS_OLD"
-        [ -n "$cmd" ] || continue
-        $sudo vtysh -d zebra -c $cmd
-    done
+    setup_route
 }
 
-if [ `expr match "$1" "^cmd="` -eq 4 ]; then
-    cmd=`echo "$1" | cut -d= -f2`
-    shift
+if [ -n "$cmd" ]; then
     $cmd "$@"
     exit $?
 else
