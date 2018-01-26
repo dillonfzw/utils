@@ -496,3 +496,11 @@ function urldecode() {
 function urldecode2() {
     printf '%b' "${1//%/\\x}"
 }
+function listFunctions() {
+    declare -f | grep "^[^ ].* () *$" | sed -e 's/ *() *$//g'
+}
+function usage() {
+    echo "Usage $PROGNAME"
+    listFunctions | sed -e 's/^/[cmd] >> /g' | log_lines info
+    exit 0
+}
