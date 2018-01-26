@@ -16,6 +16,7 @@ PROGVERSION=0.1.0
 # 10 4,16 * * * for prj in dlm dlmfabric; do env DEFAULT_project=$prj /u/fuzhiwen/bin/mirror_rtc_2_git.sh; done
 
 source $PROGDIR/log.sh
+source $PROGDIR/utils.sh
 
 # constant variables
 DEFAULT_lscm=lscm
@@ -152,8 +153,7 @@ function load_rtc_workspace() {
     [ -d $rtc_root ] || mkdir -p $rtc_root
     if cd $rtc_root; then
         # clean first
-        [ -d $rtc_component ] && \
-        rm -rf $rtc_component
+        #[ -d $rtc_component ] && rm -rf $rtc_component
 
         # [fuzhiwen@kvm-007800 tmp]$ lscm status
         # Workspace: (1031) "m_dlm_trunk_kvm-007800" <-> (1012) "dlm_trunk"
@@ -163,27 +163,35 @@ function load_rtc_workspace() {
         #       Change sets:
         #         (1034) ----$ QING LI 153833 "[Inference-Validation] After training is...
         local i=0
-        while [ $i -lt 2 ];
+        while [ $i -lt 3 ];
         do
             #log_info "Check RTC status at current directory \"`pwd`\" in round $i..."
             # need "-w" in case the line was too long and shrinked by lscm command
             lines=`$lscm status -w 2>&1`
-            if echo "$lines" | grep -sq "Workspace: .* \"$rtc_workspace\" .* \"$rtc_stream\""; then
+            # succ break out only if workspace loaded and all new change sets are accepted
+            if echo "$lines" | grep -sq "Workspace: .* \"$rtc_workspace\" .* \"$rtc_stream\"" && \
+               ! echo "$lines" | grep -sq "Change sets:"; then
                 { echo "$lines"; pwd; ls -la; } | sed -e 's/^/>> /g' | log_lines info
                 break
 
+            # load in first round
             elif [ $i -eq 0 ]; then
                 log_info "Load RTC component \"$rtc_component\" in workspace \"$rtc_workspace\" into directory \"$rtc_root\"..."
                 lines=`$lscm load -r $rtc_repo --allow --force $rtc_workspace $rtc_component/ 2>&1`
                 if [ $? -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; fi
 
             elif [ $i -eq 1 ]; then
+                log_info "Accept changes in RTC component \"$rtc_component\" in workspace \"$rtc_workspace\" into directory \"$rtc_root\"..."
+                lines=`$lscm accept -r $rtc_repo -C $rtc_component 2>&1`
+                if [ $? -ne 0 ]; then echo "$lines" | sed -e 's/^/>> /g' | log_lines error; fi
+
+            elif [ $i -eq 2 ]; then
                 log_error "Fail to load RTC components \"$rtc_component\""
                 echo "$lines" | sed -e 's/^/>> /g' | log_lines error
             fi
             ((i+=1))
         done
-        test $i -lt 2
+        test $i -lt 3
     else
         log_error "Fail to change directory to workspace in file system path \"$rtc_root\""
         false
@@ -341,14 +349,19 @@ echo "
 
 " | log_lines info
 
+declare rc=1
 rtc_login && \
-create_rtc_workspace && \
-load_rtc_workspace && \
-transfer_rtc_to_git && \
-commit_code_in_git && \
-unload_rtc_workspace && \
+if create_rtc_workspace; then
+    if load_rtc_workspace; then
+        transfer_rtc_to_git && \
+        commit_code_in_git && \
+        rc=0
+    fi
+    unload_rtc_workspace
+fi
 delete_rtc_workspace
 
 if [ -n "$rtc_root" -a -n "$rtc_component" ]; then
     rm -rf $rtc_root/{$rtc_component, .jazz*}
 fi
+exit $rc
