@@ -80,6 +80,18 @@ function install_pam_google_authenticator() {
     fi
 }
 function setup_route() {
+    # activate zebra
+    if do_and_verify \
+        'eval $sudo systemctl status zebra | grep -sq "Active: active .running."' \
+        'eval $sudo systemctl enable zebra && $sudo systemctl start zebra' \
+        "true"; then
+        $sudo systemctl status zebra | sed -e 's/^/>> /g' | log_lines debug
+    else
+        log_error "Fail to start up zebra service"
+        $sudo systemctl status zebra | sed -e 's/^/>> /g' | log_lines error
+        false
+    fi && \
+
     # enable ip forwarding
     local cmd=""
     local cmds="
