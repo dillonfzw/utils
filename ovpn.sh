@@ -93,26 +93,12 @@ function setup_route() {
     fi && \
 
     # enable ip forwarding
-    local cmd=""
-    local cmds="
-        #enable
-        configure terminal
-        ip forwarding
-        exit
-        show running
-        write
-    "
-    IFS_OLD="$IFS"
-    IFS=$'\n'
-    for cmd in $cmds
-    do
-        IFS="$IFS_OLD"
-        cmd=`echo "$cmd" | sed -e 's/^ *\(.*\) *$/\1/g'`
-        [ -n "$cmd" ] || continue
-        echo "$cmd" | grep -sq "^ *#" && continue
-        log_info "Execute vtysh cmd \"$cmd\""
-        $sudo vtysh -d zebra -c "$cmd"
-    done
+    $sudo vtysh \
+        -c "configure terminal" \
+        -c "ip forwarding" \
+        -c "exit" \
+        -c "show running" \
+        -c "write"
 }
 
 function main() {
