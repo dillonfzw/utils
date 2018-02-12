@@ -131,3 +131,19 @@ unset RPATH
 #
 # - clean local variables when this profile was sourced.
 unset KERNEL
+
+############################################################
+# Anaconda
+if ! command -v conda >/dev/null 2>&1; then
+    PYVER=`python --version | grep ^Python | awk '{print $2}' | cut -d. -f1`
+    for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
+    do
+        if [ -d $item ]; then
+            export PATH=$PATH:$item/bin
+            echo "Append $item to PATH"
+            break
+        fi
+    done
+    unset PYVER
+    unset item
+fi
