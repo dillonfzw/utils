@@ -134,8 +134,8 @@ unset KERNEL
 
 ############################################################
 # Anaconda
+PYVER=${PYVER:-`python --version | grep ^Python | awk '{print $2}' | cut -d. -f1`}
 if ! command -v conda >/dev/null 2>&1; then
-    PYVER=`python --version | grep ^Python | awk '{print $2}' | cut -d. -f1`
     for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
     do
         if [ -d $item ]; then
@@ -144,6 +144,6 @@ if ! command -v conda >/dev/null 2>&1; then
             break
         fi
     done
-    unset PYVER
     unset item
 fi
+unset PYVER
