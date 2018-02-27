@@ -59,23 +59,59 @@ function log_lines {
         done
     fi
 }
-function setup_log_level() {
-    __logLevelName=$1
-    __logLevelNum=`__logLevelToNum $__logLevelName`
+function set_log_level() {
+    __logLevelNum=`__logLevelToNum $1`
+}
+function get_log_level() {
+    echo ${LOG_LEVELS[$__logLevelNum]}
+}
+declare -a __logLevelNumStack
+function push_log_level() {
+    declare levelName=$1
+    declare levelNum=`__logLevelToNum $levelName`
+    # cd `pwd` is just waste of time!
+    if [ "$__logLevelNum" = "$levelNum" ]; then return 0; fi
+    # get the latest log level in the stack
+    declare top=${#__logLevelNumStack[@]}
+    declare latestLevelNum=""
+    if [ $top -gt 0 ]; then
+        latestLevelNum=${__logLevelNumStack[$((top-1))]}
+    fi
+    # push current level to stack
+    __logLevelNumStack[$top]=$__logLevelNum
+    # apply log level
+    set_log_level $levelName && \
+    echo "${__logLevelNumStack[@]}"
+}
+function pop_log_level() {
+    declare top=${#__logLevelNumStack[@]}
+    declare levelNum=""
+    if [ "$top" -gt 0 ]; then
+        ((top-=1))
+        levelNum=${__logLevelNumStack[$top]}
+        unset __logLevelNumStack[$top]
+    fi
+    if [ -n "$levelNum" ]; then
+        declare levelName=${LOG_LEVELS[$levelNum]} && \
+        set_log_level $levelName && \
+        echo "${__logLevelNumStack[@]}"
+    else
+        false
+    fi
 }
 declare icnt=0
 declare idx=0
 while [ $icnt -lt ${#LOG_LEVELS[@]} ];
 do
     if [ -n "${LOG_LEVELS[$idx]}" ]; then
-        levelName=${LOG_LEVELS[$idx]}
-        levelNum=$idx
+        declare levelName=${LOG_LEVELS[$idx]}
+        declare levelNum=$idx
 
         # register log levels by setting revert map of level name to its index
         __logLevelToNum $levelName $levelNum >/dev/null 2>&1
 
         # declare helper function
-        cmd='declare -F log_'${levelName}' &>/dev/null || function log_'${levelName}' { if [ -n "$*" ]; then log_lines '${levelNum}' "$@"; fi; }'
+        declare cmd='declare -F log_'${levelName}' &>/dev/null || function log_'${levelName}' { if [ -n "$*" ]; then log_lines '${levelNum}' "$@"; fi; }'
         eval "$cmd"
         ((icnt+=1))
     fi
@@ -86,6 +122,5 @@ unset idx
 
 # set verbose level to info
 # NOTE: this must be called after log levels had been registered
-declare __logLevelNum
-declare __logLevelName
-setup_log_level ${DEFAULT_LOG_LEVEL:-info}
+declare __logLevelNum=
+set_log_level ${DEFAULT_LOG_LEVEL:-info}
