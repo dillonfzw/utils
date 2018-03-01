@@ -134,7 +134,7 @@ unset KERNEL
 
 ############################################################
 # Anaconda
-PYVER=${PYVER:-`python --version | grep ^Python | awk '{print $2}' | cut -d. -f1`}
+PYVER=${PYVER:-`python --version 2>&1 | grep ^Python | awk '{print $2}' | cut -d. -f1`}
 if ! command -v conda >/dev/null 2>&1; then
     for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
     do

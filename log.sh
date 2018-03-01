@@ -18,7 +18,7 @@ LOG_PREFIXES=([0]="M"     [1]="A"     [2]="C"    [3]="E"     [4]="W"    [5]="N" 
 # convert log level to its corresponding number
 function __logLevelToNum() {
     declare levelName=$1
-    declare levelNameSum=`echo "${levelName}" | sum | cut -d' ' -f1`
+    declare levelNameSum=`echo "${levelName}" | sum | cut -d' ' -f1 | sed -e 's/^0*//g'`
     # hidden set function
     if [ -n "$2" ]; then LOG_LEVELS_RMAP[$levelNameSum]=$2; fi
     declare r=${LOG_LEVELS_RMAP[$levelNameSum]}
@@ -108,7 +108,7 @@ do
         declare levelNum=$idx
 
         # register log levels by setting revert map of level name to its index
-        __logLevelToNum $levelName $levelNum >/dev/null 2>&1
+        __logLevelToNum $levelName $levelNum >/dev/null
 
         # declare helper function
         declare cmd='declare -F log_'${levelName}' &>/dev/null || function log_'${levelName}' { if [ -n "$*" ]; then log_lines '${levelNum}' "$@"; fi; }'
@@ -123,4 +123,4 @@ unset idx
 # set verbose level to info
 # NOTE: this must be called after log levels had been registered
 declare __logLevelNum=
-set_log_level ${DEFAULT_LOG_LEVEL:-info}
+set_log_level ${LOG_LEVEL:-${DEFAULT_LOG_LEVEL:-info}}
