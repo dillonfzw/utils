@@ -1,6 +1,28 @@
 syntax on
 set hlsearch
 
+" activate Pathogen manager
+execute pathogen#infect()
+filetype plugin indent on
+
+" Recommended Syntastic setting for new user
+set statusline+=%#warningmsg#
+set statusline+=%{SyntasticStatuslineFlag()}
+set statusline+=%*
+
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_auto_loc_list = 1
+let g:syntastic_check_on_open = 1
+let g:syntastic_check_on_wq = 0
+if $CONDA_PREFIX != ""
+    let conda_include = expand($CONDA_PREFIX) . "/include"
+    "echomsg conda_include
+    let g:syntastic_cpp_include_dirs = [conda_include]
+endif
+let g:syntastic_cpp_check_header = 1
+let g:syntastic_cpp_remove_include_errors = 1
+
+
 " copied from VIM's cscope help
         if has("cscope")
                 set csprg=cscope
