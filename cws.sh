@@ -31,13 +31,14 @@ DEFAULT_egoadmin_gid=${t_gid:-537693}
 DEFAULT_BASEPORT=17869
 DEFAULT_CLUSTERNAME=cluster_dl_`hostname -s`
 DEFAULT_installerbin=`ls -1at cws{,eval}-*${ARCH}.bin 2>/dev/null | head -n1`
-DEFAULT_installerbin_dli=${DEFAULT_installerbin_dli:-`ls -1at dli-*${ARCH}.bin 2>/dev/null | sort -V | tail -n1`}
+DEFAULT_installerbin_dli=${DEFAULT_installerbin_dli:-`ls -1at {dli,dlieval}-*${ARCH}.bin 2>/dev/null | sort -V | tail -n1`}
 DEFAULT_entitlement=`ls -1at $HOME/bin/entitlement-cws221* entitlement* 2>/dev/null | head -n1`
 DEFAULT_cwshome=/opt/ibm/spectrumcomputing
 DEFAULT_cwsrole=cn
 DEFAULT_enforce=false
 DEFAULT_cmd=""
 DEFAULT_DLI_SHARED_FS=/gpfs/dlfs1/$HOSTNAME_S
+DEFAULT_DLI_CONDA_HOME=/opt/anaconda2
 if [ "$DEFAULT_cwsrole" = "mn" ]; then
     DEFAULT_cwsmn=$HOSTNAME_F
 else
@@ -293,6 +294,7 @@ function install_dli() {
     if ! $sudo bash -c "$ego_source_cmd; env \
         CLUSTERADMIN=$egoadmin_uname \
         DLI_SHARED_FS=$DLI_SHARED_FS \
+        DLI_CONDA_HOME=$DLI_CONDA_HOME \
         ${CAFFE_HOME:+"CAFFE_HOME=$CAFFE_HOME"} \
         bash `readlink -m $installerbin_dli` --prefix=$cwshome --quiet"; then
 
