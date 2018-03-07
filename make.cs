@@ -36,6 +36,7 @@ get_src()
                           -o -name '*.py' \
                           -o -name '*.java' \
                           -o -name '*.scala' \
+                          -o -name '*.js' \
                        \) -print | grep -v release_dir | grep -v /usr/lpp/ | cut -d/ -f2-
 	cd $CURPWD
 }
