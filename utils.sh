@@ -531,4 +531,3 @@ function enc_self_b64_gz() {
         false
     fi
 }
-enc_self_b64_gz
