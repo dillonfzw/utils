@@ -1,9 +1,5 @@
 #! /bin/bash
 
-# Copyright 2017 IBM Corp.
-#
-# All Rights Reserved.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -21,7 +17,10 @@
 #               ------------------------------------------
 
 
-
+# ------------------ cut here beg Aeth4Aechoo7ca7aez4eesh3eigeitho -------------
+#-------------------------------------------------------------------------------
+# Utility functions
+#
 function setup_locale() {
     # locale setting requried by caffe and caffeOnSpark mvn building.
     source /etc/profile
@@ -242,11 +241,15 @@ function setup_pip_flags() {
         fi
         if $env_activated || source activate ${conda_env_name}; then
             G_pip_bin=`command -v pip`
+            G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
             $env_activated || source deactivate
         fi
     else
         G_pip_bin=`command -v pip`
+        G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
     fi
+    G_python_ver_major=`echo "$G_python_ver" | cut -d. -f1`
+    G_python_ver_minor=`echo "$G_python_ver" | cut -d. -f2`
 
     local pip=$G_pip_bin
     local pip_version=`$pip --version | awk '{print $2}' | head -n1`
@@ -293,7 +296,7 @@ function pkg_install_yum() {
     $sudo yum $G_yum_flags install -y $pkgs
     local rc=$?
 
-    if echo "$pkgs" | grep -sq -Ew "python2-pip"; then
+    if echo "$pkgs" | grep -sq -Ew "python2-pip|python3-pip|python34-pip"; then
         setup_pip_flags
     fi
     return $rc
@@ -504,3 +507,28 @@ function usage() {
     listFunctions | sed -e 's/^/[cmd] >> /g' | log_lines info
     exit 0
 }
+#
+# end of utility functions
+#-------------------------------------------------------------------------------
+#---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
+function enc_self_b64_gz() {
+    local fself=$1
+    if [ -n "$fself" -a -f "$fself" ]; then
+        shift
+    else
+        fself=$0
+    fi
+    local tbeg=${1:-"Aeth4Aechoo7ca7aez4eesh3eigeitho"}
+    local tend=${2:-"iecha4aeXot7AecooNgai7Ezae3zoRi7"}
+    if [ -n "$fself" -a -f "$fself" ]; then
+        local lines=`sed -e '1,/cut here beg '$tbeg'/d' -e '/cut here end '$tend'/,$d' $fself`
+        if [ -n "$lines" ]; then
+               echo "$lines" | gzip | base64 -b 80
+        else
+            false
+        fi
+    else
+        false
+    fi
+}
+enc_self_b64_gz
