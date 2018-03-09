@@ -1,9 +1,16 @@
-syntax on
-set hlsearch
 
 " activate Pathogen manager
 execute pathogen#infect()
 filetype plugin indent on
+" show existing tab with 4 spaces width
+set tabstop=4
+" when indenting with '>', use 4 spaces width
+set shiftwidth=4
+" On pressing tab, insert 4 spaces
+set expandtab
+
+syntax on
+set hlsearch
 
 " Recommended Syntastic setting for new user
 set statusline+=%#warningmsg#
@@ -20,7 +27,7 @@ if $CONDA_PREFIX != ""
     let g:syntastic_cpp_include_dirs = [conda_include]
 endif
 let g:syntastic_cpp_check_header = 1
-let g:syntastic_cpp_remove_include_errors = 1
+"let g:syntastic_cpp_remove_include_errors = 1
 
 
 " copied from VIM's cscope help
@@ -41,3 +48,7 @@ let g:syntastic_cpp_remove_include_errors = 1
 
 " If use cst(ags), ctags is not necessary.
 "set tags=tags
+
+" https://vi.stackexchange.com/a/505
+" Carpetsmoker answered Feb 6 '15 at 9:41
+" TODO: paste here..

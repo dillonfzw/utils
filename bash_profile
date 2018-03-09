@@ -147,3 +147,10 @@ if ! command -v conda >/dev/null 2>&1; then
     unset item
 fi
 unset PYVER
+
+
+############################################################
+# Configure bash behavior
+#
+# - enforce vi mode
+set -o vi
