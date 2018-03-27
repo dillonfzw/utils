@@ -135,17 +135,32 @@ unset KERNEL
 ############################################################
 # Anaconda
 PYVER=${PYVER:-`python --version 2>&1 | grep ^Python | awk '{print $2}' | cut -d. -f1`}
-if ! command -v conda >/dev/null 2>&1; then
+CONDA_PATH=$(dirname `command -v conda`)
+if [ -n "$CONDA_PATH" ]; then
+    if [ -d "$CONDA_PATH" ]; then
+        CONDA_PATH="`conda info --base`/bin"
+    fi
+    CONDA_VER=`conda info -s | grep ^sys.version | awk '{print $2}' | cut -d. -f1`
+    # clean unmatched conda from PATH
+    if [ "$CONDA_VER" != "$PYVER" ]; then
+        export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "$CONDA_PATH" | xargs | tr ' ' ':'`
+        echo "Remove $CONDA_PATH from PATH"
+        unset CONDA_PATH
+    fi
+    unset CONDA_VER
+fi
+if [ -z "$CONDA_PATH" ]; then
     for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
     do
         if [ -d $item ]; then
             export PATH=$PATH:$item/bin
-            echo "Append $item to PATH"
+            echo "Append $item/bin to PATH"
             break
         fi
     done
     unset item
 fi
+unset CONDA_PATH
 unset PYVER
 
 
