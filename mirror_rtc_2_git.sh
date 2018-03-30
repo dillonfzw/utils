@@ -61,6 +61,11 @@ elif [ "$project" = "dlmfabric_r110" ]; then
     DEFAULT_rtc_component=dlmfabric
     DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
 
+elif [ "$project" = "dlmfabric_onefabric" ]; then
+    DEFAULT_rtc_stream=dlmfabric_onefabric
+    DEFAULT_rtc_component=dlmfabric
+    DEFAULT_git_repo=git@github.ibm.com:sysongyu/fabric.git
+
 # Install
 elif [ "$project" = "install_trunk" ]; then
     DEFAULT_rtc_stream=install_36_cws_working
