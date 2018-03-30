@@ -69,10 +69,10 @@ function version_cmp() {
     local msg="name=\"$pkg_name\", verA=\"$pkg_verR\", op=\"$pkg_op\", verB=\"$pkg_verE\", vMin=\"$pkg_vmin\""
     if [ \( -z "$pkg_verE" -a -n "$pkg_verR" \) -o \
          \( -n "$pkg_verE" -a \( \
-             \( "${pkg_verE}"  = "${pkg_verR}" -a `expr match "$pkg_op" "^.*=$"` -gt 0 \) -o \
+             \( "${pkg_verE}"  = "${pkg_verR}" -a `expr "$pkg_op" : "^.*=$"` -gt 0 \) -o \
              \( "${pkg_verE}" != "${pkg_verR}" -a \( \
-                 \( `expr match "$pkg_op" "^>.*$"` -gt 0 -a "${pkg_vmin}" = "${pkg_verE}" \) -o \
-                 \( `expr match "$pkg_op" "^<.*$"` -gt 0 -a "${pkg_vmin}" = "${pkg_verR}" \) \
+                 \( `expr "$pkg_op" : "^>.*$"` -gt 0 -a "${pkg_vmin}" = "${pkg_verE}" \) -o \
+                 \( `expr "$pkg_op" : "^<.*$"` -gt 0 -a "${pkg_vmin}" = "${pkg_verR}" \) \
              \) \) \
          \) \) ]; then
         if ! $silent; then log_debug "${FUNCNAME[0]} succ: $msg"; fi
@@ -81,30 +81,40 @@ function version_cmp() {
         false
     fi
 }
-function for_each_line_op() {
-    local silent=false
-    if [ "$1" = "--silent" ]; then silent=true; shift; fi
+function for_each_op() {
+    local _silent=false
+    if [ "$1" = "--silent" ]; then _silent=true; shift; fi
+    local _fs="$IFS"
+    if [ "$1" = "--fs" ]; then
+        _fs=$2; shift 2
+    elif [ `expr "$1" : "^--fs="` -eq 5 ]; then
+        _fs="${1/--fs=}"; shift
+    fi
     local op=$1; shift
     local lines="$@"
 
     [ -n "$lines" ] || return 0
 
-    local lcnt=`echo "$lines" | wc -l`
+    local lcnt=`echo "$lines" | wc -l | awk '{print $1}'`
     local i=0
     local IFS_OLD="$IFS"
-    IFS=$'\n'
+    #IFS=$'\n'
+    IFS=$_fs
     local line=""
     for line in $lines
     do
         IFS="$IFS_OLD"
         [ -n "$line" ] || continue
-        if ! $silent; then
+        if ! $_silent; then
             print_title "Run \"$op\" at round $((i+1)) of $lcnt with parameter \"$line\""
         fi | log_lines debug
         $op $line || break
         ((i+=1))
     done
     test $i -ge $lcnt
+}
+function for_each_line_op() {
+    for_each_op --fs=$'\n' "$@"
 }
 # verify first, if failed, do op{eration} and verify again
 # return verify result
@@ -126,11 +136,11 @@ function do_and_verify() {
 # download by checking cache first
 function download_by_cache() {
     # pick up command line argument "cache_home", if there is
-    local cache_home=${cache_home} && \
+    local cache_home=${cache_home:-"~/.cache/download"} && \
     if [ "$1" = "--cache_home" ]; then
         cache_home=$2
         shift 2
-    elif [ `expr match "$1" "--cache_home="` -eq 12 ]; then
+    elif [ `expr "$1" : "--cache_home="` -eq 12 ]; then
         cache_home="`echo "$1" | cut -d= -f2-`"
         shift
     elif [ -z "$cache_home" ]; then
@@ -143,7 +153,7 @@ function download_by_cache() {
     if [ "$1" = "--dry-run" ]; then
         dry_run=true
         shift
-    elif [ `expr match "$1" "--dry-run="` -eq 9 ]; then
+    elif [ `expr "$1" : "--dry-run="` -eq 9 ]; then
         dry_run="`echo "$1" | cut -d= -f2-`"
         shift
     fi && \
@@ -156,8 +166,8 @@ function download_by_cache() {
     if [ -z "$f" ]; then log_error "URL \"$url\" does not point to a file"; false; fi && \
 
     local d=${url%/${f}} && \
-    local fsum=`echo "$f" | sum -r` && fsum=${fsum:0:2} && \
-    local dsum=`echo "$d" | sum -r` && dsum=${dsum:0:2} && \
+    local fsum=`echo "$f" | sum` && fsum=${fsum:0:2} && \
+    local dsum=`echo "$d" | sum` && dsum=${dsum:0:2} && \
     local cache_dir=${cache_home}/$dsum/$fsum && \
 
     # it's dry-run's exit now

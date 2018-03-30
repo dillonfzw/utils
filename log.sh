@@ -111,8 +111,9 @@ do
         __logLevelToNum $levelName $levelNum >/dev/null
 
         # declare helper function
-        declare cmd='declare -F log_'${levelName}' &>/dev/null || function log_'${levelName}' { if [ -n "$*" ]; then log_lines '${levelNum}' "$@"; fi; }'
-        eval "$cmd"
+        declare _cmd_yaing4ai4i='declare -F log_'${levelName}' &>/dev/null || function log_'${levelName}' { if [ -n "$*" ]; then log_lines '${levelNum}' "$@"; fi; }'
+        eval "$_cmd_yaing4ai4i"
+        unset _cmd_yaing4ai4i
         ((icnt+=1))
     fi
     ((idx+=1))
