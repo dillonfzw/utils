@@ -10,8 +10,8 @@ DEFAULT_syntastic_repo="https://github.com/vim-syntastic/syntastic.git"
 source getopt.sh
 
 function install_syntastic() {
-    local vim_autoload="~/.vim/autoload" && \
-    local vim_bundle="~/.vim/bundle" && \
+    local vim_autoload="$HOME/.vim/autoload" && \
+    local vim_bundle="$HOME/.vim/bundle" && \
 
     for_each_op "mkdir -p" "$vim_autoload $vim_bundle" && \
     local f_pathogen=`basename $pathogen_url` && \
@@ -32,7 +32,7 @@ function install_syntastic() {
         "test -d $vim_bundle/$d_syntastic/.git" \
         "git clone $syntastic_repo $vim_bundle/$d_syntastic" \
         "true"; then
-        git -C $vim_bundle/$d_syntastic log -n1 | sed -e 's/^/>> /g' | log_lines debug
+        (cd $vim_bundle/$d_syntastic && git log -n1;) | sed -e 's/^/>> /g' | log_lines debug
     else
         log_error "Fail to check out $d_syntastic to $vim_bundle"
         false
