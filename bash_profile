@@ -135,8 +135,9 @@ unset KERNEL
 ############################################################
 # Anaconda
 PYVER=${PYVER:-`python --version 2>&1 | grep ^Python | awk '{print $2}' | cut -d. -f1`}
-CONDA_PATH=$(dirname `command -v conda`)
+CONDA_PATH=`command -v conda`
 if [ -n "$CONDA_PATH" ]; then
+    CONDA_PATH=`dirname $CONDA_PATH`
     if [ -d "$CONDA_PATH" ]; then
         CONDA_PATH="`conda info --base`/bin"
     fi
