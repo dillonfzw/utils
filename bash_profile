@@ -154,8 +154,13 @@ if [ -z "$CONDA_PATH" ]; then
     for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
     do
         if [ -d $item ]; then
-            export PATH=$PATH:$item/bin
-            echo "Append $item/bin to PATH"
+            if [ -f $item/etc/profile.d/conda.sh ]; then
+                source $item/etc/profile.d/conda.sh
+                echo "Source $item/etc/profile.d/conda.sh..."
+            else
+                export PATH=$PATH:$item/bin
+                echo "Append $item/bin to PATH"
+            fi
             break
         fi
     done
