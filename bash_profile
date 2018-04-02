@@ -139,7 +139,7 @@ CONDA_PATH=`command -v conda`
 if [ -n "$CONDA_PATH" ]; then
     CONDA_PATH=`dirname $CONDA_PATH`
     if [ -d "$CONDA_PATH" ]; then
-        CONDA_PATH="`conda info --base`/bin"
+        CONDA_PATH="`conda info -s | grep ^sys.prefix | awk '{print $2}'`/bin"
     fi
     CONDA_VER=`conda info -s | grep ^sys.version | awk '{print $2}' | cut -d. -f1`
     # clean unmatched conda from PATH
