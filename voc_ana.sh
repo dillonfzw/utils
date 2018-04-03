@@ -162,9 +162,16 @@ if true && [ -d ImageSets ]; then
     #false && \
     for label in `cat label_idx.txt | cut -d' ' -f1`
     do
-        echo "$label `grep " $label\$" img_label.txt | wc -l`"
+        echo "$label `grep " $label\$" img_label.txt | wc -l | awk '{print $1}'`"
     done \
-      > label_cnt.txt
+      > label_cnt.2.txt
+    if ! diff label_cnt.txt label_cnt.2.txt; then
+        log_error "label_cnt with two different methods are different, Abort!"
+        exit 1
+    else
+        rm -f label_cnt.2.txt
+    fi
+
     
     #false && \
     log_info "Separate images to train, val, test and val_test for convenience..."
