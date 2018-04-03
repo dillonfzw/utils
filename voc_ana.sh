@@ -100,7 +100,7 @@ if true && [ -d ImageSets ]; then
         # per label count
         log_info "Generate label_cnt${item}.txt"
         sort -t' ' -k2 img_label${item}.txt | \
-        awk 'BEGIN {item=""; cnt=0;} {if ($2 == item) {cnt=cnt+1;} else {if (item != "") {print item,cnt;};cnt=1;item=$2;};} END{print item,cnt}' > label_cnt${item}.txt
+        awk 'BEGIN {item=""; cnt=0;} {if ($2 == item) {cnt=cnt+1;} else {if (item != "") {print item,cnt;};cnt=1;item=$2;};} END{print item" "cnt}' > label_cnt${item}.txt
         head -n10 label_cnt${item}.txt | sed -e 's/^/>> /g' | log_lines debug
         fLogOut=${fLogOut}${fLogOut:+ }label_cnt${item}.txt
         if [ -z "$item" ]; then
@@ -181,11 +181,13 @@ if true && [ -d ImageSets ]; then
         fi
         ((icnt=0))
         icnt_all=${#fnames[@]}
+        [ -d ${item}/all ] || mkdir -p ${item}/all
+        [ -d ${item}_bbox/all ] || mkdir -p ${item}_bbox/all
         for fname in ${fnames[@]}
         do
-            if [ `expr $icnt % 100` -eq 0 ]; then
+            if [ `expr $icnt % 100` -eq 0 -a $icnt -gt 0 ]; then
                 per=`echo "scale=2; ($icnt*100/$icnt_all)" | bc -l`
-                log_debug "${per:-0.00}%: Process $item $fname ${icnt}/${icnt_all}"
+                log_debug "${per:-0.00}%: ${icnt}/${icnt_all}, Process $item $fname"
             fi
             label=$(basename $(dirname `find all/*/ -name "${fname}*" | grep -v "\.xml$" | head -n1`))
             if [ -z "$label" ]; then
@@ -195,37 +197,35 @@ if true && [ -d ImageSets ]; then
             fimg_r=JPEGImages/$fname.jpg
             fimg_l=Images/$fname.jpg
     
-            [ -d ${item}/all ] || mkdir -p ${item}/all
             [ -L ${item}/all/$fname.jpg ] || ln -s ../../$fimg_r ${item}/all/
             [ -d ${item}/$label ] || mkdir -p ${item}/$label
             [ -L ${item}/$label/$fname.jpg ] || ln -s ../all/$fname.jpg ${item}/$label/
     
-            [ -d ${item}_bbox/all ] || mkdir -p ${item}_bbox/all
             [ -L ${item}_bbox/all/$fname.jpg ] || ln -s ../../$fimg_l ${item}_bbox/all/
             [ -d ${item}_bbox/$label ] || mkdir -p ${item}_bbox/$label
             [ -L ${item}_bbox/$label/$fname.jpg ] || ln -s ../all/$fname.jpg ${item}_bbox/$label/
 
             ((icnt+=1))
         done
+        # count #images per dataset
         for dir in ${item}/*
         do
             label=`basename $dir`
             if [ "$label" = "all" ]; then continue; fi
-            echo "$label `find $dir/ -maxdepth 1 -name "*.jpg" | wc -l`"
-        done > label_cnt_${item}.txt
+            echo "$label `find $dir/ -maxdepth 1 -name "*.jpg" | wc -l | awk '{print $1}'`"
+        done > img_cnt_${item}.txt
     done
         
     # log for debug
-    for FILE in img_label_grp label_cnt label_cnt_train label_cnt_val label_cnt_test label_cnt_val_test
+    for FILE in {img,label}_cnt{_train,_val,_test,}.txt img_label_grp.txt
     do
-        f=$FILE.txt
-        sed -e 's/^/['$FILE']: >> /g' $f | log_lines debug
+        sed -e 's/^/['${FILE%%.txt}']: >> /g' $FILE | log_lines debug
     done
 fi && \
     exit 1
 
 if true; then
-    print_title "handle inference result" && \
+    print_title "Handle inference result" && \
     for dir in `ls -d train_*_{val,inf}* 2>/dev/null | xargs`
     do
         for fimg in `ls -1 $dir/dec_*.jpg 2>/dev/null`; do mv $fimg `echo $fimg | sed -e 's/dec_//g'`; done
