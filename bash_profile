@@ -135,22 +135,23 @@ unset KERNEL
 ############################################################
 # Anaconda
 PYVER=${PYVER:-`python --version 2>&1 | grep ^Python | awk '{print $2}' | cut -d. -f1`}
-CONDA_PATH=`command -v conda`
-if [ -n "$CONDA_PATH" ]; then
-    CONDA_PATH=`dirname $CONDA_PATH`
-    if [ -d "$CONDA_PATH" ]; then
-        CONDA_PATH="`conda info -s | grep ^sys.prefix | awk '{print $2}'`/bin"
-    fi
-    CONDA_VER=`conda info -s | grep ^sys.version | awk '{print $2}' | cut -d. -f1`
-    # clean unmatched conda from PATH
-    if [ "$CONDA_VER" != "$PYVER" ]; then
-        export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "$CONDA_PATH" | xargs | tr ' ' ':'`
-        echo "Remove $CONDA_PATH from PATH"
-        unset CONDA_PATH
-    fi
-    unset CONDA_VER
+if declare -f conda >/dev/null 2>&1; then
+    _CONDA_PATH_Chae4dok9e="`conda info -s | grep ^sys.prefix | awk '{print $2}'`/bin"
+else
+    _CONDA_PATH_Chae4dok9e=`command -v conda`
 fi
-if [ -z "$CONDA_PATH" ]; then
+if [ -n "$_CONDA_PATH_Chae4dok9e" ]; then
+    _CONDA_PATH_Chae4dok9e=`dirname $_CONDA_PATH_Chae4dok9e`
+    _CONDA_VER_Chae4dok9e=`conda info -s | grep ^sys.version | awk '{print $2}' | cut -d. -f1`
+    # clean unmatched conda from PATH
+    if [ "$_CONDA_VER_Chae4dok9e" != "$PYVER" ]; then
+        export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "$_CONDA_PATH_Chae4dok9e" | xargs | tr ' ' ':'`
+        echo "Remove $_CONDA_PATH_Chae4dok9e from PATH"
+        unset _CONDA_PATH_Chae4dok9e
+    fi
+    unset _CONDA_VER_Chae4dok9e
+fi
+if [ -z "$_CONDA_PATH_Chae4dok9e" ]; then
     for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
     do
         if [ -d $item ]; then
@@ -166,7 +167,7 @@ if [ -z "$CONDA_PATH" ]; then
     done
     unset item
 fi
-unset CONDA_PATH
+unset _CONDA_PATH_Chae4dok9e
 unset PYVER
 
 
