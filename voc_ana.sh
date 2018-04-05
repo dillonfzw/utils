@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-LOG_LEVEL=debug
+LOG_LEVEL=${LOG_LEVEL:-info}
 source log.sh
 source utils.sh
 
@@ -16,6 +16,73 @@ function get_labels() {
         grep -H "<name>.*<\/name>" $fxml | \
           sed -e 's/^Annotations\/\(.*\).xml:.*<name>\(.*\)<\/name>.*$/\1 \2/g'
     done | sort -t' ' -k1
+}
+# Depends:
+# * ImageSets/Main/<ds>.txt
+# * img_label_cnt_<ds>.txt
+# * label_cnt_<ds>.txt
+# * <ds>/<cls>/*.jpg
+function img_ext() {
+    local ds=$1
+    local cls=$2
+    local cnt_target=$3
+    local voc_ds_lst=ImageSets/Main/${ds}.txt
+    # count how much imgs in the target class of dataset
+    local fpaths=(`find ${ds}/${cls}/ -name "*.jpg" | sed -e 's,^.*/\(.*\).jpg$,\1,g'`)
+    local fpaths_cnt=${#fpaths[@]}
+    # count how much labels in the target class of dataset
+    declare -i cnt_curr=`grep "^${cls} " label_cnt_${ds}.txt | awk '{print $2}'`
+    local cnt_diff=$((cnt_target - cnt_curr))
+    # generate sufficient random numbers
+    local rands=`awk -v cnt=$cnt_diff -v min=0 -v max=$((fpaths_cnt-1)) '
+    BEGIN { srand(); range=max-min+1; for (i=0;i<cnt;i++) { print int(rand()*range)+min; }; }
+    '`
+    local idx
+    local img_cnt=0
+    local ext=ext.${cls}
+    rm -f ${voc_ds_lst}.$ext
+    touch ${voc_ds_lst}.$ext
+    for idx in $rands
+    do
+        # pick up a img based on the random index
+        fname=${fpaths[$idx]}
+        echo "$fname" >> ${voc_ds_lst}.$ext
+        ((img_cnt+=1))
+        # get the label count in the new img
+        flabel_cnt=`grep -w "$fname" img_label_cnt_${ds}.txt | awk '{print $2}'`
+        # re-count remaining missing labels
+        ((cnt_diff-=flabel_cnt))
+        log_debug "Add: idx=$idx cls=$cls remains=$cnt_diff label_cnt=$flabel_cnt fname=$fname"
+        # exit rules
+        if [ "$cnt_diff" -le 0 ]; then break; fi
+    done
+    log_info "Add $img_cnt(orig=$fpaths_cnt) images and $((cnt_target-cnt_curr-cnt_diff))(#${ds}[${cls}]=$((cnt_target-cnt_diff))) labels to ${cls} class in dataset ${ds}"
+}
+# Depends:
+# * img_ext()
+# * ImageSets/Main/<ds>.txt
+# * label_idx.txt
+function balance_train_ds() {
+    local label_cnt_target=$2
+    local ds=train
+
+    {
+        f=ImageSets/Main/${ds}.txt
+        [ -f ${f}.orig ] || cp -f $f $f.orig
+        classes=`cut -d' ' -f1 label_idx.txt`
+        #classes="SD120 SD130"
+        for cls in $classes
+        do
+            img_ext $ds $cls $label_cnt_target
+        done
+        flsts="$f.orig `echo "$classes" | tr ' ' '\n' | sed -e 's,^,'$f'.ext.,g' | xargs`"
+        log_info "$flsts"
+        cat $flsts >$f.new 2>/dev/null
+        #{ cat $f.orig; for cls in $classes; do cat $f.ext.$cls; done; } >$f.new
+        rm -f $f
+        ln -s $(basename $f.new) $f
+        wc -l $flsts ${f}.new ${f} 2>/dev/null
+    }
 }
 
 declare cnt_succ=0
