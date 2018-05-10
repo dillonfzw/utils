@@ -45,7 +45,7 @@ function log_lines {
         return 0
     fi && \
 
-    declare levelPrefix="[${LOG_PREFIXES[$levelNum]}]" && \
+    declare levelPrefix="[${LOG_PREFIXES[$levelNum]}]:" && \
 
     declare line=$@ && \
     if [ -n "$line" ]; then
