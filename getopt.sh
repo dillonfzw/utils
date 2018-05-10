@@ -41,7 +41,7 @@ do
         if [ -z \"\$$_nvar_thi3ahh3eR\" ]; then \
             $_nvar_thi3ahh3eR=\$DEFAULT_$_nvar_thi3ahh3eR; \
             [ \"$_nvar_thi3ahh3eR\" != \"verbose\" ] && \
-            log_debug \"Default variable \\\"$_nvar_thi3ahh3eR\\\" to \\\"\$$_nvar_thi3ahh3eR\\\".\"; \
+            declare -p $_nvar_thi3ahh3eR | sed -e 's/^/Default variable: /g' | log_lines debug; \
         fi;"
     fi
 done
