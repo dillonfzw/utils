@@ -46,6 +46,28 @@ function setup_locale() {
       fi
     done
 }
+function setup_os_flags() {
+    # rhel or ubuntu
+    eval "OS_ID=`grep "^ID=" /etc/os-release | cut -d= -f2-`"
+    # compatible with centos OS
+    [ "$OS_ID" = "centos" ] && OS_ID="rhel"
+    # 7 for rhel, 16.04 for ubuntu
+    eval "OS_VER=`grep "^VERSION_ID=" /etc/os-release | cut -d= -f2-`"
+    ARCH=${ARCH:-`uname -m`}
+    if [ $ARCH = "ppc64le" ]; then ARCH2=ppc64el; else ARCH2=$ARCH; fi
+    if [ "$OS_ID" = "rhel" ]; then
+        is_rhel=true; is_ubuntu=false;
+        # rhel7
+        OS_DISTRO="${OS_ID}`echo "$OS_VER" | cut -d. -f-1 | sed -e 's/\.//g'`"
+    elif [ "$OS_ID" = "ubuntu" ]; then
+        is_rhel=false; is_ubuntu=true;
+        # ubuntu1604
+        OS_DISTRO="${OS_ID}`echo "$OS_VER" | cut -d. -f-2 | sed -e 's/\.//g'`"
+    else
+        log_error "Unsupported OS distribution. Abort!"
+        exit 1
+    fi
+}
 function print_title() {
     echo -e "\n"
     echo "+-----------------------------------------------------------"
@@ -242,17 +264,38 @@ function filter_pkgs_groupby() {
       for (a in arr) print arr[a]
     }'
 }
+# detect if there is conda command available in current env
+function has_conda() {
+    command -v conda >/dev/null || declare -f conda >/dev/null
+}
+# shadow conda command
+function _Ki7eeth3_conda() {
+    if declare -f conda >/dev/null; then
+        conda $@
+    elif command -v conda >/dev/null; then
+        source $@
+    fi
+}
+# different pip version has different command line options
+function setup_conda_flags() {
+    local conda_profile=$conda_install_home/etc/profile.d/conda.sh
+    if do_and_verify "has_conda" "source $conda_profile" 'true'; then
+        G_conda_bin="`conda info -s | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
+        G_conda_install_flags=("--yes")
+    fi
+    set | grep "^G_conda" | sort -t= -k1 | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
+}
 # different pip version has different command line options
 function setup_pip_flags() {
-    if $use_conda && command -v conda >/dev/null 2>&1; then
+    if $use_conda && has_conda; then
         local env_activated=false
         if [ "${CONDA_DEFAULT_ENV}" = "$conda_env_name" ]; then
             env_activated=true
         fi
-        if $env_activated || source activate ${conda_env_name}; then
+        if $env_activated || _Ki7eeth3_conda activate ${conda_env_name}; then
             G_pip_bin=`command -v pip`
             G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
-            $env_activated || source deactivate
+            $env_activated || _Ki7eeth3_conda deactivate
         fi
     else
         G_pip_bin=`command -v pip`
@@ -264,13 +307,25 @@ function setup_pip_flags() {
     local pip=$G_pip_bin
     local pip_version=`$pip --version | awk '{print $2}' | head -n1`
     if [ -n "$pip_version" ] && version_cmp pip ">=" "$pip_version" "9.0.1"; then
-        G_pip_install_flags="--upgrade --upgrade-strategy only-if-needed"
-        G_pip_list_flags="--format freeze"
+        G_pip_install_flags=("--upgrade" "--upgrade-strategy" "only-if-needed")
+        G_pip_list_flags=("--format freeze")
     else
-        G_pip_install_flags="--upgrade"
-        G_pip_list_flags=""
+        G_pip_install_flags=("--upgrade")
+        G_pip_list_flags=()
     fi
     set | grep "^G_pip" | sort -t= -k1 | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
+}
+function setup_apt_flags() {
+    if $notty; then
+        G_apt_bin="env DEBIAN_FRONTEND=noninteractive apt-get"
+    else
+        G_apt_bin="apt-get"
+    fi
+    G_apt_install_flags=(
+    "-y"
+    "--allow-unauthenticated"
+    "--no-install-recommends"
+    )
 }
 # clean cache directory to make docker image efficient
 function clean_pip_cache() {
@@ -303,7 +358,7 @@ function filter_pkgs_conda() {
 }
 function pkg_install_yum() {
     local pkgs="$@"
-    $sudo yum $G_yum_flags install -y $pkgs
+    $sudo yum ${G_yum_flags[@]} install -y $pkgs
     local rc=$?
 
     if echo "$pkgs" | grep -sq -Ew "python2-pip|python3-pip|python34-pip"; then
@@ -313,7 +368,7 @@ function pkg_install_yum() {
 }
 function pkg_install_deb() {
     local pkgs="$@"
-    $sudo $apt_get install $apt_get_install_options $pkgs
+    $sudo ${G_apt_bin} install ${G_apt_install_flags[@]} $pkgs
     local rc=$?
 
     if echo "$pkgs" | grep -sq -Ew "python-pip"; then
@@ -328,7 +383,7 @@ function pkg_install_pip() {
         $sudo mkdir -p $PYTHONUSERBASE
     fi && \
     $sudo ${sudo:+"-i"} env ${PYTHONUSERBASE:+"PYTHONUSERBASE=$PYTHONUSERBASE"} \
-        $pip install ${PYTHONUSERBASE:+"--user"} $G_pip_install_flags $pkgs
+        $pip install ${PYTHONUSERBASE:+"--user"} ${G_pip_install_flags[@]} $pkgs
     local rc=$?
 
     if echo "$pkgs" | grep -sq -Ew "pip"; then
@@ -339,11 +394,11 @@ function pkg_install_pip() {
 function pkg_install_conda() {
     if ! $use_conda; then return; fi
     local pkgs="$@"
-    $sudo $conda install ${conda_env_name:+"-n"} ${conda_env_name} $conda_install_options $pkgs
+    $sudo $G_conda_bin install ${conda_env_name:+"-n"} ${conda_env_name} ${G_conda_install_flags[@]} $pkgs
 }
 function pkg_list_installed_yum() {
     local pkgs="$@"
-    $sudo yum $G_yum_flags list installed $pkgs
+    $sudo yum ${G_yum_flags[@]} list installed $pkgs
 }
 function pkg_list_installed_deb() {
     local pkgs="$@"
@@ -359,9 +414,9 @@ function pkg_list_installed_pip() {
     local cnt=`echo "$pkgs" | wc -w`
     local lines=`{ if [ -n "$PYTHONUSERBASE" ]; then
                        $sudo ${sudo:+"-i"} env PYTHONUSERBASE=$PYTHONUSERBASE \
-                         $pip list --user $G_pip_list_flags;
+                         $pip list --user ${G_pip_list_flags[@]};
                    fi; \
-                   $sudo ${sudo:+"-i"} $pip list $G_pip_list_flags; \
+                   $sudo ${sudo:+"-i"} $pip list ${G_pip_list_flags[@]}; \
                  } | \
                  sed -e 's/ *(\(.*\))$/==\1/g' | \
                  sort -u | \
@@ -377,7 +432,7 @@ function pkg_list_installed_conda() {
                  sed -e 's/[<=>]=.*$//g' -e 's/[<>].*$//g' -e 's/^\(.*\)$/^\1==/g' | \
                  xargs | tr ' ' '|'`
     local cnt=`echo "$pkgs" | wc -w`
-    local lines=`$sudo ${sudo:+"-i"} $conda list ${conda_env_name:+"-n"} ${conda_env_name} | awk '{print $1"=="$2}' | \
+    local lines=`${G_conda_bin} list ${conda_env_name:+"-n"} ${conda_env_name} | awk '{print $1"=="$2}' | \
                    sed -e 's/ *(\(.*\))$/==\1/g' | \
                    grep -E "$regex"`
     local lcnt=`echo "$lines" | grep -v "^$" | wc -l`
@@ -520,6 +575,112 @@ function usage() {
 #
 # end of utility functions
 #-------------------------------------------------------------------------------
+
+
+#-------------------------------------------------------------------------------
+#
+# begin of variables which utility functions were relies on
+#-------------------------------------------------------------------------------
+# os flags is highest priority
+setup_os_flags
+
+DEFAULT_use_conda=${DEFAULT_use_conda:-true}
+DEFAULT_sudo=${DEFAULT_sudo:-""}
+
+#-------------------------------------------------------------------------------
+# Setup conda related global variables/envs
+declare G_conda_bin=${G_conda_bin:-`command -v conda`}
+declare -a G_conda_install_flags=${G_conda_install_flags:-()}
+setup_conda_flags
+
+declare -a G_apt_install_flags=${G_apt_install_flags:-()}
+setup_apt_flags
+
+#-------------------------------------------------------------------------------
+# Setup pip related global variables/envs
+declare G_pip_bin=${G_pip_bin:-`command -v pip`}
+declare -a G_pip_install_flags=${G_pip_install_flags:-()}
+declare -a G_pip_list_flags=${G_pip_list_flags:-()}
+declare G_python_ver=${G_python_ver:-""}
+declare G_python_ver_major=${G_python_ver_major:-""}
+declare G_python_ver_minor=${G_python_ver_minor:-""}
+setup_pip_flags
+
+#-------------------------------------------------------------------------------
+# Setup yum related global variables/envs
+declare -a G_yum_flags=${G_yum_flags:-()}
+#
+# end of variables which utility functions were relies on
+#-------------------------------------------------------------------------------
+
+
+#-------------------------------------------------------------------------------
+#
+# begin of feature functions
+#
+function install_anaconda() {
+    local python_ver_major=${python_ver_major:-"3"}
+    print_title "Install Anaconda${python_ver_major} installer's dependency" | log_lines debug && \
+    local pkgs="" && \
+    pkgs=${pkgs}${pkgs:+ }"\
+        bzip2 \
+    " && \
+    if do_and_verify "pkg_verify $pkgs" "pkg_install $pkgs" "true"; then
+        pkg_list_installed $pkgs
+    else
+        log_error "Fail to install anaconda installer's dependent pkgs \"`filter_pkgs $pkgs | xargs`\""
+        false
+    fi && \
+
+    print_title "Install Anaconda${python_ver_major}" | log_lines debug && \
+    if do_and_verify \
+        'eval bash -l -c "conda --version 2>&1 | grep -sq \"^conda '$conda_ver'\""' \
+        'eval f=`download_by_cache $conda_installer_url` && $sudo bash $f -b -p $conda_install_home &&
+              $sudo ln -s $conda_install_home/etc/profile.d/conda.sh /etc/profile.d/ &&
+              setup_conda_flags' \
+        "true"; then
+        ${G_conda_bin} info | sed -e 's/^/>> /g' | log_lines debug
+    else
+        log_error "Fail to install Anaconda${python_ver_major} \"`basename $conda_installer_url`\""
+        if [ -d ${conda_install_home}.fail ]; then rm -rf ${conda_install_home}.fail; fi
+        mv $conda_install_home $conda_install_home.fail
+        false
+    fi
+}
+function conda_create_env() {
+    local _user=false
+    if [ "$1" = "--user" ]; then _user=true; shift; fi
+    local _ve_name
+    if [ "$1" = "--name" ]; then
+        _ve_name=$2; shift 2
+    elif [ `expr "$1" : "^--name="` -eq 7 ]; then
+        _ve_name="${1/--name=}"; shift
+    else
+        _ve_name=$conda_ve_name
+    fi
+    local extra_args=$@
+    
+    print_title "Install Anaconda${python_ver_major} environment \"${_ve_name}\"" | log_lines debug && \
+    if do_and_verify \
+        'eval ${G_conda_bin} env list | grep -sq "^${_ve_name} \+"' \
+        'eval if ! ${_user}; then _prefix=${sudo:+"${sudo} -i"}; fi; ${_prefix}${G_conda_bin} create --name ${_ve_name} --yes ${G_conda_install_flags[@]} $extra_args pip' \
+        'true'; then
+        {
+            ${G_conda_bin} env list | grep "^${_ve_name} *"
+            ${G_conda_bin} list --name $_ve_name
+        } | sed -e 's/^/>> /g' | log_lines debug
+    else
+        log_error "Fail to create conda environment \"$_ve_name\""
+        false
+    fi
+}
+DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"/opt/anaconda${python_ver_major}"}
+DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
+DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/Anaconda3-5.1.0-Linux-x86_64.sh"}
+#"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+
+# end of feature functions
+#-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
 function enc_self_b64_gz() {
     local fself=$1
@@ -533,7 +694,7 @@ function enc_self_b64_gz() {
     if [ -n "$fself" -a -f "$fself" ]; then
         local lines=`sed -e '1,/cut here beg '$tbeg'/d' -e '/cut here end '$tend'/,$d' $fself`
         if [ -n "$lines" ]; then
-               echo "$lines" | gzip | base64 -b 80
+               echo "$lines" | gzip | base64 -w 80
         else
             false
         fi
