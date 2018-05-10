@@ -90,7 +90,7 @@ function version_cmp() {
     local pkg_vmin=`echo -e "${pkg_verE}\n${pkg_verR}" | sort -V | grep -v "^$" | head -n1`
     local msg="name=\"$pkg_name\", verA=\"$pkg_verR\", op=\"$pkg_op\", verB=\"$pkg_verE\", vMin=\"$pkg_vmin\""
     if [ \( -z "$pkg_verE" -a -n "$pkg_verR" \) -o \
-         \( -n "$pkg_verE" -a \( \
+         \( -n "$pkg_verE" -a -n "$pkg_verR" -a \( \
              \( "${pkg_verE}"  = "${pkg_verR}" -a `expr "$pkg_op" : "^.*=$"` -gt 0 \) -o \
              \( "${pkg_verE}" != "${pkg_verR}" -a \( \
                  \( `expr "$pkg_op" : "^>.*$"` -gt 0 -a "${pkg_vmin}" = "${pkg_verE}" \) -o \
@@ -412,15 +412,16 @@ function pkg_list_installed_pip() {
                  sed -e 's/[<=>]=.*$//g' -e 's/[<>].*$//g' -e 's/^\(.*\)$/^\1==/g' | \
                  xargs | tr ' ' '|'`
     local cnt=`echo "$pkgs" | wc -w`
+    # we'd better to compare package name case insensitive.
     local lines=`{ if [ -n "$PYTHONUSERBASE" ]; then
-                       $sudo ${sudo:+"-i"} env PYTHONUSERBASE=$PYTHONUSERBASE \
+                       env PYTHONUSERBASE=$PYTHONUSERBASE \
                          $pip list --user ${G_pip_list_flags[@]};
                    fi; \
-                   $sudo ${sudo:+"-i"} $pip list ${G_pip_list_flags[@]}; \
+                   $pip list ${G_pip_list_flags[@]}; \
                  } | \
                  sed -e 's/ *(\(.*\))$/==\1/g' | \
                  sort -u | \
-                 grep -E "$regex"`
+                 grep -Ei "$regex"`
     local lcnt=`echo "$lines" | grep -v "^$" | wc -l`
     echo "$lines"
     test $lcnt -eq $cnt
@@ -432,9 +433,10 @@ function pkg_list_installed_conda() {
                  sed -e 's/[<=>]=.*$//g' -e 's/[<>].*$//g' -e 's/^\(.*\)$/^\1==/g' | \
                  xargs | tr ' ' '|'`
     local cnt=`echo "$pkgs" | wc -w`
+    # we'd better to compare package name case insensitive.
     local lines=`${G_conda_bin} list ${conda_env_name:+"-n"} ${conda_env_name} | awk '{print $1"=="$2}' | \
                    sed -e 's/ *(\(.*\))$/==\1/g' | \
-                   grep -E "$regex"`
+                   grep -Ei "$regex"`
     local lcnt=`echo "$lines" | grep -v "^$" | wc -l`
     echo "$lines"
     test $lcnt -eq $cnt
@@ -474,11 +476,13 @@ function pkg_verify_pip() {
         local pkg_name=`echo "$pkg_line" | cut -d'|' -f1`
         local pkg_op=`  echo "$pkg_line" | cut -d'|' -f2  -s`
         local pkg_verE=`echo "$pkg_line" | cut -d'|' -f3- -s`
-        local pkg_verR=`echo "$out_lines" | grep "^$pkg_name==" | sed -e 's/^.*==//g'`
+        # we'd better to compare pip package name case insensitive.
+        local pkg_verR=`echo "$out_lines" | grep -i "^$pkg_name==" | sed -e 's/^.*==//g'`
         if [ -n "$pkg_verE" ]; then
             version_cmp "$pkg_name" "$pkg_op" "$pkg_verR" "$pkg_verE"
-        else
-            true
+        elif [ ! -n "$pkg_verR" ]; then
+            log_error "Missing pkg \"$pkg\""
+            false
         fi || break
 
         ((i+=1))
@@ -490,7 +494,12 @@ function pkg_verify_conda() {
     if ! $use_conda; then return; fi
     local pkgs="$@"
     local conda_out_lines="`pkg_list_installed_conda $pkgs`"
-    pkg_verify_pip $@
+    if [ -n "$conda_out_lines" ]; then
+        pkg_verify_pip $@
+    else
+        log_error "Fail to verify any of package in \"$pkgs\""
+        false
+    fi
 }
 function filter_pkgs() {
     if $is_rhel; then
@@ -569,49 +578,63 @@ function listFunctions() {
 }
 function usage() {
     echo "Usage $PROGNAME"
-    listFunctions | sed -e 's/^/[cmd] >> /g' | log_lines info
+    listFunctions | grep -v "^_" | sed -e 's/^/[cmd] >> /g' | log_lines info
     exit 0
 }
+function run_initialize_ops() {
+    for_each_op "eval" "${G_registered_initialize_op[@]}"
+}
+#-------------------------------------------------------------------------------
+# utility functions initialize op
+function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
+    # ignore this op if it has not been registered
+    if ! echo "${G_registered_initialize_op[@]}" | grep -sq "${FUNCNAME[0]}"; then
+        true; return
+    fi && \
+
+    # os flags is highest priority
+    setup_os_flags && \
+
+    declare -g DEFAULT_use_conda=${DEFAULT_use_conda:-true} && \
+    declare -g DEFAULT_sudo=${DEFAULT_sudo:-""} && \
+
+    #-------------------------------------------------------------------------------
+    # Setup conda related global variables/envs
+    declare -g G_conda_bin=${G_conda_bin:-`command -v conda`} && \
+    declare -ag G_conda_install_flags=${G_conda_install_flags:-()} && \
+    setup_conda_flags && \
+
+    declare -ag G_apt_install_flags=${G_apt_install_flags:-()} && \
+    setup_apt_flags && \
+
+    #-------------------------------------------------------------------------------
+    # Setup pip related global variables/envs
+    declare -g G_pip_bin=${G_pip_bin:-`command -v pip`} && \
+    declare -ag G_pip_install_flags=${G_pip_install_flags:-()} && \
+    declare -ag G_pip_list_flags=${G_pip_list_flags:-()} && \
+    declare -g G_python_ver=${G_python_ver:-""} && \
+    declare -g G_python_ver_major=${G_python_ver_major:-""} && \
+    declare -g G_python_ver_minor=${G_python_ver_minor:-""} && \
+    setup_pip_flags && \
+
+    #-------------------------------------------------------------------------------
+    # Setup yum related global variables/envs
+    declare -ag G_yum_flags=${G_yum_flags:-()} && \
+
+    # un-register itself after it had been executed successfully
+    declare -a _delete=("${FUNCNAME[0]}") && \
+    G_registered_initialize_op=(${G_registered_initialize_op[@]}/${_delete})
+}
+# Register util's initialize_op
+if ! declare -a | grep -sq "^declare -a G_registered_initialize_op="; then
+    declare -ag G_registered_initialize_op=("_initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof")
+elif ! echo "${G_registered_initialize_op[@]}" | grep -sq "_initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof"; then
+    G_registered_initialize_op+=("_initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof")
+fi
 #
 # end of utility functions
 #-------------------------------------------------------------------------------
 
-
-#-------------------------------------------------------------------------------
-#
-# begin of variables which utility functions were relies on
-#-------------------------------------------------------------------------------
-# os flags is highest priority
-setup_os_flags
-
-DEFAULT_use_conda=${DEFAULT_use_conda:-true}
-DEFAULT_sudo=${DEFAULT_sudo:-""}
-
-#-------------------------------------------------------------------------------
-# Setup conda related global variables/envs
-declare G_conda_bin=${G_conda_bin:-`command -v conda`}
-declare -a G_conda_install_flags=${G_conda_install_flags:-()}
-setup_conda_flags
-
-declare -a G_apt_install_flags=${G_apt_install_flags:-()}
-setup_apt_flags
-
-#-------------------------------------------------------------------------------
-# Setup pip related global variables/envs
-declare G_pip_bin=${G_pip_bin:-`command -v pip`}
-declare -a G_pip_install_flags=${G_pip_install_flags:-()}
-declare -a G_pip_list_flags=${G_pip_list_flags:-()}
-declare G_python_ver=${G_python_ver:-""}
-declare G_python_ver_major=${G_python_ver_major:-""}
-declare G_python_ver_minor=${G_python_ver_minor:-""}
-setup_pip_flags
-
-#-------------------------------------------------------------------------------
-# Setup yum related global variables/envs
-declare -a G_yum_flags=${G_yum_flags:-()}
-#
-# end of variables which utility functions were relies on
-#-------------------------------------------------------------------------------
 
 
 #-------------------------------------------------------------------------------
@@ -659,7 +682,7 @@ function conda_create_env() {
         _ve_name=$conda_ve_name
     fi
     local extra_args=$@
-    
+
     print_title "Install Anaconda${python_ver_major} environment \"${_ve_name}\"" | log_lines debug && \
     if do_and_verify \
         'eval ${G_conda_bin} env list | grep -sq "^${_ve_name} \+"' \
