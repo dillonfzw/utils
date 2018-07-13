@@ -576,6 +576,7 @@ function urldecode2() {
 function listFunctions() {
     declare -f | grep "^[^ ].* () *$" | sed -e 's/ *() *$//g'
 }
+declare -f usage >/dev/null || \
 function usage() {
     echo "Usage $PROGNAME"
     listFunctions | grep -v "^_" | sed -e 's/^/[cmd] >> /g' | log_lines info
