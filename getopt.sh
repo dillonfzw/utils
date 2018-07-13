@@ -46,3 +46,8 @@ do
     fi
 done
 unset _nvar_thi3ahh3eR
+
+# hook for set_log_level
+if [ -n "$LOG_LEVEL" ] && declare -f set_log_level >/dev/null; then
+    set_log_level $LOG_LEVEL
+fi
