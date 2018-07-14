@@ -576,6 +576,22 @@ function urldecode2() {
 function listFunctions() {
     declare -f | grep "^[^ ].* () *$" | sed -e 's/ *() *$//g'
 }
+function pstree() {
+    pids="$@"
+    pids_old=""
+    while [ "$pids" != "$pids_old" ];
+    do
+        [ -n "$pids" ] || break
+        pids_old="$pids"
+        pids=`ps --pid "$pids" --ppid "$pids" -o pid --no-headers | awk '{print $1}' | sort -u | xargs`
+    done
+    [ -n "$pids" ] && echo "$pids"
+}
+command -v usleep >/dev/null || \
+function usleep() {
+    local num=$1
+    sleep `awk -vnum=$num 'END{print num / 1000000}' </dev/null`
+}
 declare -f usage >/dev/null || \
 function usage() {
     echo "Usage $PROGNAME"
