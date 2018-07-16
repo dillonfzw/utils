@@ -189,7 +189,8 @@ function do_and_verify() {
 # download by checking cache first
 function download_by_cache() {
     # pick up command line argument "cache_home", if there is
-    local cache_home=${cache_home:-"~/.cache/download"} && \
+    local default_cache_home=~/.cache/download && \
+    local cache_home=${cache_home:-${default_cache_home}} && \
     if [ "$1" = "--cache_home" ]; then
         cache_home=$2
         shift 2
@@ -200,6 +201,8 @@ function download_by_cache() {
         log_error "Variable \"cache_home\" should not be empty for function \"${FUNCNAME[0]}\""
         false
     fi && \
+    if [ ! -d $cache_home ]; then mkdir -p $cache_home >/dev/null; fi && \
+    cache_home=`ls -d $cache_home 2>/dev/null` && \
 
     # dry-run to pick up hash location
     local dry_run=${dry_run:-false} && \
