@@ -1,4 +1,11 @@
 
+"
+"mkdir -p ~/.vim/autolscrooloose/syntasticoad ~/.vim/bundle && \
+"curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+"
+"cd ~/.vim/bundle && \
+"git clone https://github.com/scrooloose/syntastic.git
+"
 " activate Pathogen manager
 execute pathogen#infect()
 filetype plugin indent on

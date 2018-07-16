@@ -47,6 +47,35 @@ function setup_locale() {
     done
 }
 function setup_os_flags() {
+    if [ -f /etc/os-release ]; then
+        setup_linux_os_flags
+        is_osx=false
+
+    elif command -v sw_vers >/dev/null; then
+        setup_osx_os_flags
+        is_linux=false
+        is_rhel=false; if_ubuntu=false
+
+    else
+        log_error "Unsupported OS distribution. Abort!"
+        exit 1
+    fi
+}
+function setup_osx_os_flags() {
+    # $ sw_vers
+    # ProductName:	Mac OS X
+    # ProductVersion:	10.13.5
+    # BuildVersion:	17F77
+    local sw_vers_lines=`sw_vers`
+    eval "OS_ID=`echo "$sw_vers_lines" | grep "^ProductName:" | awk '{print $2}'`"
+    eval "OS_VER=`echo "$sw_vers_lines" | grep "^ProductVersion:" | awk '{print $2}'`"
+    ARCH=${ARCH:-`uname -m`}
+    OS_DISTRO="${OS_ID}`echo "$OS_VER" | cut -d. -f-2 | sed -e 's/\.//g'`"
+
+    is_osx=true
+    is_rhel=false; is_ubuntu=false
+}
+function setup_linux_os_flags() {
     # rhel or ubuntu
     eval "OS_ID=`grep "^ID=" /etc/os-release | cut -d= -f2-`"
     # compatible with centos OS
@@ -56,10 +85,12 @@ function setup_os_flags() {
     ARCH=${ARCH:-`uname -m`}
     if [ $ARCH = "ppc64le" ]; then ARCH2=ppc64el; else ARCH2=$ARCH; fi
     if [ "$OS_ID" = "rhel" ]; then
+        is_linux=true
         is_rhel=true; is_ubuntu=false;
         # rhel7
         OS_DISTRO="${OS_ID}`echo "$OS_VER" | cut -d. -f-1 | sed -e 's/\.//g'`"
     elif [ "$OS_ID" = "ubuntu" ]; then
+        is_linux=true
         is_rhel=false; is_ubuntu=true;
         # ubuntu1604
         OS_DISTRO="${OS_ID}`echo "$OS_VER" | cut -d. -f-2 | sed -e 's/\.//g'`"
