@@ -39,10 +39,10 @@ function setup_locale() {
       if [ -z "$val" -o -z "$(locale -a 2>/dev/null | grep -Fx "$val")" ] && \
          [ "$val" != "$DEFAULT_locale" ]; then
         local cmd="$item=$DEFAULT_locale; export $item"
-        echo "$cmd" | $sudo tee -a /etc/profile
+        #echo "$cmd" | $sudo tee -a /etc/profile
         eval "$cmd"
 
-        echo "Change $item from \"$val\" to \""`eval "echo \\\$$item"`"\""
+        log_info "Change $item from \"$val\" to \""`eval "echo \\\$$item"`"\""
       fi
     done
 }
