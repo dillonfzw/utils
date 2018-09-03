@@ -21,6 +21,9 @@
 #-------------------------------------------------------------------------------
 # Utility functions
 #
+function get_env() {
+    eval "echo \$$1" 2>/dev/null
+}
 function setup_locale() {
     # locale setting requried by caffe and caffeOnSpark mvn building.
     source /etc/profile
