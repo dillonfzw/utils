@@ -21,8 +21,40 @@
 #-------------------------------------------------------------------------------
 # Utility functions
 #
+if [ -z "$_DEF_H_Aeth4Aechoo7ca7aez4eesh3eigeitho" ]; then
+_DEF_H_Aeth4Aechoo7ca7aez4eesh3eigeitho=true
+
+
 function get_env() {
     eval "echo \$$1" 2>/dev/null
+}
+function expand_vars() {
+    local val="`echo $@ | sed -e 's/%%{/${/g' -e 's/}%%/}/g'`"
+    #eval "echo \"$val\""
+    local val_new=`python -c "import os; print(os.path.expandvars(\"$val\"))" 2>/dev/null`
+    echo "$val_new"
+    test "$val" != "$val_new"
+}
+function expand_user() {
+    local val="$@"
+    local user=`echo ${val} | sed -e "s,^\(~[a-z0-9]*\)\(/*.*\)$,\1,g"`
+    local suffix=`echo ${val} | sed -e "s,^\(~[a-z0-9]*\)\(/*.*\)$,\2,g"`
+    if [ "$user" = "~" ]; then
+        user=`whoami`
+    elif [ -n "$user" ]; then
+        user=`echo "$user" | cut -d~ -f2`
+    fi
+    if [ -n "$user" ]; then
+        user=`getent passwd $user | cut -d: -f6`
+    fi
+    echo "${user}${suffix}"
+}
+function expand_vars_i() {
+    local var=$1
+    local val=`get_env $var`
+    local val_new=`expand_vars $val`
+    eval "$var=\"$val_new\""
+    test "$val" != "$val_new"
 }
 function setup_locale() {
     # locale setting requried by caffe and caffeOnSpark mvn building.
@@ -755,6 +787,10 @@ DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"/opt/anaconda${python_
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
 DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/Anaconda3-5.1.0-Linux-x86_64.sh"}
 #"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+
+
+fi
+# end if [ -z "_DEF_H_Aeth4Aechoo7ca7aez4eesh3eigeitho" ]; then
 
 # end of feature functions
 #-------------------------------------------------------------------------------

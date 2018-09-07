@@ -1,5 +1,9 @@
 #! /bin/bash
 
+if [ -z "$_DEF_H_Ceerah9eejomo3qu" ]; then
+_DEF_H_Ceerah9eejomo3qu=true
+
+
 # declare a noop msgutil_r, 
 # - if no log server was defined.
 # - if no msgutil_r imported from xcatlib.sh
@@ -125,3 +129,7 @@ unset idx
 # NOTE: this must be called after log levels had been registered
 declare __logLevelNum=
 set_log_level ${LOG_LEVEL:-${DEFAULT_LOG_LEVEL:-info}}
+
+
+fi
+# end of if [ -z "_DEF_H_Ceerah9eejomo3qu" ]; then
