@@ -40,5 +40,8 @@ done
 
 export LD_LIBRARY_PATH=/lib64:$APP_HOME/lib${LD_LIBRARY_PATH:+:}${LD_LIBRARY_PATH}
 
-APP_CMD_BIN=$APP_HOME/bin/$APP_CMD_NAME
+APP_CMD_BIN=`command -v $APP_CMD_NAME 2>/dev/null`
+if [ $? -ne 0 ]; then
+    APP_CMD_BIN=$APP_HOME/bin/$APP_CMD_NAME
+fi
 exec $APP_CMD_BIN $@
