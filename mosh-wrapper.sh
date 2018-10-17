@@ -35,10 +35,13 @@ if [ -z "$APP_STORE" ]; then APP_STORE=$PROGDIR/../apps; fi
 for item in $APP_STORE/mosh-1.2.5{.$ARCH.$OS,$ARCH,}
 do
   if [ -d $item ]; then APP_HOME=$item; break; fi
-fi
+done
 
 APP_CMD_NAME=`basename $0 .sh`
 export LD_LIBRARY_PATH=/lib64:$APP_HOME/lib${LD_LIBRARY_PATH:+:}${LD_LIBRARY_PATH}
 
-APP_CMD_BIN=$APP_HOME/bin/$APP_CMD_NAME
+APP_CMD_BIN=`command -v $APP_CMD_NAME 2>/dev/null`
+if [ $? -ne 0 ]; then
+    APP_CMD_BIN=$APP_HOME/bin/$APP_CMD_NAME
+fi
 exec $APP_CMD_BIN $@

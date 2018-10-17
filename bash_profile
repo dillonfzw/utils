@@ -127,12 +127,6 @@ fi
 unset RPATH
 
 ############################################################
-# Post process which MUST be in the last of this profile
-#
-# - clean local variables when this profile was sourced.
-unset KERNEL
-
-############################################################
 # Anaconda
 PYVER=${PYVER:-`python --version 2>&1 | grep ^Python | awk '{print $2}' | cut -d. -f1`}
 if declare -f conda >/dev/null 2>&1; then
@@ -175,6 +169,22 @@ if [ -z "$_CONDA_PATH_Chae4dok9e" ]; then
 fi
 unset _CONDA_PATH_Chae4dok9e
 unset PYVER
+
+############################################################
+# Post process which MUST be in the last of this profile
+#
+# - unique PATH likely env vars
+for var in PATH PYTHONPATH
+do
+    eval "val_ib9Chae3=\$$var"
+    val_ib9Chae3="`echo $val_ib9Chae3 | tr ':' '\n' | \
+                  nl -s, | sort -t, -k2 -u | sort -t, -k1 -n | cut -d, -f2- | \
+                  xargs | tr ' ' ':'`"
+    eval "$var=\"$val_ib9Chae3\""
+done
+unset val_ib9Chae3
+# - clean local variables when this profile was sourced.
+unset KERNEL
 
 
 ############################################################
