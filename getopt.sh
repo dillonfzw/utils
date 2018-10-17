@@ -39,7 +39,11 @@ do
        eval "[ -n \"\$DEFAULT_$_nvar_thi3ahh3eR\" ]"; then
         eval "\
         if [ -z \"\$$_nvar_thi3ahh3eR\" ]; then \
-            $_nvar_thi3ahh3eR=\$DEFAULT_$_nvar_thi3ahh3eR; \
+            if declare -p DEFAULT_$_nvar_thi3ahh3eR | awk '{print \$2}' | grep -sq a; then \
+                $_nvar_thi3ahh3eR=(\${DEFAULT_${_nvar_thi3ahh3eR}[@]}); \
+            else \
+                $_nvar_thi3ahh3eR=\$DEFAULT_$_nvar_thi3ahh3eR; \
+            fi; \
             [ \"$_nvar_thi3ahh3eR\" != \"verbose\" ] && \
             declare -p $_nvar_thi3ahh3eR | sed -e 's/^/Default variable: /g' | log_lines debug; \
         fi;"
