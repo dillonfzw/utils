@@ -24,6 +24,9 @@
 function get_env() {
     eval "echo \$$1" 2>/dev/null
 }
+function declare_p() {
+    declare -p $@
+}
 function setup_locale() {
     # locale setting requried by caffe and caffeOnSpark mvn building.
     source /etc/profile
@@ -63,6 +66,17 @@ function setup_os_flags() {
         log_error "Unsupported OS distribution. Abort!"
         exit 1
     fi
+    declare -a os_flags=(
+      "is_osx"
+      "is_linux"
+      "is_rhel"
+      "is_ubuntu"
+      "ARCH"
+      "OS_ID"
+      "OS_VER"
+      "OS_DISTRO"
+    )
+    for_each_op --silent declare_p ${os_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
 function setup_osx_os_flags() {
     # $ sw_vers
@@ -123,12 +137,13 @@ function version_cmp() {
 
     local pkg_vmin=`echo -e "${pkg_verE}\n${pkg_verR}" | sort -V | grep -v "^$" | head -n1`
     local msg="name=\"$pkg_name\", verA=\"$pkg_verR\", op=\"$pkg_op\", verB=\"$pkg_verE\", vMin=\"$pkg_vmin\""
+
     if [ \( -z "$pkg_verE" -a -n "$pkg_verR" \) -o \
          \( -n "$pkg_verE" -a -n "$pkg_verR" -a \( \
-             \( "${pkg_verE}"  = "${pkg_verR}" -a `expr "$pkg_op" : "^.*=$"` -gt 0 \) -o \
+             \( "${pkg_verE}"  = "${pkg_verR}" -a `expr "#$pkg_op" : "^#.*=$"` -gt 1 \) -o \
              \( "${pkg_verE}" != "${pkg_verR}" -a \( \
-                 \( `expr "$pkg_op" : "^>.*$"` -gt 0 -a "${pkg_vmin}" = "${pkg_verE}" \) -o \
-                 \( `expr "$pkg_op" : "^<.*$"` -gt 0 -a "${pkg_vmin}" = "${pkg_verR}" \) \
+                 \( `expr "#$pkg_op" : "^#>.*$"` -gt 1 -a "${pkg_vmin}" = "${pkg_verE}" \) -o \
+                 \( `expr "#$pkg_op" : "^#<.*$"` -gt 1 -a "${pkg_vmin}" = "${pkg_verR}" \) \
              \) \) \
          \) \) ]; then
         if ! $silent; then log_debug "${FUNCNAME[0]} succ: $msg"; fi
@@ -143,7 +158,7 @@ function for_each_op() {
     local _fs="$IFS"
     if [ "$1" = "--fs" ]; then
         _fs=$2; shift 2
-    elif [ `expr "$1" : "^--fs="` -eq 5 ]; then
+    elif [ `expr "#$1" : "^#--fs="` -eq 6 ]; then
         _fs="${1/--fs=}"; shift
     fi
 
@@ -220,7 +235,7 @@ function download_by_cache() {
     if [ "$1" = "--cache_home" ]; then
         cache_home=$2
         shift 2
-    elif [ `expr "$1" : "--cache_home="` -eq 12 ]; then
+    elif [ `expr "#$1" : "#--cache_home="` -eq 13 ]; then
         cache_home="`echo "$1" | cut -d= -f2-`"
         shift
     elif [ -z "$cache_home" ]; then
@@ -235,7 +250,7 @@ function download_by_cache() {
     if [ "$1" = "--dry-run" ]; then
         dry_run=true
         shift
-    elif [ `expr "$1" : "--dry-run="` -eq 9 ]; then
+    elif [ `expr "#$1" : "#--dry-run="` -eq 10 ]; then
         dry_run="`echo "$1" | cut -d= -f2-`"
         shift
     fi && \
@@ -343,7 +358,8 @@ function setup_conda_flags() {
         G_conda_bin="`conda info -s | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
         G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
     fi
-    set | grep "^G_conda" | sort -t= -k1 | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
+    declare -a conda_flags=(`set | grep "^G_conda" | cut -d= -f1 | sort -u`)
+    for_each_op --silent declare_p ${conda_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
 # different pip version has different command line options
 function setup_pip_flags() {
@@ -374,7 +390,8 @@ function setup_pip_flags() {
         G_pip_list_flags=()
     fi
     G_pip_install_flags+=(${pip_install_flags_extra[@]})
-    set | grep "^G_pip" | sort -t= -k1 | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
+    declare -a pip_flags=(`set | grep "^G_pip" | cut -d= -f1 | sort -u`)
+    for_each_op --silent declare_p ${pip_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
 function setup_apt_flags() {
     if $notty; then
@@ -387,6 +404,8 @@ function setup_apt_flags() {
     "--allow-unauthenticated"
     "--no-install-recommends"
     )
+    declare -a apt_flags=(`set | grep "^G_apt" | cut -d= -f1 | sort -u`)
+    for_each_op --silent declare_p ${apt_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
 # clean cache directory to make docker image efficient
 function clean_pip_cache() {
@@ -506,15 +525,18 @@ function pkg_list_installed_conda() {
     test $lcnt -eq $cnt
 }
 function pkg_verify_yum() {
-    local pkgs="$@"
-    $sudo rpm -V $pkgs
+    declare -a pkgs=($@)
+    if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
+    $sudo rpm -V ${pkgs[@]}
 }
 function pkg_verify_deb() {
-    local pkgs="$@"
-    local pkgs_m=`echo "$pkgs" | tr ' ' '\n' | sed -e 's/=.*$//g' | xargs`
-    local out_lines=`$sudo dpkg -V $pkgs_m 2>&1`
+    declare -a pkgs=($@)
+    if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
+
+    declare -a pkgs_m=(`echo "${pkgs[@]}" | tr ' ' '\n' | sed -e 's/=.*$//g'`)
+    local out_lines=`$sudo dpkg -V ${pkgs_m[@]} 2>&1`
     if [ -n "$out_lines" ]; then
-        log_error "Fail to verify packages \"$pkgs\""
+        log_error "Fail to verify packages \"${pkgs[@]}\""
         echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
         false
     fi
@@ -532,17 +554,19 @@ function _cmp_op_pair() {
     fi
 }
 function pkg_verify_pip() {
-    local pkgs="$@"
+    declare -a pkgs=($@)
+    if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
+
     # pkg_verify_conda will reuse most of logic of this function
     # so, we pick the fake conda pkg list output as faked pip output
-    local out_lines=${conda_out_lines:-"`pkg_list_installed_pip $pkgs`"}
+    local out_lines=${conda_out_lines:-"`pkg_list_installed_pip ${pkgs[@]}`"}
     if [ -z "$out_lines" ]; then return 1; fi
     #echo "$out_lines" | sed -e 's/^/>> [pip]: /g' | log_lines debug
 
-    local cnt=`echo "$pkgs" | wc -w`
+    local cnt=${#pkgs[@]}
     local i=0
     local pkg=""
-    for pkg in $pkgs
+    for pkg in ${pkgs[@]}
     do
         # separate the pkg_name, operator and target version
         # TODO: only support one operator for now.
@@ -555,7 +579,7 @@ function pkg_verify_pip() {
         # we'd better to compare pip package name case insensitive.
         local pkg_verR=`echo "$out_lines" | grep -i "^$pkg_name==" | sed -e 's/^.*==//g'`
 
-        for_each_op _cmp_op_pair ${pkg_op_pairs[@]} || break
+        for_each_op --silent _cmp_op_pair ${pkg_op_pairs[@]} || break
         ((i+=1))
     done
     if [ $i -ne $cnt ]; then log_error "i=$i, cnt=$cnt"; fi
@@ -563,12 +587,15 @@ function pkg_verify_pip() {
 }
 function pkg_verify_conda() {
     if ! $use_conda; then return; fi
-    local pkgs="$@"
-    local conda_out_lines="`pkg_list_installed_conda $pkgs`"
+
+    declare -a pkgs=($@)
+    if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
+
+    local conda_out_lines="`pkg_list_installed_conda ${pkgs[@]}`"
     if [ -n "$conda_out_lines" ]; then
-        pkg_verify_pip $@
+        pkg_verify_pip ${pkgs[@]}
     else
-        log_error "Fail to verify any of package in \"$pkgs\""
+        log_error "Fail to verify any of package in \"${pkgs[@]}\""
         false
     fi
 }
@@ -587,22 +614,16 @@ function filter_pkgs() {
 for item in pkg_install pkg_list_installed pkg_verify
 do
     eval 'function '$item'() {
-    if $is_rhel; then
-        for_each_line_op '$item'_yum "`filter_pkgs_yum $@`" && \
+        if $is_rhel; then
+            for_each_line_op '$item'_yum "`filter_pkgs_yum $@`"
+        elif $is_ubuntu; then
+            for_each_line_op '$item'_deb "`filter_pkgs_deb $@`"
+        fi && \
         if $use_conda; then
             for_each_line_op '$item'_conda "`filter_pkgs_conda $@`"
         fi && \
         for_each_line_op '$item'_pip "`filter_pkgs_pip $@`"
-    elif $is_ubuntu; then
-        for_each_line_op '$item'_deb "`filter_pkgs_deb $@`" && \
-        if $use_conda; then
-            for_each_line_op '$item'_conda "`filter_pkgs_conda $@`"
-        fi && \
-        for_each_line_op '$item'_pip "`filter_pkgs_pip $@`"
-    else
-        false
-    fi
-}'
+    }'
 done
 # anchor code for usage() helper
 echo '
@@ -670,7 +691,7 @@ function usage() {
     exit 0
 }
 function run_initialize_ops() {
-    for_each_op "eval" "${G_registered_initialize_op[@]}"
+    for_each_op eval ${G_registered_initialize_op[@]}
 }
 #-------------------------------------------------------------------------------
 # utility functions initialize op
@@ -681,6 +702,14 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     fi && \
 
     # os flags is highest priority
+    declare -g is_linux && \
+    declare -g is_osx && \
+    declare -g is_rhel && \
+    declare -g is_ubuntu && \
+    declare -g ARCH && \
+    declare -g OS_ID && \
+    declare -g OS_VER && \
+    declare -g OS_DISTRO && \
     setup_os_flags && \
 
     declare -g DEFAULT_use_conda=${DEFAULT_use_conda:-true} && \
@@ -732,15 +761,15 @@ fi
 function install_anaconda() {
     local python_ver_major=${python_ver_major:-"3"}
     print_title "Install Anaconda${python_ver_major} installer's dependency" | log_lines debug && \
-    local pkgs="" && \
-    pkgs=${pkgs}${pkgs:+ }"\
-        bzip2 \
-    " && \
-    if do_and_verify "pkg_verify $pkgs" "pkg_install $pkgs" "true"; then
-        pkg_list_installed $pkgs
-    else
-        log_error "Fail to install anaconda installer's dependent pkgs \"`filter_pkgs $pkgs | xargs`\""
-        false
+    declare -a pkgs=() && \
+    if ! $is_osx; then
+        pkgs+=("bzip2")
+        if do_and_verify "pkg_verify ${pkgs[@]}" "pkg_install ${pkgs[@]}" "true"; then
+            pkg_list_installed ${pkgs[@]}
+        else
+            log_error "Fail to install anaconda installer's dependent pkgs \"`filter_pkgs ${pkgs[@]} | xargs`\""
+            false
+        fi
     fi && \
 
     print_title "Install Anaconda${python_ver_major}" | log_lines debug && \
@@ -764,7 +793,7 @@ function conda_create_env() {
     local _ve_name
     if [ "$1" = "--name" ]; then
         _ve_name=$2; shift 2
-    elif [ `expr "$1" : "^--name="` -eq 7 ]; then
+    elif [ `expr "#$1" : "^#--name="` -eq 8 ]; then
         _ve_name="${1/--name=}"; shift
     else
         _ve_name=$conda_ve_name
