@@ -146,18 +146,41 @@ function for_each_op() {
     elif [ `expr "$1" : "^--fs="` -eq 5 ]; then
         _fs="${1/--fs=}"; shift
     fi
+
+    # extract op
     local op=$1; shift
-    local lines="$@"
 
-    [ -n "$lines" ] || return 0
+    # extract op partial args
+    declare -a op_args=()
+    while [ -n "$1" ];
+    do
+        if [ "$1" = "--" ]; then shift; break; fi
+        op_args+=("$1")
+        shift
+    done
 
-    local lcnt=`echo "$lines" | wc -l | awk '{print $1}'`
-    local i=0
+    # apply IFS
     local IFS_OLD="$IFS"
-    #IFS=$'\n'
     IFS=$_fs
+
+    # extract op input data
+    declare -a op_data=($@)
+    if [ ${#op_data[@]} -eq 0 ]; then
+        op_data=(${op_args[@]})
+        op_args=()
+    fi
+
+    # quick return if no input data
+    local lcnt=${#op_data[@]}
+    if [ $lcnt -eq 0 ]; then
+        IFS="$IFS_OLD"
+        return 0
+    fi
+
+    # loop run each input data
+    local i=0
     local line=""
-    for line in $lines
+    for line in ${op_data[@]}
     do
         IFS="$IFS_OLD"
         [ -n "$line" ] || continue
@@ -170,7 +193,7 @@ function for_each_op() {
     test $i -ge $lcnt
 }
 function for_each_line_op() {
-    for_each_op --fs=$'\n' "$@"
+    for_each_op --fs=$'\n' $@
 }
 # verify first, if failed, do op{eration} and verify again
 # return verify result
@@ -318,7 +341,7 @@ function setup_conda_flags() {
     local conda_profile=$conda_install_home/etc/profile.d/conda.sh
     if do_and_verify "has_conda" "source $conda_profile" 'true'; then
         G_conda_bin="`conda info -s | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
-        G_conda_install_flags=("--yes")
+        G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
     fi
     set | grep "^G_conda" | sort -t= -k1 | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
@@ -350,6 +373,7 @@ function setup_pip_flags() {
         G_pip_install_flags=("--upgrade")
         G_pip_list_flags=()
     fi
+    G_pip_install_flags+=(${pip_install_flags_extra[@]})
     set | grep "^G_pip" | sort -t= -k1 | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
 function setup_apt_flags() {
@@ -457,10 +481,11 @@ function pkg_list_installed_pip() {
                    $pip list ${G_pip_list_flags[@]}; \
                  } | \
                  sed -e 's/ *(\(.*\))$/==\1/g' | \
-                 sort -u | \
-                 grep -Ei "$regex"`
+                 grep -Ei "$regex" | \
+                 sort -u`
     local lcnt=`echo "$lines" | grep -v "^$" | wc -l`
     echo "$lines"
+    if [ $lcnt -ne $cnt ]; then log_error "lcnt=$lcnt, cnt=$cnt"; fi
     test $lcnt -eq $cnt
 }
 function pkg_list_installed_conda() {
@@ -473,9 +498,11 @@ function pkg_list_installed_conda() {
     # we'd better to compare package name case insensitive.
     local lines=`${G_conda_bin} list ${conda_env_name:+"-n"} ${conda_env_name} | awk '{print $1"=="$2}' | \
                    sed -e 's/ *(\(.*\))$/==\1/g' | \
-                   grep -Ei "$regex"`
+                   grep -Ei "$regex" | \
+                   sort -u`
     local lcnt=`echo "$lines" | grep -v "^$" | wc -l`
     echo "$lines"
+    if [ $lcnt -ne $cnt ]; then log_error "lcnt=$lcnt, cnt=$cnt"; fi
     test $lcnt -eq $cnt
 }
 function pkg_verify_yum() {
@@ -489,6 +516,18 @@ function pkg_verify_deb() {
     if [ -n "$out_lines" ]; then
         log_error "Fail to verify packages \"$pkgs\""
         echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
+        false
+    fi
+}
+function _cmp_op_pair() {
+    local pkg_op_pair="$1"
+    local pkg_op=(  `echo "$pkg_op_pair" | cut -d'|' -f1  -s`)
+    local pkg_verE=(`echo "$pkg_op_pair" | cut -d'|' -f2- -s`)
+
+    if [ -n "$pkg_verE" ]; then
+        version_cmp "$pkg_name" "$pkg_op" "$pkg_verR" "$pkg_verE"
+    elif [ ! -n "$pkg_verR" ]; then
+        log_error "Missing pkg \"$pkg\""
         false
     fi
 }
@@ -507,21 +546,16 @@ function pkg_verify_pip() {
     do
         # separate the pkg_name, operator and target version
         # TODO: only support one operator for now.
-        local pkg_line=`echo "$pkg" | sed \
-          -e 's/^\(.*\)\([<=>!]=\)\([^<=>].*\)$/\1|\2|\3/g' \
-          -e 's/^\(.*\)\([<>]\)\([^<=>].*\)$/\1|\2|\3/g'`
+        local pkg_line=`echo "$pkg" | sed -e 's/\([<=>!]\)/|\1/'`
         local pkg_name=`echo "$pkg_line" | cut -d'|' -f1`
-        local pkg_op=`  echo "$pkg_line" | cut -d'|' -f2  -s`
-        local pkg_verE=`echo "$pkg_line" | cut -d'|' -f3- -s`
+        declare -a pkg_op_pairs=(`echo "$pkg_line" | cut -d'|' -f2- | tr ',' '\n' | sed \
+          -e 's/^\([<=>!]=\)\([^<=>].*\)$/\1|\2/g' \
+          -e 's/^\([<>]\)\([^<=>].*\)$/\1|\2/g'`)
+
         # we'd better to compare pip package name case insensitive.
         local pkg_verR=`echo "$out_lines" | grep -i "^$pkg_name==" | sed -e 's/^.*==//g'`
-        if [ -n "$pkg_verE" ]; then
-            version_cmp "$pkg_name" "$pkg_op" "$pkg_verR" "$pkg_verE"
-        elif [ ! -n "$pkg_verR" ]; then
-            log_error "Missing pkg \"$pkg\""
-            false
-        fi || break
 
+        for_each_op _cmp_op_pair ${pkg_op_pairs[@]} || break
         ((i+=1))
     done
     if [ $i -ne $cnt ]; then log_error "i=$i, cnt=$cnt"; fi
