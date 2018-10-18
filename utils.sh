@@ -344,7 +344,7 @@ function has_conda() {
     command -v conda >/dev/null || declare -f conda >/dev/null
 }
 # shadow conda command
-function _Ki7eeth3_conda() {
+function _shadow_cmd_conda() {
     if declare -f conda >/dev/null; then
         conda $@
     elif command -v conda >/dev/null; then
@@ -368,10 +368,10 @@ function setup_pip_flags() {
         if [ "${CONDA_DEFAULT_ENV}" = "$conda_env_name" ]; then
             env_activated=true
         fi
-        if $env_activated || _Ki7eeth3_conda activate ${conda_env_name}; then
+        if $env_activated || _shadow_cmd_conda activate ${conda_env_name}; then
             G_pip_bin=`command -v pip`
             G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
-            $env_activated || _Ki7eeth3_conda deactivate
+            $env_activated || _shadow_cmd_conda deactivate
         fi
     else
         G_pip_bin=`command -v pip`
