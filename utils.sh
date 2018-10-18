@@ -208,7 +208,7 @@ function for_each_op() {
     test $i -ge $lcnt
 }
 function for_each_line_op() {
-    for_each_op --fs=$'\n' $@
+    for_each_op --fs=$'\n' "$@"
 }
 # verify first, if failed, do op{eration} and verify again
 # return verify result
@@ -664,6 +664,15 @@ function urldecode() {
 }
 function urldecode2() {
     printf '%b' "${1//%/\\x}"
+}
+function get_realpath() {
+    # --------------------------
+    # Copied from stackoverflow
+    # https://stackoverflow.com/a/19250873 from @AsymLabs
+    [ -f "$1" -o -d "$1" ] || return 1 # failure : file does not exist.
+    [ -n "$no_symlinks" ] && local pwdp='pwd -P' || local pwdp='pwd' # do symlinks.
+    echo "$( cd "$( echo "${1%/*}" )" 2>/dev/null; $pwdp )"/"${1##*/}" # echo result.
+    return 0 # success
 }
 function listFunctions() {
     declare -f | grep "^[^ ].* () *$" | sed -e 's/ *() *$//g'
