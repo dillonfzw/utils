@@ -21,6 +21,7 @@ if [[ -z $PRJ_NAME ]]; then
 	echo "Usage: $0 <Project_name>"
 	exit 1
 fi
+shift
 
 get_src()
 {
@@ -66,11 +67,11 @@ if [[ -z $diff_prog ]] && [[ `uname -s` = "AIX" ]]; then
 fi
 
 SRC_DIR=
-# if [[ $# -eq 1 ]]; then
+if [[ $# -eq 0 ]]; then
 	SRC_DIR=.
-# else
-# 	SRC_DIR=$2
-# fi
+else
+	SRC_DIR=$@
+fi
 ORIG_SRC_DIR=$SRC_DIR
 
 CFILE_OUT=cscope.files
