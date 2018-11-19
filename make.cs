@@ -21,6 +21,7 @@ if [[ -z $PRJ_NAME ]]; then
 	echo "Usage: $0 <Project_name>"
 	exit 1
 fi
+shift
 
 get_src()
 {
@@ -65,12 +66,10 @@ if [[ -z $diff_prog ]] && [[ `uname -s` = "AIX" ]]; then
 	diff_prog="cmd.aix diff"
 fi
 
-SRC_DIR=
-# if [[ $# -eq 1 ]]; then
+SRC_DIR=$@
+if [[ -z "$SRC_DIR" ]]; then
 	SRC_DIR=.
-# else
-# 	SRC_DIR=$2
-# fi
+fi
 ORIG_SRC_DIR=$SRC_DIR
 
 CFILE_OUT=cscope.files
@@ -82,7 +81,7 @@ CFILE2=$TMPDIR/cscope.files.2
 # prepare the directory list
 #
 typeset DIRs="$SRC_DIR"
-if [[ ! -L $SRC_DIR/link ]]; then
+if [[ ! -L "$SRC_DIR/link" ]]; then
 	if [[ -n $TOPS ]] && [[ $($readlink_prog $readlink_opt $SRC_DIR) = $($readlink_prog $readlink_opt $(echo $TOPS | cut -d: -f1)/src/ll) ]]; then
 		typeset myTOPS="$(echo $TOPS | cut -d: -f2-)"
 		DIRs="$DIRs $(echo $myTOPS | tr ':' '\n' | sed -e "s/$/\/src\/ll /g" | xargs)"
