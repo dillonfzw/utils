@@ -27,6 +27,426 @@ function get_env() {
 function declare_p() {
     declare -p $@
 }
+function upper() {
+    tr '[a-z]' '[A-Z]'
+}
+function run_unit_test() {
+    local -a _NC3v_all_unit_test_cases=(`declare -F | awk '{print $3}' | grep "^__test" | sed -e 's/^__//' | xargs`)
+
+    local -a _NC3v_target_cases
+    if [ "$1" = "@all" -o $# -eq 0 ]; then
+        _NC3v_target_cases=(${_NC3v_all_unit_test_cases[@]})
+    else
+        _NC3v_target_cases=($@)
+    fi
+
+    local i f_case
+    for i in ${!_NC3v_target_cases[@]}
+    do
+        f_case=${_NC3v_target_cases[$i]}
+        log_debug "Test $((i+1))/${#_NC3v_target_cases[@]} \"$f_case\"..."
+        if __$f_case; then
+            log_info "Test $((i+1))/${#_NC3v_target_cases[@]} \"$f_case\"... succ"
+        else
+            log_error "Test $((i+1))/${#_NC3v_target_cases[@]} \"$f_case\"... fail"
+        fi
+    done
+}
+function not_() {
+    local op=$1; shift
+    if $op $@; then false; else true; fi
+}
+function __test_not_() {
+    local err_cnt=0
+
+    # basic test
+    not_ true && { ((err_cnt+=1)); log_error "Fail not_ true"; }
+    not_ false || { ((err_cnt+=1)); log_error "Fail not_ false"; }
+
+    # test op with parameter
+    not_ grep -sqx 'adfadfadsfasdfadfadsfasdf' /etc/hosts || { ((err_cnt+=1)); log_error "Fail not_ false"; }
+
+    test $err_cnt -eq 0
+}
+function contains() {
+    # reference from https://stackoverflow.com/a/8574392
+    local -a _wgJ3_container=("${!1}")
+    local match=$2
+
+    # log for debug
+    #declare -p _wgJ3_container | sed -e 's/^/[c]>> /g' | log_lines debug
+    #declare -p match | sed -e 's/^/[m]>> /g' | log_lines debug
+
+    local i
+    for i in ${!_wgJ3_container[@]}
+    do
+        local e="${_wgJ3_container[$i]}"
+
+        # log for debug
+        #declare -p e | sed -e 's/^/[e]>> /g' | log_lines debug
+
+        if [[ "$e" == "${match}" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+function __test_contains() {
+    local err_cnt=0
+    local -a a=("hello" "world" "fox")
+    local -a empty=()
+
+    hosts=$(</etc/hosts)
+    n_lines=`echo "$hosts" | wc -l | awk '{print $1}'`
+    [ $n_lines -gt 0 ] || { ((err_cnt+=1)); log_error "fail pre-assert 0"; }
+    
+    a+=("$hosts")
+
+    contains a[@] "hello" || { ((err_cnt+=1)); log_error "fail normal exist item sub-test 1"; }
+
+    contains a[@] "he" && { ((err_cnt+=1)); log_error "fail normal not-exist item sub-test 2"; }
+    contains a[@] "" && { ((err_cnt+=1)); log_error "fail normal null item sub-test 2"; }
+
+    contains a[@] "$hosts" || { ((err_cnt+=1)); log_error "fail complex item sub-test 3"; }
+
+    contains empty[@] "he" && { ((err_cnt+=1)); log_error "fail test empty sub-test 4"; }
+    contains empty[@] "" && { ((err_cnt+=1)); log_error "fail test empty sub-test 4"; }
+
+    test $err_cnt -eq 0
+}
+function array_equal() {
+    # test if two array are exactly equal
+    #
+    # :param arr_a:
+    # :param arr_b:
+    # :return: bool
+    local -a _oV7u_arr_a=("${!1}")
+    local -a _oV7u_arr_b=("${!2}")
+
+    # log for debug
+    #declare -p _oV7u_arr_a | sed -e 's/^/[arr_eq]>> /g' | log_lines debug
+    #declare -p _oV7u_arr_b | sed -e 's/^/[arr_eq]>> /g' | log_lines debug
+
+    # compare length
+    if [ ${#_oV7u_arr_a[@]} -ne ${#_oV7u_arr_b[@]} ]; then
+        return 1
+    fi
+
+    # element per element compare
+    local i a b
+    for i in ${!_oV7u_arr_a[@]}
+    do
+        a="${_oV7u_arr_a[$i]}"
+        b="${_oV7u_arr_b[$i]}"
+        if [ "$a" != "$b" ]; then return 1; fi
+    done
+    return 0
+}
+function __test_array_equal() {
+    local err_cnt=0
+    local -a a=(1 2 3)
+    local -a b=(1 2 3)
+    local -a empty=()
+
+    array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail normal positive sub-test 1"; }
+
+    b=(3 3)
+    array_equal a[@] b[@] && { ((err_cnt+=1)); log_error "fail normal negative sub-test 2"; }
+
+    array_equal empty[@] empty[@] || { ((err_cnt+=1)); log_error "fail empty sub-test 3"; }
+
+    array_equal a[@] empty[@] && { ((err_cnt+=1)); log_error "fail empty vs. non-empty sub-test 4"; }
+    array_equal empty[@] a[@] && { ((err_cnt+=1)); log_error "fail no-empty vs. empty sub-test 5"; }
+
+    test $err_cnt -eq 0
+}
+function array_concat() {
+    # concatenate two array
+    #
+    # :param arr_a:
+    # :param arr_b:
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _Ly3e_arr_a=("${!1}")
+    local -a _Ly3e_arr_b=("${!2}")
+
+    # log for debug
+    #declare -p _Ly3e_arr_a | sed -e 's/^/[arr_concat]>> /g' | log_lines debug
+    #declare -p _Ly3e_arr_b | sed -e 's/^/[arr_concat]>> /g' | log_lines debug
+
+    local i e
+    for i in ${!_Ly3e_arr_b[@]}
+    do
+        e="${_Ly3e_arr_b[$i]}"
+        _Ly3e_arr_a+=("$e")
+    done
+    declare -p _Ly3e_arr_a | sed -e 's/^.* _Ly3e_arr_a=.\(.*\).$/\1/g'
+}
+function __test_array_concat() {
+    local err_cnt=0
+    local -a a=(1 2 3)
+    local -a b=(11 2 33)
+    local -a empty=()
+    local -a r_truth=(1 2 3 11 2 33)
+
+    local -a r=`array_concat a[@] b[@]`
+    array_equal r[@] r_truth[@] || { ((err_cnt+=1)); log_error "fail normal test 1"; }
+
+    local -a r=`array_concat a[@] empty[@]`
+    array_equal a[@] r[@] || { ((err_cnt+=1)); log_error "fail valid + empty test 1"; }
+
+    local -a r=`array_concat empty[@] a[@]`
+    array_equal a[@] r[@] || { ((err_cnt+=1)); log_error "fail empty + valid test 1"; }
+
+    test $err_cnt -eq 0
+}
+function set_rize() {
+    # convert an array to set by remove its duplicate elements
+    #
+    # :param arr_a:
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _Ez9X_arr_a=("${!1}")
+
+    # log for debug
+    #declare -p arr_a | sed -e 's/^/[c]>> /g' | log_lines debug
+
+    local -a _Ez9X_r=()
+    local i e
+    for i in ${!_Ez9X_arr_a[@]}
+    do
+        e="${_Ez9X_arr_a[$i]}"
+        if ! contains _Ez9X_r[@] "$e"; then
+            _Ez9X_r+=("$e")
+        fi
+    done
+    declare -p _Ez9X_r | sed -e 's/^.* _Ez9X_r=.\(.*\).$/\1/g'
+}
+function __test_set_rize() {
+    local err_cnt=0
+    local -a empty=()
+
+    local -a a=(1 2 1 3)
+    local -a r_truth=(1 2 3)
+    local -a r=`set_rize a[@]`
+    array_equal r[@] r_truth[@] || { ((err_cnt+=1)); log_error "fail set has multiple unique elements sub-test 1"; }
+
+    local -a a=(1 1 1)
+    local -a r_truth=(1)
+    local -a r=`set_rize a[@]`
+    array_equal r[@] r_truth[@] || { ((err_cnt+=1)); log_error "fail set has one unique elements sub-test 2"; }
+
+    local -a a=()
+    local -a r=`set_rize a[@]`
+    array_equal r[@] empty[@] || { ((err_cnt+=1)); log_error "fail set-rize empty array sub-test 3"; }
+    array_equal empty[@] r[@] || { ((err_cnt+=1)); log_error "fail set-rize empty array sub-test 4"; }
+
+    test $err_cnt -eq 0
+}
+function set_equal() {
+    # test if two set are equal
+    #
+    # NOTE: you have to ensure two inputs are already set-rized.
+    #
+    # :param set_a:
+    # :param set_b:
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _d3Ki_set_a=("${!1}")
+    local -a _d3Ki_set_b=("${!2}")
+
+    # log for debug
+    #declare -p _d3Ki_set_a | sed -e 's/^/[set_equal] >> /g' | log_lines debug
+    #declare -p _d3Ki_set_b | sed -e 's/^/[set_equal] >> /g' | log_lines debug
+
+    # compare length
+    if [ ${#_d3Ki_set_a[@]} -ne ${#_d3Ki_set_b[@]} ]; then
+        return 1
+    fi
+
+    # element per element compare
+    local i e
+    for i in ${!_d3Ki_set_a[@]}
+    do
+        e="${_d3Ki_set_a[$i]}"
+        if ! contains _d3Ki_set_b[@] "$e"; then return 1; fi
+    done
+    return 0
+}
+function __test_set_equal() {
+    local err_cnt=0
+    local -a a=(1 2 3)
+    local -a b=(1 2 3)
+    local -a empty=()
+
+    set_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail normal positive sub-test 1"; }
+
+    b=(3 2)
+    set_equal a[@] b[@] && { ((err_cnt+=1)); log_error "fail normal negative sub-test 2"; }
+
+    set_equal empty[@] empty[@] || { ((err_cnt+=1)); log_error "fail empty sub-test 3"; }
+
+    set_equal a[@] empty[@] && { ((err_cnt+=1)); log_error "fail empty vs. non-empty sub-test 4"; }
+    set_equal empty[@] a[@] && { ((err_cnt+=1)); log_error "fail no-empty vs. empty sub-test 5"; }
+
+    local -a b=(1 1 2 3)
+    set_equal a[@] b[@] && { ((err_cnt+=1)); log_error "fail a vs. non-set-rized b sub-test 6"; }
+    set_equal b[@] a[@] && { ((err_cnt+=1)); log_error "fail non-set-rized b vs. a sub-test 7"; }
+
+    test $err_cnt -eq 0
+}
+function set_equal_strict() {
+    # test if two set are equal after enforcing a set-rize
+    #
+    # :param set_a:
+    # :param set_b:
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _HF7R_set_a=("${!1}")
+    local -a _HF7R_set_b=("${!2}")
+
+    local -a __HF7R_set_a=`set_rize _HF7R_set_a[@]`
+    local -a __HF7R_set_b=`set_rize _HF7R_set_b[@]`
+    set_equal __HF7R_set_a[@] __HF7R_set_b[@]
+}
+function __test_set_equal_strict() {
+    local err_cnt=0
+    local -a a=(1 2 1 3)
+    local -a b=(1 2 3 1 2)
+    local -a empty=()
+
+    set_equal_strict a[@] b[@] || { ((err_cnt+=1)); log_error "fail normal positive sub-test 1"; }
+    set_equal_strict empty[@] empty[@] || { ((err_cnt+=1)); log_error "fail empty sub-test 3"; }
+
+    test $err_cnt -eq 0
+}
+function set_intersection() {
+    # calculate the intersction of two input sets
+    #
+    # :param set_a:
+    # :param set_b:
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a set_a=("${!1}")
+    local -a set_b=("${!2}")
+    local -a set_r=()
+
+    # log for debug
+    #declare -p set_a | log_lines debug
+    #declare -p set_b | log_lines debug
+
+    local i e
+    for i in ${!set_a[@]}
+    do
+        e="${set_a[$i]}"
+        if contains set_b[@] "$e"; then set_r+=("$e"); fi
+    done
+    declare -p set_r | sed -e 's/^.* set_r=.\(.*\).$/\1/g'
+}
+function __test_set_intersection() {
+    local err_cnt=0
+    local -a a=(1 2 3 4)
+    local -a b=(3 2)
+    local -a c=(33)
+    local -a empty=()
+    
+    local -a r_t=(2 3)
+    local -a r=`set_intersection a[@] b[@]`
+    set_equal r_t[@] r[@] || { ((err_cnt+=1)); log_error "fail a & b intersection 1"; }
+
+    local -a r_t=(3 2)
+    local -a r=`set_intersection b[@] a[@]`
+    set_equal r_t[@] r[@] || { ((err_cnt+=1)); log_error "fail b & a intersection 2"; }
+
+    local -a r=`set_intersection b[@] c[@]`
+    set_equal empty[@] r[@] || { ((err_cnt+=1)); log_error "fail isolate intersection 3"; }
+
+    test $err_cnt -eq 0
+}
+function set_difference() {
+    # calculate the difference of set A from B
+    #
+    # :param set_a:
+    # :param set_b:
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _YNj3_set_a=("${!1}")
+    local -a _YNj3_set_b=("${!2}")
+    local -a _YNj3_set_r=()
+
+    # log for debug
+    #declare -p _YNj3_set_a | sed -e 's/^/[set_diff] >> /g' | log_lines debug
+    #declare -p _YNj3_set_b | sed -e 's/^/[set_diff] >> /g' | log_lines debug
+
+    local i
+    for i in ${!_YNj3_set_a[@]}
+    do
+        local e="${_YNj3_set_a[$i]}"
+        if not_ contains _YNj3_set_b[@] "$e"; then _YNj3_set_r+=("$e"); fi
+    done
+    declare -p _YNj3_set_r | sed -e 's/^.* _YNj3_set_r=.\(.*\).$/\1/g'
+}
+function __test_set_difference() {
+    local err_cnt=0
+    local -a empty=()
+
+    local -a a=(1 2 3 4)
+    local -a b=(3 2)
+    local -a r_t=(1 4)
+    local -a r=`set_difference a[@] b[@]`
+    set_equal r[@] r_t[@] || { ((err_cnt+=1)); log_error "fail num of elements in set_intersection sub-test 1"; }
+
+    local -a a=(1 2 3 4)
+    local -a b=(33 22)
+    local -a r=`set_difference a[@] b[@]`
+    set_equal r[@] a[@] || { ((err_cnt+=1)); log_error "fail isolate set & in set_intersection sub-test 2"; }
+
+    local -a a=(2 4)
+    local -a b=(3 2 6 4)
+    local -a r=`set_difference a[@] b[@]`
+    set_equal r[@] empty[@] || { ((err_cnt+=1)); log_error "fail contained set & in set_intersection sub-test 3"; }
+
+    local -a r=`set_difference empty[@] empty[@]`
+    set_equal r[@] empty[@] || { ((err_cnt+=1)); log_error "fail empty sets & sub-test 4"; }
+
+    test $err_cnt -eq 0
+}
+function set_union() {
+    # calculate the union of two input sets
+    #
+    # :param set_a:
+    # :param set_b:
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _i4cF_set_a=("${!1}")
+    local -a _i4cF_set_b=("${!2}")
+
+    # log for debug
+    #declare -p _i4cF_set_a | sed -e 's/^/[set_union] >> /g' | log_lines debug
+    #declare -p _i4cF_set_b | sed -e 's/^/[set_union] >> /g' | log_lines debug
+
+    local -a _i4cF_set_d=`set_difference _i4cF_set_a[@] _i4cF_set_b[@]`
+
+    # log for debug
+    #declare -p _i4cF_set_d | sed -e 's/^/[set_union] >> /g' | log_lines debug
+
+    local i e
+    for i in ${!_i4cF_set_d[@]}
+    do
+        e="${_i4cF_set_d[$i]}"
+        _i4cF_set_b+=("$e")
+    done
+    declare -p _i4cF_set_b | sed -e 's/^.* _i4cF_set_b=.\(.*\).$/\1/g'
+}
+function __test_set_union() {
+    local err_cnt=0
+    local -a empty=()
+
+    local -a a=(1 2 3 4)
+    local -a b=(32 2)
+    local -a r_t=(1 2 3 4 32)
+    local -a r=`set_union a[@] b[@]`
+    set_equal r[@] r_t[@] || { ((err_cnt+=1)); log_error "fail sub-test 1"; }
+
+    local -a a=(1 2 3 4)
+    local -a r=`set_union a[@] empty[@]`
+    set_equal r[@] a[@] || { ((err_cnt+=1)); log_error "fail sub-test 2"; }
+
+    test $err_cnt -eq 0
+}
 function setup_locale() {
     # locale setting requried by caffe and caffeOnSpark mvn building.
     source /etc/profile
