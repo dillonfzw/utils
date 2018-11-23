@@ -27,6 +27,37 @@ function get_env() {
 function declare_p() {
     declare -p $@
 }
+function declare_p_val() {
+    local var c length pos
+    for var;
+    do
+        c=`declare -p $var`
+        length=`expr length "$c"`
+        pos=`expr index "$c" =`
+        expr substr "$c" $((pos+2)) $((length-pos-2))
+    done
+}
+function __test_declare_p_val() {
+    local err_cnt=0
+
+    local a=1237
+    local b=`declare_p_val a`
+    [ $a -eq $b ] || { ((err_cnt+=1)); log_error "fail sub-test 1"; }
+
+    local a="hello world"
+    local b=`declare_p_val a`
+    [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 2"; }
+
+    local a="$(</etc/hosts)"
+    local b=`declare_p_val a`
+    [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 3"; }
+
+    local -a a=(1 2 "hello" 5.88 "$(</etc/hosts)")
+    local -a b=`declare_p_val a`
+    array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 4"; }
+
+    test $err_cnt -eq 0
+}
 function upper() {
     tr '[a-z]' '[A-Z]'
 }
@@ -51,6 +82,31 @@ function run_unit_test() {
             log_error "Test $((i+1))/${#_NC3v_target_cases[@]} \"$f_case\"... fail"
         fi
     done
+}
+function chain_op() {
+    local op
+    for op;
+    do
+        #log_debug "[chain_op] >> $op"
+        $op || return
+    done
+}
+function __test_chain_op() {
+    function r_9() { return 9; }
+    function r_3() { return 3; }
+
+    local err_cnt=0
+
+    chain_op true r_9 r_3
+    [ $? -eq 9 ] || { ((err_cnt+=1)); log_error "Fail sub-test 1"; }
+
+    chain_op true true
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "Fail sub-test 2"; }
+
+    chain_op
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "Fail sub-test 3"; }
+
+    test $err_cnt -eq 0
 }
 function not_() {
     local op=$1; shift
@@ -99,7 +155,7 @@ function __test_contains() {
     hosts=$(</etc/hosts)
     n_lines=`echo "$hosts" | wc -l | awk '{print $1}'`
     [ $n_lines -gt 0 ] || { ((err_cnt+=1)); log_error "fail pre-assert 0"; }
-    
+
     a+=("$hosts")
 
     contains a[@] "hello" || { ((err_cnt+=1)); log_error "fail normal exist item sub-test 1"; }
@@ -179,7 +235,7 @@ function array_concat() {
         e="${_Ly3e_arr_b[$i]}"
         _Ly3e_arr_a+=("$e")
     done
-    declare -p _Ly3e_arr_a | sed -e 's/^.* _Ly3e_arr_a=.\(.*\).$/\1/g'
+    declare_p_val _Ly3e_arr_a
 }
 function __test_array_concat() {
     local err_cnt=0
@@ -218,7 +274,7 @@ function set_rize() {
             _Ez9X_r+=("$e")
         fi
     done
-    declare -p _Ez9X_r | sed -e 's/^.* _Ez9X_r=.\(.*\).$/\1/g'
+    declare_p_val _Ez9X_r
 }
 function __test_set_rize() {
     local err_cnt=0
@@ -322,21 +378,21 @@ function set_intersection() {
     # :param set_a:
     # :param set_b:
     # :return: an array with the format of "local -p"'s value syntax
-    local -a set_a=("${!1}")
-    local -a set_b=("${!2}")
-    local -a set_r=()
+    local -a _oLp4_set_a=("${!1}")
+    local -a _oLp4_set_b=("${!2}")
+    local -a _oLp4_set_r=()
 
     # log for debug
-    #declare -p set_a | log_lines debug
-    #declare -p set_b | log_lines debug
+    #declare -p _oLp4_set_a | log_lines debug
+    #declare -p _oLp4_set_b | log_lines debug
 
     local i e
-    for i in ${!set_a[@]}
+    for i in ${!_oLp4_set_a[@]}
     do
-        e="${set_a[$i]}"
-        if contains set_b[@] "$e"; then set_r+=("$e"); fi
+        e="${_oLp4_set_a[$i]}"
+        if contains _oLp4_set_b[@] "$e"; then _oLp4_set_r+=("$e"); fi
     done
-    declare -p set_r | sed -e 's/^.* set_r=.\(.*\).$/\1/g'
+    declare_p_val _oLp4_set_r
 }
 function __test_set_intersection() {
     local err_cnt=0
@@ -344,7 +400,7 @@ function __test_set_intersection() {
     local -a b=(3 2)
     local -a c=(33)
     local -a empty=()
-    
+
     local -a r_t=(2 3)
     local -a r=`set_intersection a[@] b[@]`
     set_equal r_t[@] r[@] || { ((err_cnt+=1)); log_error "fail a & b intersection 1"; }
@@ -378,7 +434,7 @@ function set_difference() {
         local e="${_YNj3_set_a[$i]}"
         if not_ contains _YNj3_set_b[@] "$e"; then _YNj3_set_r+=("$e"); fi
     done
-    declare -p _YNj3_set_r | sed -e 's/^.* _YNj3_set_r=.\(.*\).$/\1/g'
+    declare_p_val _YNj3_set_r
 }
 function __test_set_difference() {
     local err_cnt=0
@@ -429,7 +485,7 @@ function set_union() {
         e="${_i4cF_set_d[$i]}"
         _i4cF_set_b+=("$e")
     done
-    declare -p _i4cF_set_b | sed -e 's/^.* _i4cF_set_b=.\(.*\).$/\1/g'
+    declare_p_val _i4cF_set_b
 }
 function __test_set_union() {
     local err_cnt=0
