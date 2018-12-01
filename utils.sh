@@ -629,6 +629,8 @@ function version_cmp() {
     fi
 }
 function for_each_op() {
+    local _ignore_error=false
+    if [ "$1" = "--ignore_error" ]; then _ignore_error=true; shift; fi
     local _silent=false
     if [ "$1" = "--silent" ]; then _silent=true; shift; fi
     local _fs="$IFS"
@@ -678,7 +680,7 @@ function for_each_op() {
         if ! $_silent; then
             print_title "Run \"$op\" at round $((i+1)) of $lcnt with parameter \"$line\""
         fi | log_lines debug
-        $op $line || break
+        $op $line || $_ignore_error || break
         ((i+=1))
     done
     test $i -ge $lcnt
