@@ -680,10 +680,67 @@ function for_each_op() {
         if ! $_silent; then
             print_title "Run \"$op\" at round $((i+1)) of $lcnt with parameter \"$line\""
         fi | log_lines debug
-        $op $line || $_ignore_error || break
+        $op ${op_args[@]} $line || $_ignore_error || break
         ((i+=1))
     done
     test $i -ge $lcnt
+}
+function __test_for_each_op() {
+    local err_cnt=0
+
+    local r truth
+    r=`for_each_op --silent echo "a" "b" "c"`
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "fail echo, rc"; }
+    truth=`echo -e "a\nb\nc"`
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail echo"; }
+
+    r=`for_each_op --silent echo -- "a" "b" "c"`
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "fail echo with --, rc"; }
+    truth=`echo -e "a\nb\nc"`
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail echo with --"; }
+
+    r=`for_each_op --silent echo -n -- "a" "b" "c"`
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "fail echo -n --, rc"; }
+    truth="abc"
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail echo -n --"; }
+
+    r=`for_each_op --silent --fs=: echo "a:b:c"`
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "fail --fs=:, rc"; }
+    truth=`echo -e "a\nb\nc"`
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail --fs=:"; }
+
+    r=`for_each_op --silent --fs=: echo -n -- "a:b:c"`
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "fail --fs=: echo -n --, rc"; }
+    truth="abc"
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail --fs=: echo -n --"; }
+
+    r=`for_each_op --silent --fs=$'\n' echo "a
+b
+c"`
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "fail --fs=\\n, rc"; }
+    truth=`echo -e "a\nb\nc"`
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail --fs=\\n"; }
+
+    r=`for_each_op --silent ls -1d -- "/etc/hosts" "/tmp/$(uuidgen)" 2>/dev/null`
+    [ $? -eq 0 ] && { ((err_cnt+=1)); log_error "fail last op error, rc"; }
+    truth="/etc/hosts"
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail last op error"; }
+
+    r=`for_each_op --ignore_error --silent ls -1d -- "/etc/hosts" "/tmp/$(uuidgen)" 2>/dev/null`
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "fail last op error with ignore_error, rc"; }
+    truth="/etc/hosts"
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail last op error with ignore_error"; }
+
+    r=`for_each_op --silent ls -1d -- "/tmp/$(uuidgen)" "/etc/hosts" 2>/dev/null`
+    [ $? -eq 0 ] && { ((err_cnt+=1)); log_error "fail middle op error, rc"; }
+    [ -z "$r" ] || { ((err_cnt+=1)); log_error "Fail middle op error"; }
+
+    r=`for_each_op --ignore_error --silent ls -1d -- "/tmp/$(uuidgen)" "/etc/hosts" 2>/dev/null`
+    [ $? -eq 0 ] || { ((err_cnt+=1)); log_error "fail middle op error with ignore_error, rc"; }
+    truth="/etc/hosts"
+    [ "$r" == "$truth" ] || { ((err_cnt+=1)); log_error "Fail middle op error with ignore_error"; }
+
+    test $err_cnt -eq 0
 }
 function for_each_line_op() {
     for_each_op --fs=$'\n' "$@"
