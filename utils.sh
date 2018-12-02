@@ -29,12 +29,13 @@ function declare_p() {
 }
 function declare_p_val() {
     local var c length pos
+    local G_expr_bin=${G_expr_bin:-expr}
     for var;
     do
         c=`declare -p $var`
-        length=`expr length "$c"`
-        pos=`expr index "$c" =`
-        expr substr "$c" $((pos+2)) $((length-pos-2))
+        length=`$G_expr_bin length "$c"`
+        pos=`$G_expr_bin index "$c" =`
+        $G_expr_bin substr "$c" $((pos+2)) $((length-pos-2))
     done
 }
 function __test_declare_p_val() {
@@ -42,19 +43,24 @@ function __test_declare_p_val() {
 
     local a=1237
     local b=`declare_p_val a`
-    [ $a -eq $b ] || { ((err_cnt+=1)); log_error "fail sub-test 1"; }
+    [ $a -eq $b ] || { ((err_cnt+=1)); log_error "fail sub-test 1: `declare -p b`"; }
 
     local a="hello world"
     local b=`declare_p_val a`
-    [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 2"; }
+    [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 2: `declare -p b`"; }
 
     local a="$(</etc/hosts)"
     local b=`declare_p_val a`
-    [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 3"; }
+    [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 3: `declare -p b`"; }
+
+    local -a a=(1 2)
+    echo "a=`declare_p_val a`"
+    local -a b=`declare_p_val a`
+    array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 4: `declare -p b`"; }
 
     local -a a=(1 2 "hello" 5.88 "$(</etc/hosts)")
     local -a b=`declare_p_val a`
-    array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 4"; }
+    array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 5: `declare -p b`"; }
 
     test $err_cnt -eq 0
 }
@@ -245,6 +251,7 @@ function __test_array_concat() {
     local -a r_truth=(1 2 3 11 2 33)
 
     local -a r=`array_concat a[@] b[@]`
+    declare -p r
     array_equal r[@] r_truth[@] || { ((err_cnt+=1)); log_error "fail normal test 1"; }
 
     local -a r=`array_concat a[@] empty[@]`
@@ -1255,6 +1262,18 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     declare -g OS_VER && \
     declare -g OS_DISTRO && \
     setup_os_flags && \
+    declare -g G_expr_bin && \
+    if $is_osx; then
+        if expr --version 2>&1 | grep -sq GNU; then
+            G_expr_bin=expr
+        elif gexpr --version 2>&1 | grep -sq GNU; then
+            G_expr_bin=gexpr
+        else
+            log_error "utils.sh needs gnu expr program, use brew to install"
+            false; return
+        fi
+    fi && \
+    declare -p G_expr_bin && \
 
     declare -g DEFAULT_use_conda=${DEFAULT_use_conda:-true} && \
     declare -g DEFAULT_sudo=${DEFAULT_sudo:-""} && \
