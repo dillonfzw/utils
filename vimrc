@@ -35,6 +35,7 @@ if $CONDA_PREFIX != ""
 endif
 let g:syntastic_cpp_check_header = 1
 "let g:syntastic_cpp_remove_include_errors = 1
+let g:syntastic_python_flake8_args='--ignore=E501'
 
 
 " copied from VIM's cscope help
