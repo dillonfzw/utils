@@ -54,7 +54,6 @@ function __test_declare_p_val() {
     [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 3: `declare -p b`"; }
 
     local -a a=(1 2)
-    echo "a=`declare_p_val a`"
     local -a b=`declare_p_val a`
     array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 4: `declare -p b`"; }
 
@@ -251,7 +250,6 @@ function __test_array_concat() {
     local -a r_truth=(1 2 3 11 2 33)
 
     local -a r=`array_concat a[@] b[@]`
-    declare -p r
     array_equal r[@] r_truth[@] || { ((err_cnt+=1)); log_error "fail normal test 1"; }
 
     local -a r=`array_concat a[@] empty[@]`
@@ -1262,7 +1260,7 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     declare -g OS_VER && \
     declare -g OS_DISTRO && \
     setup_os_flags && \
-    declare -g G_expr_bin && \
+    declare -g G_expr_bin="expr" && \
     if $is_osx; then
         if expr --version 2>&1 | grep -sq GNU; then
             G_expr_bin=expr
@@ -1273,7 +1271,6 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
             false; return
         fi
     fi && \
-    declare -p G_expr_bin && \
 
     declare -g DEFAULT_use_conda=${DEFAULT_use_conda:-true} && \
     declare -g DEFAULT_sudo=${DEFAULT_sudo:-""} && \
