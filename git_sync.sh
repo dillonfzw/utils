@@ -1,0 +1,60 @@
+#! /usr/bin/env bash
+
+
+source log.sh
+
+
+DEFAULT_ignore_dot_git=true
+# relative local home
+DEFAULT_rlhome="~${USER}"
+# relative remote home
+DEFAULT_rrhome="~${USER}"
+# physical(?) home
+DEFAULT_phome=`pwd`
+# remote "from" host
+DEFAULT_r4host=""
+# remote "to" host
+DEFAULT_r2host=""
+DEFAULT_dry_run=false
+
+
+source getopt.sh
+OTHER_ARGS=$@
+
+
+if [ -z "${r4host}" -a -z "${r2host}" ]; then
+    log_error "\"r4host\" or \"r2host\" should and can only have one available"
+    exit 1
+fi
+
+
+rlhome=`eval "ls -1d $rlhome" | sed -e 's,/*$,,'`
+phome=`eval "ls -1d $phome" | sed -e "s,^$rlhome/,," -e 's,/*$,,'`
+declare -p rlhome
+declare -p rrhome
+declare -p phome
+#exit 0
+
+declare -a rsync_args=()
+rsync_args+=("-av")
+#rsync_args+=("--relative")
+rsync_args+=("--exclude=**/.git")
+if $dry_run; then
+    rsync_args+=("--dry-run")
+fi
+rsync_args+=(${OTHER_ARGS})
+if [ -n "${r2host}" ]; then
+    rsync_args+=($phome ${r2host}:${rrhome}/$phome)
+else
+    rsync_args+=(${r4host}:${rrhome}/${phome} ${phome})
+fi
+
+if cd $rlhome; then
+    set -x
+    rsync ${rsync_args[@]}
+    rc=$?
+    cd - >/dev/null
+    (exit $rc)
+else
+    false
+fi
