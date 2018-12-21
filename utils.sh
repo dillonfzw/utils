@@ -920,7 +920,7 @@ function setup_pip_flags() {
     G_python_ver_minor=`echo "$G_python_ver" | cut -d. -f2`
 
     local pip=$G_pip_bin
-    local pip_version=`$pip --version | awk '{print $2}' | head -n1`
+    local pip_version=`$pip --version 2>/dev/null | awk '{print $2}' | head -n1`
     if [ -n "$pip_version" ] && version_cmp pip ">=" "$pip_version" "9.0.1"; then
         G_pip_install_flags=("--upgrade" "--upgrade-strategy" "only-if-needed")
         G_pip_list_flags=("--format freeze")
@@ -1250,7 +1250,7 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     fi && \
 
     # make sure the env's locale is correct!!!
-    setup_locales && \
+    setup_locale && \
 
     # os flags is highest priority
     declare -g is_linux && \
