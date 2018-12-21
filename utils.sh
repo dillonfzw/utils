@@ -509,7 +509,6 @@ function __test_set_union() {
     test $err_cnt -eq 0
 }
 function setup_locale() {
-    # locale setting requried by caffe and caffeOnSpark mvn building.
     source /etc/profile
 
     ############################################################
@@ -1249,6 +1248,9 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     if ! echo "${G_registered_initialize_op[@]}" | grep -sq "${FUNCNAME[0]}"; then
         true; return
     fi && \
+
+    # make sure the env's locale is correct!!!
+    setup_locales && \
 
     # os flags is highest priority
     declare -g is_linux && \
