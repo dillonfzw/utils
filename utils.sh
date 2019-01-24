@@ -955,7 +955,11 @@ function setup_apt_flags() {
 }
 # clean cache directory to make docker image efficient
 function clean_pip_cache() {
-    $sudo ${sudo:+"-i"} bash -c 'rm -rf $HOME/.cache/pip'
+    if [ "$as_root" = "true" ]; then
+        $sudo ${sudo:+"-i"} bash -c 'rm -rf $HOME/.cache/pip'
+    else
+        rm -rf $HOME/.cache/pip
+    fi
 }
 function filter_pkgs_yum() {
     echo "$@" | sed -e 's/#[^[:space:]]\+//g' -e 's/ \+/ /g' | tr ' ' '\n' | \
@@ -1005,10 +1009,14 @@ function pkg_install_deb() {
 function pkg_install_pip() {
     local pip=$G_pip_bin
     local pkgs="$@"
-    if ! $sudo test -z "$PYTHONUSERBASE" -o -d "$PYTHONUSERBASE"; then
-        $sudo mkdir -p $PYTHONUSERBASE
+    local _sudo = $sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    if ! $_sudo test -z "$PYTHONUSERBASE" -o -d "$PYTHONUSERBASE"; then
+        $_sudo mkdir -p $PYTHONUSERBASE
     fi && \
-    $sudo ${sudo:+"-i"} env ${PYTHONUSERBASE:+"PYTHONUSERBASE=$PYTHONUSERBASE"} \
+    $_sudo ${_sudo:+"-i"} env ${PYTHONUSERBASE:+"PYTHONUSERBASE=$PYTHONUSERBASE"} \
         $pip install ${PYTHONUSERBASE:+"--user"} ${G_pip_install_flags[@]} $pkgs
     local rc=$?
 
@@ -1020,13 +1028,17 @@ function pkg_install_pip() {
 function pkg_install_conda() {
     if ! $use_conda; then return; fi
     local pkgs="$@"
+    local _sudo = $sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
     if [ -n "$conda_env_prefix" ]; then
-        $sudo $G_conda_bin install \
-            ${conda_env_name:+"--path ${conda_env_prefix}/${conda_env_name}"} \
+        $_sudo $G_conda_bin install \
+            ${conda_env_name:+"--prefix=${conda_env_prefix}/${conda_env_name}"} \
             ${G_conda_install_flags[@]} $pkgs
     else
-        $sudo $G_conda_bin install \
-            ${conda_env_name:+"--name ${conda_env_name}"} \
+        $_sudo $G_conda_bin install \
+            ${conda_env_name:+"--name=${conda_env_name}"} \
             ${G_conda_install_flags[@]} $pkgs
     fi
 }
@@ -1081,14 +1093,22 @@ function pkg_list_installed_conda() {
 function pkg_verify_yum() {
     declare -a pkgs=($@)
     if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
-    $sudo rpm -V ${pkgs[@]}
+    local _sudo = $sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    $_sudo rpm -V ${pkgs[@]}
 }
 function pkg_verify_deb() {
     declare -a pkgs=($@)
     if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
+    local _sudo = $sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
 
     declare -a pkgs_m=(`echo "${pkgs[@]}" | tr ' ' '\n' | sed -e 's/=.*$//g'`)
-    local out_lines=`$sudo dpkg -V ${pkgs_m[@]} 2>&1`
+    local out_lines=`$_sudo dpkg -V ${pkgs_m[@]} 2>&1`
     if [ -n "$out_lines" ]; then
         log_error "Fail to verify packages \"${pkgs[@]}\""
         echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
@@ -1289,8 +1309,10 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
         fi
     fi && \
 
-    declare -g DEFAULT_use_conda=${DEFAULT_use_conda:-true} && \
-    declare -g DEFAULT_sudo=${DEFAULT_sudo:-""} && \
+    declare -g DEFAULT_use_conda=${use_conda:-true} && \
+    declare -g DEFAULT_sudo=${sudo:-sudo} && \
+    if [ "${USER:-`whoami`}" = "root" ]; then DEFAULT_sudo=""; fi && \
+    declare -g DEFAULT_as_root=${as_root:-false} && \
 
     #-------------------------------------------------------------------------------
     # Setup conda related global variables/envs
@@ -1337,6 +1359,11 @@ fi
 #
 function install_anaconda() {
     local python_ver_major=${python_ver_major:-"3"}
+    local _sudo = $sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
     print_title "Install Anaconda${python_ver_major} installer's dependency" | log_lines debug && \
     declare -a pkgs=() && \
     if ! $is_osx; then
@@ -1352,8 +1379,8 @@ function install_anaconda() {
     print_title "Install Anaconda${python_ver_major}" | log_lines debug && \
     if do_and_verify \
         'eval bash -l -c "conda --version 2>&1 | grep -sq \"^conda '$conda_ver'\""' \
-        'eval f=`download_by_cache $conda_installer_url` && $sudo bash $f -b -p $conda_install_home &&
-              $sudo ln -s $conda_install_home/etc/profile.d/conda.sh /etc/profile.d/ &&
+        'eval f=`download_by_cache $conda_installer_url` && $_sudo bash $f -b -p $conda_install_home &&
+              $_sudo ln -s $conda_install_home/etc/profile.d/conda.sh /etc/profile.d/ &&
               setup_conda_flags' \
         "true"; then
         ${G_conda_bin} info | sed -e 's/^/>> /g' | log_lines debug
@@ -1367,20 +1394,32 @@ function install_anaconda() {
 function conda_create_env() {
     local _user=false
     if [ "$1" = "--user" ]; then _user=true; shift; fi
-    local _ve_name
+    local _ve_name=""
+    local _ve_prefix=""
     if [ "$1" = "--name" ]; then
         _ve_name=$2; shift 2
     elif [ `expr "#$1" : "^#--name="` -eq 8 ]; then
         _ve_name="${1/--name=}"; shift
+    elif [ "$1" = "--prefix" ]; then
+        _ve_prefix=$2; shift 2
+    elif [ `expr "#$1" : "^#--prefix="` -eq 10 ]; then
+        _ve_prefix="${1/--prefix=}"; shift
     else
         _ve_name=$conda_ve_name
+    fi
+    if [ -n "$_ve_prefix" ]; then
+        _ve_name=`basename $_ve_prefix`
+        _ve_prefix=`dirname $_ve_prefix`
+        env_arg_name="prefix"
+    else
+        env_arg_name="name"
     fi
     local extra_args=$@
 
     print_title "Install Anaconda${python_ver_major} environment \"${_ve_name}\"" | log_lines debug && \
     if do_and_verify \
         'eval ${G_conda_bin} env list | grep -sq "^${_ve_name} \+"' \
-        'eval if ! ${_user}; then _prefix=${sudo:+"${sudo} -i"}; fi; ${_prefix}${G_conda_bin} create --name ${_ve_name} --yes ${G_conda_install_flags[@]} $extra_args pip' \
+        'eval if ! ${_user}; then _prefix=${sudo:+"${sudo} -i"}; fi; ${_prefix}${G_conda_bin} create --$env_arg_name ${_ve_prefix:+${_ve_prefix}/}${_ve_name} --yes ${G_conda_install_flags[@]} $extra_args pip' \
         'true'; then
         {
             ${G_conda_bin} env list | grep "^${_ve_name} *"
