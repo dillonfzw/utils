@@ -900,7 +900,7 @@ function _shadow_cmd_conda() {
 # different pip version has different command line options
 function setup_conda_flags() {
     local conda_profile=$conda_install_home/etc/profile.d/conda.sh
-    if do_and_verify "has_conda" "source $conda_profile" 'true'; then
+    if do_and_verify "has_conda" "source $conda_profile" 'true' 2>/dev/null; then
         G_conda_bin="`conda info -s | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
         G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
     fi
