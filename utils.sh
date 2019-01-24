@@ -1013,7 +1013,15 @@ function pkg_install_pip() {
 function pkg_install_conda() {
     if ! $use_conda; then return; fi
     local pkgs="$@"
-    $sudo $G_conda_bin install ${conda_env_name:+"-n"} ${conda_env_name} ${G_conda_install_flags[@]} $pkgs
+    if [ -n "$conda_env_prefix" ]; then
+        $sudo $G_conda_bin install \
+            ${conda_env_name:+"--path ${conda_env_prefix}/${conda_env_name}"} \
+            ${G_conda_install_flags[@]} $pkgs
+    else
+        $sudo $G_conda_bin install \
+            ${conda_env_name:+"--name ${conda_env_name}"} \
+            ${G_conda_install_flags[@]} $pkgs
+    fi
 }
 function pkg_list_installed_yum() {
     local pkgs="$@"
