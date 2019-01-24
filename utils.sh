@@ -887,7 +887,14 @@ function _shadow_cmd_conda() {
     if declare -f conda >/dev/null; then
         conda $@
     elif command -v conda >/dev/null; then
-        source $@
+        if [ "$1" = "activate" -o "$1" = "deactivate" ]; then
+            source $@
+        else
+            conda $@
+        fi
+    else
+        log_error "Conda environment was not properly configured in current shell"
+        false
     fi
 }
 # different pip version has different command line options

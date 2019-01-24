@@ -170,6 +170,18 @@ fi
 unset _CONDA_PATH_Chae4dok9e
 unset PYVER
 
+
+############################################################
+#
+# BFG tool
+#
+# https://rtyley.github.io/bfg-repo-cleaner/
+#
+if ! command -v bfg >/dev/null 2>&1 && [ -x $HOME/bin/apps/bfg/bin/bfg ]; then
+    export PATH=$PATH:$HOME/bin/apps/bfg/bin
+fi
+
+
 ############################################################
 # Post process which MUST be in the last of this profile
 #
