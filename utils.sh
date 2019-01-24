@@ -1009,7 +1009,7 @@ function pkg_install_deb() {
 function pkg_install_pip() {
     local pip=$G_pip_bin
     local pkgs="$@"
-    local _sudo = $sudo
+    local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
@@ -1028,7 +1028,7 @@ function pkg_install_pip() {
 function pkg_install_conda() {
     if ! $use_conda; then return; fi
     local pkgs="$@"
-    local _sudo = $sudo
+    local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
@@ -1093,7 +1093,7 @@ function pkg_list_installed_conda() {
 function pkg_verify_yum() {
     declare -a pkgs=($@)
     if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
-    local _sudo = $sudo
+    local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
@@ -1102,7 +1102,7 @@ function pkg_verify_yum() {
 function pkg_verify_deb() {
     declare -a pkgs=($@)
     if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
-    local _sudo = $sudo
+    local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
@@ -1359,7 +1359,7 @@ fi
 #
 function install_anaconda() {
     local python_ver_major=${python_ver_major:-"3"}
-    local _sudo = $sudo
+    local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
