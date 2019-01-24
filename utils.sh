@@ -1309,10 +1309,10 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
         fi
     fi && \
 
-    declare -g DEFAULT_use_conda=${use_conda:-true} && \
-    declare -g DEFAULT_sudo=${sudo:-sudo} && \
+    declare -g DEFAULT_use_conda=${use_conda:-${DEFAULT_use_conda:-true}} && \
+    declare -g DEFAULT_sudo=${sudo:-${DEFAULT_sudo:-sudo}} && \
     if [ "${USER:-`whoami`}" = "root" ]; then DEFAULT_sudo=""; fi && \
-    declare -g DEFAULT_as_root=${as_root:-false} && \
+    declare -g DEFAULT_as_root=${as_root:-${DEFAULT_as_root:-false}} && \
 
     #-------------------------------------------------------------------------------
     # Setup conda related global variables/envs
