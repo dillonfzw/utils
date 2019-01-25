@@ -66,6 +66,19 @@ function __test_declare_p_val() {
 function upper() {
     tr '[a-z]' '[A-Z]'
 }
+function __test_upper() {
+    local err_cnt=0
+    [ `echo "AaBbCc.2#4%" | upper` = "AABBCC.2#4%" ] || { ((err_cnt+=1)); log_error "fail sub-test 1"; }
+    test $err_cnt -eq 0
+}
+function lower() {
+    tr '[A-Z]' '[a-z]'
+}
+function __test_lower() {
+    local err_cnt=0
+    [ `echo "AaBbCc.2#4%" | lower` = "aabbcc.2#4%" ] || { ((err_cnt+=1)); log_error "fail sub-test 1"; }
+    test $err_cnt -eq 0
+}
 function run_unit_test() {
     local -a _NC3v_all_unit_test_cases=(`declare -F | awk '{print $3}' | grep "^__test" | sed -e 's/^__//' | xargs`)
 
@@ -615,6 +628,11 @@ function version_cmp() {
     # version expect
     local pkg_verE="$4"
 
+    # "*" means matching any version which equals to no version expectation.
+    if [ "$pkg_verE" = "*" ]; then
+        pkg_verE=""
+    fi
+
     local pkg_vmin=`echo -e "${pkg_verE}\n${pkg_verR}" | sort -V | grep -v "^$" | head -n1`
     local msg="name=\"$pkg_name\", verA=\"$pkg_verR\", op=\"$pkg_op\", verB=\"$pkg_verE\", vMin=\"$pkg_vmin\""
 
@@ -631,6 +649,12 @@ function version_cmp() {
         if ! $silent; then log_error "${FUNCNAME[0]} fail: $msg"; fi
         false
     fi
+}
+function __test_version_cmp() {
+    local err_cnt=0
+    log_warn "NotImplemented ${FUNCNAME[0]}"
+    true || { ((err_cnt+=1)); log_error "fail sub-case 1"; }
+    test $err_cnt -eq 0
 }
 function for_each_op() {
     local _ignore_error=false
