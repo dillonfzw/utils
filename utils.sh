@@ -1101,7 +1101,7 @@ function pkg_list_installed_conda() {
     if ! $use_conda; then return; fi
     local pkgs="$@"
     local regex=`echo "$pkgs" | tr ' ' '\n' | \
-                 sed -e 's/[<=>]=.*$//g' -e 's/[<>].*$//g' -e 's/^\(.*\)$/^\1==/g' | \
+                 sed -e 's/[<=>]=.*$//g' -e 's/[<=>].*$//g' -e 's/^\(.*\)$/^\1==/g' | \
                  xargs | tr ' ' '|'`
     local cnt=`echo "$pkgs" | wc -w`
     # we'd better to compare package name case insensitive.
@@ -1147,7 +1147,7 @@ function _cmp_op_pair() {
     if [ -n "$pkg_verE" ]; then
         version_cmp "$pkg_name" "$pkg_op" "$pkg_verR" "$pkg_verE"
     elif [ ! -n "$pkg_verR" ]; then
-        log_error "Missing pkg \"$pkg\""
+        log_error "Missing pkg \"$pkg_op_pair\""
         false
     fi
 }
