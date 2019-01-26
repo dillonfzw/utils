@@ -1068,7 +1068,11 @@ function pkg_install_conda() {
 }
 function pkg_list_installed_yum() {
     local pkgs="$@"
-    $sudo yum ${G_yum_flags[@]} list installed $pkgs
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    $_sudo yum ${G_yum_flags[@]} list installed $pkgs
 }
 function pkg_list_installed_deb() {
     local pkgs="$@"
@@ -1401,10 +1405,17 @@ function install_anaconda() {
     fi && \
 
     print_title "Install Anaconda${python_ver_major}" | log_lines debug && \
+    test -n "$conda_install_home" && \
     if do_and_verify \
-        'eval bash -l -c "conda --version 2>&1 | grep -sq \"^conda '$conda_ver'\""' \
-        'eval f=`download_by_cache $conda_installer_url` && $_sudo bash $f -b -p $conda_install_home &&
-              $_sudo ln -s $conda_install_home/etc/profile.d/conda.sh /etc/profile.d/ &&
+        'eval bash -l -c "
+              source $conda_install_home/etc/profile.d/conda.sh &&
+              conda info -s 2>&1 | grep -sq \"^sys.prefix: $conda_install_home\""' \
+        'eval unset PYTHONPATH &&
+              f=`download_by_cache $conda_installer_url` &&
+              $_sudo bash $f -b -p $conda_install_home &&
+              if [ -n "$_sudo" ]; then
+                  $_sudo ln -s $conda_install_home/etc/profile.d/conda.sh /etc/profile.d/;
+              fi &&
               setup_conda_flags' \
         "true"; then
         ${G_conda_bin} info | sed -e 's/^/>> /g' | log_lines debug
@@ -1456,8 +1467,8 @@ function conda_create_env() {
 }
 DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"/opt/anaconda${python_ver_major}"}
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
-DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/Anaconda3-5.1.0-Linux-x86_64.sh"}
-#"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
+#"https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/Anaconda3-5.3.1-Linux-x86_64.sh"
 
 # end of feature functions
 #-------------------------------------------------------------------------------
