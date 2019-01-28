@@ -17,6 +17,11 @@
 #               ------------------------------------------
 
 
+PROG_CLI=${PROG_CLI:-`command -v $0`}
+PROG_NAME=${PROG_NAME:-${PROG_CLI##*/}}
+PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
+
+
 # ------------------ cut here beg Aeth4Aechoo7ca7aez4eesh3eigeitho -------------
 #-------------------------------------------------------------------------------
 # Utility functions
@@ -1493,3 +1498,24 @@ function enc_self_b64_gz() {
         false
     fi
 }
+
+
+# ------------------------------------------------------------------------------
+# begin of self run
+#
+if [ "$PROG_NAME" = "utils.sh" ]; then
+    source ${PROG_DIR}/log.sh
+    source ${PROG_DIR}/getopt.sh
+
+    [ -n "$cmd" ] || cmd=usage
+    if declare -F $cmd >/dev/null 2>&1; then
+        $cmd $@
+        exit $?
+    else
+        echo "Unknown cmd \"$cmd\""
+        false
+    fi
+fi
+#
+# end of self run
+# ------------------------------------------------------------------------------
