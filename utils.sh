@@ -33,14 +33,22 @@ function declare_p() {
     declare -p $@
 }
 function declare_p_val() {
-    local var c length pos
+    local var c length pos _l_shift _r_shift
     local G_expr_bin=${G_expr_bin:-expr}
     for var;
     do
-        c=`declare -p $var`
+        c=`declare -p $var 2>/dev/null`
         length=`$G_expr_bin length "$c"`
-        pos=`$G_expr_bin index "$c" =`
-        $G_expr_bin substr "$c" $((pos+2)) $((length-pos-2))
+        pos=`$G_expr_bin index "$c" "="`
+
+        if [ "$is_osx" = "true" -a `$G_expr_bin "$c" : "declare -a"` -gt 1 ]; then
+            _l_shift=1
+            _r_shift=0
+        else
+            _l_shift=2
+            _r_shift=2
+        fi
+        $G_expr_bin substr "$c" $((pos+_l_shift)) $((length-pos-_r_shift))
     done
 }
 function __test_declare_p_val() {
@@ -60,7 +68,10 @@ function __test_declare_p_val() {
 
     local -a a=(1 2)
     local -a b=`declare_p_val a`
-    array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 4: `declare -p b`"; }
+    array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 4:
+    |`declare_p_val a`|
+    |`declare -p a`|
+    |`declare -p b`|"; }
 
     local -a a=(1 2 "hello" 5.88 "$(</etc/hosts)")
     local -a b=`declare_p_val a`
