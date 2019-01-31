@@ -28,6 +28,10 @@ function __logLevelToNum() {
 # declare core log wrapper functions
 declare -F log_lines &>/dev/null || \
 function log_lines {
+    # save the current xtrace setting before disabling it enforcely
+    # in the log function to prevent verbose xtrace to logger itself
+    local _xtrace=`set +o | grep xtrace`
+    set +x
     declare levelName=${1:-"info"}; shift
     declare levelNum
 
@@ -58,6 +62,7 @@ function log_lines {
             msgutil_r $logserver $levelName "$levelPrefix $line"
         done
     fi
+    eval $_xtrace
 }
 function set_log_level() {
     __logLevelNum=`__logLevelToNum $1`
