@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /usr/bin/env bash
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -551,19 +551,8 @@ function setup_locale() {
     done
 }
 function setup_os_flags() {
-    if [ -f /etc/os-release ]; then
-        setup_linux_os_flags
-        is_osx=false
+    function declare_g() { declare -g $1; }
 
-    elif command -v sw_vers >/dev/null; then
-        setup_osx_os_flags
-        is_linux=false
-        is_rhel=false; if_ubuntu=false
-
-    else
-        log_error "Unsupported OS distribution. Abort!"
-        exit 1
-    fi
     declare -a os_flags=(
       "is_osx"
       "is_linux"
@@ -573,7 +562,36 @@ function setup_os_flags() {
       "OS_ID"
       "OS_VER"
       "OS_DISTRO"
-    )
+      "G_expr_bin"
+    ) && \
+
+    for_each_op --silent declare_g ${os_flags[@]} && \
+
+    if [ -f /etc/os-release ]; then
+        setup_linux_os_flags
+        is_osx=false
+
+    elif command -v sw_vers >/dev/null; then
+        setup_osx_os_flags
+        is_linux=false
+        is_rhel=false; is_ubuntu=false
+
+    else
+        log_error "Unsupported OS distribution. Abort!"
+        exit 1
+    fi && \
+
+    if $is_osx; then
+        if expr --version 2>&1 | grep -sq GNU; then
+            G_expr_bin=expr
+        elif gexpr --version 2>&1 | grep -sq GNU; then
+            G_expr_bin=gexpr
+        else
+            log_error "utils.sh needs gnu expr program, use brew to install"
+            false; return
+        fi
+    fi && \
+
     for_each_op --silent declare_p ${os_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
 function setup_osx_os_flags() {
@@ -643,10 +661,10 @@ function version_cmp() {
 
     if [ \( -z "$pkg_verE" -a -n "$pkg_verR" \) -o \
          \( -n "$pkg_verE" -a -n "$pkg_verR" -a \( \
-             \( "${pkg_verE}"  = "${pkg_verR}" -a `expr "#$pkg_op" : "^#.*=$"` -gt 1 \) -o \
+             \( "${pkg_verE}"  = "${pkg_verR}" -a `$G_expr_bin "#$pkg_op" : "^#.*=$"` -gt 1 \) -o \
              \( "${pkg_verE}" != "${pkg_verR}" -a \( \
-                 \( `expr "#$pkg_op" : "^#>.*$"` -gt 1 -a "${pkg_vmin}" = "${pkg_verE}" \) -o \
-                 \( `expr "#$pkg_op" : "^#<.*$"` -gt 1 -a "${pkg_vmin}" = "${pkg_verR}" \) \
+                 \( `$G_expr_bin "#$pkg_op" : "^#>.*$"` -gt 1 -a "${pkg_vmin}" = "${pkg_verE}" \) -o \
+                 \( `$G_expr_bin "#$pkg_op" : "^#<.*$"` -gt 1 -a "${pkg_vmin}" = "${pkg_verR}" \) \
              \) \) \
          \) \) ]; then
         if ! $silent; then log_debug "${FUNCNAME[0]} succ: $msg"; fi
@@ -662,6 +680,7 @@ function __test_version_cmp() {
     test $err_cnt -eq 0
 }
 function for_each_op() {
+    local G_expr_bin=${G_expr_bin:-expr}
     local _ignore_error=false
     if [ "$1" = "--ignore_error" ]; then _ignore_error=true; shift; fi
     local _silent=false
@@ -669,7 +688,7 @@ function for_each_op() {
     local _fs="$IFS"
     if [ "$1" = "--fs" ]; then
         _fs=$2; shift 2
-    elif [ `expr "#$1" : "^#--fs="` -eq 6 ]; then
+    elif [ `$G_expr_bin "#$1" : "^#--fs="` -eq 6 ]; then
         _fs="${1/--fs=}"; shift
     fi
 
@@ -803,7 +822,7 @@ function download_by_cache() {
     if [ "$1" = "--cache_home" ]; then
         cache_home=$2
         shift 2
-    elif [ `expr "#$1" : "#--cache_home="` -eq 13 ]; then
+    elif [ `G_expr_bin "#$1" : "#--cache_home="` -eq 13 ]; then
         cache_home="`echo "$1" | cut -d= -f2-`"
         shift
     elif [ -z "$cache_home" ]; then
@@ -818,7 +837,7 @@ function download_by_cache() {
     if [ "$1" = "--dry-run" ]; then
         dry_run=true
         shift
-    elif [ `expr "#$1" : "#--dry-run="` -eq 10 ]; then
+    elif [ `G_expr_bin "#$1" : "#--dry-run="` -eq 10 ]; then
         dry_run="`echo "$1" | cut -d= -f2-`"
         shift
     fi && \
@@ -1320,27 +1339,7 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     # make sure the env's locale is correct!!!
     setup_locale && \
 
-    # os flags is highest priority
-    declare -g is_linux && \
-    declare -g is_osx && \
-    declare -g is_rhel && \
-    declare -g is_ubuntu && \
-    declare -g ARCH && \
-    declare -g OS_ID && \
-    declare -g OS_VER && \
-    declare -g OS_DISTRO && \
     setup_os_flags && \
-    declare -g G_expr_bin="expr" && \
-    if $is_osx; then
-        if expr --version 2>&1 | grep -sq GNU; then
-            G_expr_bin=expr
-        elif gexpr --version 2>&1 | grep -sq GNU; then
-            G_expr_bin=gexpr
-        else
-            log_error "utils.sh needs gnu expr program, use brew to install"
-            false; return
-        fi
-    fi && \
 
     declare -g DEFAULT_use_conda=${use_conda:-${DEFAULT_use_conda:-true}} && \
     declare -g DEFAULT_sudo=${sudo:-${DEFAULT_sudo:-sudo}} && \
@@ -1438,11 +1437,11 @@ function conda_create_env() {
     local _ve_prefix=""
     if [ "$1" = "--name" ]; then
         _ve_name=$2; shift 2
-    elif [ `expr "#$1" : "^#--name="` -eq 8 ]; then
+    elif [ `$G_expr_bin "#$1" : "^#--name="` -eq 8 ]; then
         _ve_name="${1/--name=}"; shift
     elif [ "$1" = "--prefix" ]; then
         _ve_prefix=$2; shift 2
-    elif [ `expr "#$1" : "^#--prefix="` -eq 10 ]; then
+    elif [ `$G_expr_bin "#$1" : "^#--prefix="` -eq 10 ]; then
         _ve_prefix="${1/--prefix=}"; shift
     else
         _ve_name=$conda_ve_name
@@ -1507,7 +1506,11 @@ if [ "$PROG_NAME" = "utils.sh" ]; then
     source ${PROG_DIR}/log.sh
     source ${PROG_DIR}/getopt.sh
 
-    [ -n "$cmd" ] || cmd=usage
+    if [ "${DEBUG}" = "true" ]; then set -x; fi && \
+
+    setup_os_flags && \
+
+    if [ -z "$cmd" ]; then cmd=usage; fi && \
     if declare -F $cmd >/dev/null 2>&1; then
         $cmd $@
         exit $?
