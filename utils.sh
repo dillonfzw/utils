@@ -68,7 +68,12 @@ function __test_shuf() {
     #
     line2=`shuf -e $line0`
     echo "$line2" | sed -e 's/^/[line2] >> /g' | log_lines debug
-    [ "$line2" != "$line1" -a "$line2" != "$line0" ] || {
+    line2_s=`echo "$line2" | sort -n`
+    [ "$line2" != "$line1" \
+        -a "$line2" != "$line0" \
+        -a `echo "$line2" | awk "END{print NR}"` -eq 5 \
+        -a "$line2_s" = "$line0" \
+    ] || {
         ((err_cnt+=1)); log_error "Fail sub-case 3";
     }
 
