@@ -26,6 +26,59 @@ PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
 #-------------------------------------------------------------------------------
 # Utility functions
 #
+`command -v shuf >/dev/null 2>&1` ||
+function shuf() {
+    #
+    # support only "-e"
+    #
+    if [ "$1" = "-e" ]; then
+        shift
+        while [ ${#@} -gt 0 ]; do echo "$1"; shift; done
+    else
+        cat -
+    fi |
+    while read LINE; do echo "$RANDOM $LINE"; done | \
+    sort -t' ' -k1 -n | cut -d' ' -f2-
+}
+function __test_shuf() {
+    local err_cnt=0
+
+    #
+    # osx will have shuf redirected to our own function
+    #
+    ! $is_osx || \
+    { declare -F | grep -sqw "shuf"; } || { ((err_cnt+=1)); log_error "Fail sub-case 1"; }
+
+    line0=`echo "1 2 3 4 5" | tr ' ' '\n'`
+    line1=`echo "$line0" | shuf`
+
+    #
+    # verify the functionality when get input from stdin
+    #
+    #echo "$line0" | sed -e 's/^/[line0] >> /g' | log_lines debug
+    #echo "$line1" | sed -e 's/^/[line1] >> /g' | log_lines debug
+    #echo "$line2" | sed -e 's/^/[line2] >> /g' | log_lines debug
+    #echo "$line1" | sort -n | sed -e 's/^/[line3] >> /g' | log_lines debug
+    line1_s=`echo "$line1" | sort -n`
+    [ `echo "$line1" | awk "END{print NR}"` -eq 5 \
+        -a "$line1" != "$line0" \
+        -a "$line1_s" = "$line0" \
+    ] || { ((err_cnt+=1)); log_error "Fail sub-case 2"; }
+
+    #
+    # two shuf have two different order to validate the random takes effect.
+    #
+    line2=`echo "$line0" | shuf`
+    [ "$line2" != "$line1" -a "$line2" != "$line0" ] || {
+        ((err_cnt+=1)); log_error "Fail sub-case 3";
+    }
+
+    #
+    # TODO: verify -e for shuf function in osx
+    #
+
+    test $err_cnt -eq 0
+}
 function get_env() {
     eval "echo \$$1" 2>/dev/null
 }
