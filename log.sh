@@ -46,6 +46,7 @@ function log_lines {
     # make sure requested log level higher than define log level
     #set | grep -E "^__logLevelNum|^levelNum" && \
     if [ $__logLevelNum -lt ${levelNum} ]; then
+        eval $_xtrace
         return 0
     fi && \
 
