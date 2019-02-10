@@ -649,6 +649,8 @@ function setup_os_flags() {
             log_error "utils.sh needs gnu expr program, use brew to install"
             false; return
         fi
+    else
+        G_expr_bin=expr
     fi && \
 
     for_each_op --silent declare_p ${os_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
