@@ -90,18 +90,11 @@ function declare_p_val() {
     local G_expr_bin=${G_expr_bin:-expr}
     for var;
     do
-        c=`declare -p $var 2>/dev/null`
-        length=`$G_expr_bin length "$c"`
-        pos=`$G_expr_bin index "$c" "="`
-
-        if [ "$is_osx" = "true" -a `$G_expr_bin "$c" : "declare -a"` -gt 1 ]; then
-            _l_shift=1
-            _r_shift=0
-        else
-            _l_shift=2
-            _r_shift=2
-        fi
-        $G_expr_bin substr "$c" $((pos+_l_shift)) $((length-pos-_r_shift))
+	    declare -p $var 2>/dev/null | \
+            sed -e "1s/^.*$var=//" | \
+            sed -e '1s/^"//' -e '$s/"$//' | \
+            sed -e "1s/^'//" -e "\$s/'$//" | \
+            cat -
     done
 }
 function __test_declare_p_val() {
