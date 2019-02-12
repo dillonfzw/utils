@@ -15,7 +15,7 @@ fi
 #   change it to en_US.UTF-8 if detected.
 DEFAULT_locale=`locale -a | grep -Eix "en_US.UTF-8|en_US.utf8" | head -n1`
 if [ -z "$DEFAULT_locale" ]; then DEFAULT_locale=C; fi
-for item in LC_ALL LC_CTYPE
+for item in LC_ALL LC_CTYPE LANG
 do
   val=`locale 2>/dev/null | grep "^${item}=" | cut -d= -f2 | sed -e 's/\"//g'`
   if [ -z "$val" -o -z "$(locale -a 2>/dev/null | grep -Fx "$val")" ] && \
