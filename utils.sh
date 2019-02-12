@@ -991,7 +991,7 @@ function has_conda() {
 }
 # shadow conda command
 function _shadow_cmd_conda() {
-    if declare -f conda >/dev/null; then
+    if declare -F conda >/dev/null; then
         conda $@
     elif command -v conda >/dev/null; then
         if [ "$1" = "activate" -o "$1" = "deactivate" ]; then
