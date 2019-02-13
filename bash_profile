@@ -129,7 +129,7 @@ unset RPATH
 ############################################################
 # Anaconda
 PYVER=${PYVER:-`python --version 2>&1 | grep ^Python | awk '{print $2}' | cut -d. -f1`}
-if declare -f conda >/dev/null 2>&1; then
+if declare -F conda >/dev/null 2>&1; then
     # cache "conda info -s" output since it's little bit heavy
     _CONDA_INFO_Chae4dok9e="`conda info -s`"
     _CONDA_PATH_Chae4dok9e="`echo "$_CONDA_INFO_Chae4dok9e" | grep ^sys.prefix | awk '{print $2}'`/bin/conda"

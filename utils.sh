@@ -163,6 +163,16 @@ function run_unit_test() {
         fi
     done
 }
+function _fail_unit_test() {
+    log_error "Fail shell unit case \"${FUNCNAME[1]}\" $@"
+}
+function __test__fail_unit_test {
+    local err_cnt=0
+    _fail_unit_test "oni4aeng" 2>&1 | grep -sqF "Fail shell unit case \"${FUNCNAME[0]}\" oni4aeng" || {
+        ((err_cnt+=1)); log_error "Fail shell unit case \"${FUNCNAME[0]}\" sub-case 1";
+    }
+    test $err_cnt -eq 0
+}
 function chain_op() {
     local op
     for op;
@@ -987,15 +997,27 @@ function filter_pkgs_groupby() {
 }
 # detect if there is conda command available in current env
 function has_conda() {
-    command -v conda >/dev/null || declare -f conda >/dev/null
+    command -v conda >/dev/null || declare -F conda >/dev/null
 }
 # shadow conda command
 function _shadow_cmd_conda() {
-    if declare -F conda >/dev/null; then
+    if declare -F conda >/dev/null 2>&1; then
         conda $@
     elif command -v conda >/dev/null; then
         if [ "$1" = "activate" -o "$1" = "deactivate" ]; then
-            source $@
+            # conda.sh sourced in func call will lost in invoker while the CONDA_* env
+            # were actually kept. also, the path to conda binary might be removed from
+            # PATH to co-operate a conda compatibility request.
+            # in this case, the conda binary path needs to be explicitly add to the
+            # "XX activate" command so that "source" can locate it
+            local _cmd=$1; shift
+            if [ -n "$CONDA_EXE" ]; then
+                log_debug "$_cmd res conda virtual environment \"$@\""
+                _cmd=${CONDA_EXE%/*}/$_cmd
+            else
+                log_debug "$_cmd conda virtual environment \"$@\""
+            fi
+            source $_cmd $@
         else
             conda $@
         fi
@@ -1011,6 +1033,10 @@ function setup_conda_flags() {
         G_conda_bin="`conda info -s | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
         G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
     fi
+    if declare -F conda >/dev/null 2>&1; then
+        export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "${CONDA_EXE%/*}" | xargs | tr ' ' ':'`
+        log_info "Remove ${CONDA_EXE%/*} from PATH"
+    fi
     declare -a conda_flags=(`set | grep "^G_conda" | cut -d= -f1 | sort -u`)
     for_each_op --silent declare_p ${conda_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
@@ -1021,7 +1047,7 @@ function setup_pip_flags() {
         if [ "${CONDA_DEFAULT_ENV}" = "$conda_env_name" ]; then
             env_activated=true
         fi
-        if $env_activated || _shadow_cmd_conda activate ${conda_env_name}; then
+        if $env_activated || _shadow_cmd_conda activate ${conda_env_name} 2>/dev/null; then
             G_pip_bin=`command -v pip`
             G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
             $env_activated || _shadow_cmd_conda deactivate
@@ -1360,7 +1386,19 @@ function get_realpath() {
     return 0 # success
 }
 function listFunctions() {
-    declare -f | grep "^[^ ].* () *$" | sed -e 's/ *() *$//g'
+    declare -F | awk '{print $3}'
+}
+function __test_listFunctions() {
+    local err_cnt=0
+
+    local lines=`listFunctions`
+    [ `declare -F | awk 'END{print NR}'` -eq `echo "$lines" | awk 'END{print NR}'` ] || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 1";
+    }
+    echo "$lines" | grep -sqx "${FUNCNAME[0]}" || {
+        ((err_cnt+=1)); _fail_unit_test "sub-case 2";
+    }
+    test $err_cnt -eq 0
 }
 function pstree() {
     pids="$@"
@@ -1378,7 +1416,7 @@ function usleep() {
     local num=$1
     sleep `awk -vnum=$num 'END{print num / 1000000}' </dev/null`
 }
-declare -f usage >/dev/null || \
+declare -F usage >/dev/null || \
 function usage() {
     echo "Usage $PROGNAME"
     listFunctions | grep -v "^_" | sed -e 's/^/[cmd] >> /g' | log_lines info
@@ -1392,7 +1430,7 @@ function run_initialize_ops() {
 function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     # ignore this op if it has not been registered
     if ! echo "${G_registered_initialize_op[@]}" | grep -sq "${FUNCNAME[0]}"; then
-        true; return
+        return 0
     fi && \
 
     # make sure the env's locale is correct!!!
