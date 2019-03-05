@@ -1033,9 +1033,9 @@ function setup_conda_flags() {
         G_conda_bin="`conda info -s | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
         G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
     fi
-    if declare -F conda >/dev/null 2>&1; then
-        export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "${CONDA_EXE%/*}" | xargs | tr ' ' ':'`
-        log_info "Remove ${CONDA_EXE%/*} from PATH"
+    if declare -F conda >/dev/null 2>&1 && [ -n "${G_conda_bin}" ]; then
+        export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "${G_conda_bin%/*}" | xargs | tr ' ' ':'`
+        log_info "Remove ${G_conda_bin%/*} from PATH"
     fi
     declare -a conda_flags=(`set | grep "^G_conda" | cut -d= -f1 | sort -u`)
     for_each_op --silent declare_p ${conda_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
