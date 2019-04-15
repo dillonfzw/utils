@@ -1416,6 +1416,95 @@ function usleep() {
     local num=$1
     sleep `awk -vnum=$num 'END{print num / 1000000}' </dev/null`
 }
+function get_relative_path() {
+    local no_symlinks=true
+
+    local ref_path=$1
+    if [ -d "$ref_path" ]; then ref_path+="/"; fi
+    ref_path=`get_realpath $ref_path`
+    if [ -z "$ref_path" ]; then return 1; fi
+    if [ ! -d "$ref_path" ]; then ref_path=`dirname $ref_path`; fi
+
+    local rel_path=`get_realpath $2` || return 1
+    if [ -z "$rel_path" ]; then return 1; fi
+
+    local IFS_OLD=$IFS
+    IFS=$'\/'
+    local -a ref_path_a=($ref_path)
+    local -a rel_path_a=($rel_path)
+    IFS=$IFS_OLD
+
+    local ref_len=${#ref_path_a[@]}
+    local rel_len=${#rel_path_a[@]}
+    local min_len=$ref_len
+    if [ $ref_len -gt $rel_len ]; then
+        min_len=$rel_len
+    fi
+
+    local pos=0
+    #declare -p ref_path_a >&2
+    #declare -p rel_path_a >&2
+    for pos in `seq 0 $((min_len-1))`
+    do
+        [ "${ref_path_a[$pos]}" == "${rel_path_a[$pos]}" ] || break
+    done
+    ((ref_len-=pos+1))
+    ((rel_len-=pos+1))
+    local rst=""
+    local idx=0
+    for idx in `seq 0 $((ref_len))`
+    do
+        rst+=${rst:+"/"}..
+    done
+    for idx in `seq 0 $((rel_len))`
+    do
+        rst+=${rst:+"/"}${rel_path_a[$((idx+pos))]}
+    done
+    (cd $ref_path; ls -d $rst)
+}
+function __test_get_relative_path() {
+    local err_cnt=0
+
+    local tmp_dir=`mktemp -d /tmp/XXXXXX`
+    mkdir -p $tmp_dir/a/b/c
+    mkdir -p $tmp_dir/1/2/3
+    touch $tmp_dir/a/b/b_1.txt
+    touch $tmp_dir/a/b/c/c_1.txt
+    touch $tmp_dir/a/a_1.txt
+    touch $tmp_dir/1/2/3/3_1.txt
+    touch $tmp_dir/1/2/2_1.txt
+    touch $tmp_dir/1/1_1.txt
+    ln -s a/b $tmp_dir/B
+
+    r=`get_relative_path $tmp_dir/a/b $tmp_dir/a/a_1.txt`
+    [ "../a_1.txt" == "$r" ] || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 1, \"$r\"";
+    }
+
+    r=`get_relative_path $tmp_dir/a/b/ $tmp_dir/a/a_1.txt`
+    [ "../a_1.txt" == "$r" ] || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 2, \"$r\"";
+    }
+
+    r=`get_relative_path $tmp_dir/a/b/b_1.txt $tmp_dir/a/a_1.txt`
+    [ "../a_1.txt" == "$r" ] || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 3, \"$r\"";
+    }
+
+    r=`get_relative_path $tmp_dir/B $tmp_dir/a/a_1.txt`
+    [ "../a_1.txt" == "$r" ] || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 4, \"$r\"";
+    }
+
+    r=`get_relative_path $tmp_dir/B/ $tmp_dir/a/a_1.txt`
+    [ "../a_1.txt" == "$r" ] || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 5, \"$r\"";
+    }
+
+    #find $tmp_dir -exec ls -ld {} \;
+    [ -d "$tmp_dir" ]; rm -rf $tmp_dir
+    test $err_cnt -eq 0
+}
 declare -F usage >/dev/null || \
 function usage() {
     echo "Usage $PROGNAME"
