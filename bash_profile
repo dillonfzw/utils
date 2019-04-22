@@ -155,25 +155,28 @@ if [ -z "$_CONDA_PATH_Chae4dok9e" ]; then
     for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
     do
         if [ -d $item ]; then
-#
-# use conda's official initializer
-#
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$(${item}/bin/conda 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "${item}/etc/profile.d/conda.sh" ]; then
-        echo "Source $item/etc/profile.d/conda.sh..."
-        . "${item}/etc/profile.d/conda.sh"
-    else
-        echo "Append $item/bin to PATH"
-        export PATH="${item}/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
+            #
+            # use conda's official initializer
+            #
+            # >>> conda initialize >>>
+            # !! Contents within this block are managed by 'conda init' !!
+            __conda_setup="$(${item}/bin/conda 'shell.bash' 'hook' 2> /dev/null)"
+            if [ $? -eq 0 ]; then
+                eval "$__conda_setup"
+                if conda info | grep -sq "active environment : base$"; then
+                    conda deactivate
+                fi
+            else
+                if [ -f "${item}/etc/profile.d/conda.sh" ]; then
+                    echo "Source $item/etc/profile.d/conda.sh..."
+                    . "${item}/etc/profile.d/conda.sh"
+                else
+                    echo "Append $item/bin to PATH"
+                    export PATH="${item}/bin:$PATH"
+                fi
+            fi
+            unset __conda_setup
+            # <<< conda initialize <<<
             break
         fi
     done
