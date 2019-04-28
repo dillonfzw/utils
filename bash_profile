@@ -151,7 +151,7 @@ if [ -n "$_CONDA_PATH_Chae4dok9e" ]; then
     fi
     unset _CONDA_VER_Chae4dok9e
 fi
-if [ -z "$_CONDA_PATH_Chae4dok9e" ]; then
+if true || [ -z "$_CONDA_PATH_Chae4dok9e" ]; then
     for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
     do
         if [ -d $item ]; then
@@ -162,8 +162,9 @@ if [ -z "$_CONDA_PATH_Chae4dok9e" ]; then
             # !! Contents within this block are managed by 'conda init' !!
             __conda_setup="$(${item}/bin/conda 'shell.bash' 'hook' 2> /dev/null)"
             if [ $? -eq 0 ]; then
+                echo "Eval $item/bin/conda shell.bash hook..."
                 eval "$__conda_setup"
-                if conda info | grep -sq "active environment : base$"; then
+                if [ "$CONDA_DEFAULT_ENV" = "base" ]; then
                     conda deactivate
                 fi
             else
