@@ -1632,16 +1632,30 @@ function conda_create_env() {
     else
         _ve_name=$conda_ve_name
     fi
+    local env_activated=false
     if [ -n "$_ve_prefix" ]; then
+        if [ "$_ve_prefix" = "$CONDA_PREFIX" ]; then
+            env_activated=true
+        fi
         _ve_name=`basename $_ve_prefix`
         _ve_prefix=`dirname $_ve_prefix`
         env_arg_name="prefix"
     else
+        if [ "$_ve_name" = "$CONDA_DEFAULT_ENV" ]; then
+            env_activated=true
+        fi
         env_arg_name="name"
     fi
     local extra_args=$@
 
     print_title "Install Anaconda${python_ver_major} environment \"${_ve_name}\"" | log_lines debug && \
+
+    # deactivate self VE first to prevent an internal error from conda>=4.6 before setting up itself.
+    if $env_activated; then
+        _shadow_cmd_conda deactivate
+    fi && \
+
+    # install conda VE
     if do_and_verify \
         'eval ${G_conda_bin} env list | grep -sq "^${_ve_name} \+"' \
         'eval if ! ${_user}; then _prefix=${sudo:+"${sudo} -i"}; fi; ${_prefix}${G_conda_bin} create --$env_arg_name ${_ve_prefix:+${_ve_prefix}/}${_ve_name} --yes ${G_conda_install_flags[@]} $extra_args pip' \
@@ -1653,6 +1667,11 @@ function conda_create_env() {
     else
         log_error "Fail to create conda environment \"$_ve_name\""
         false
+    fi && \
+
+    # re-activate self VE
+    if $env_activated; then
+        _shadow_cmd_conda activate ${_ve_prefix:+${_ve_prefix}/}${_ve_name}
     fi
 }
 DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"/opt/anaconda${python_ver_major}"}
