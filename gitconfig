@@ -2,3 +2,5 @@
 	short = true
 [push]
 	default = simple
+[core]
+	quotepath = false

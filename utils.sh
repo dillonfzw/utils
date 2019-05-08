@@ -1195,8 +1195,13 @@ function pkg_list_installed_deb() {
 function pkg_list_installed_pip() {
     local pip=$G_pip_bin
     local pkgs="$@"
+    # remove: pkg bundles("xxx[bundle1,bundle2]"), version pairs(xxx>=1.1.0,<=2.0.0)
     local regex=`echo "$pkgs" | tr ' ' '\n' | \
-                 sed -e 's/[<=>]=.*$//g' -e 's/[<>].*$//g' -e 's/^\(.*\)$/^\1==/g' | \
+                 sed \
+                     -e 's/\[.*\]//g' \
+                     -e 's/[<=>]=.*$//g' \
+                     -e 's/[<>].*$//g' \
+                     -e 's/^\(.*\)$/^\1==/g' | \
                  xargs | tr ' ' '|'`
     local cnt=`echo "$pkgs" | wc -w`
     # we'd better to compare package name case insensitive.
@@ -1222,7 +1227,8 @@ function pkg_list_installed_conda() {
                  xargs | tr ' ' '|'`
     local cnt=`echo "$pkgs" | wc -w`
     # we'd better to compare package name case insensitive.
-    local lines=`${G_conda_bin} list ${conda_env_name:+"-n"} ${conda_env_name} | awk '{print $1"=="$2}' | \
+    local lines=`${G_conda_bin} list ${conda_env_name:+"-n"} ${conda_env_name} | \
+                   awk '$3 != "<pip>" {print $1"=="$2}' | \
                    sed -e 's/ *(\(.*\))$/==\1/g' | \
                    grep -Ei "$regex" | \
                    sort -u`
@@ -1284,9 +1290,9 @@ function pkg_verify_pip() {
     for pkg in ${pkgs[@]}
     do
         # separate the pkg_name, operator and target version
-        # TODO: only support one operator for now.
+        # for pkg_name, remove pip pkg's bundle xxx[bundle1,bundle2]
         local pkg_line=`echo "$pkg" | sed -e 's/\([<=>!]\)/|\1/'`
-        local pkg_name=`echo "$pkg_line" | cut -d'|' -f1`
+        local pkg_name=`echo "$pkg_line" | cut -d'|' -f1 | sed -e 's/\[.*\]//g'`
         declare -a pkg_op_pairs=(`echo "$pkg_line" | cut -d'|' -f2- | tr ',' '\n' | sed \
           -e 's/^\([<=>!]=\)\([^<=>].*\)$/\1|\2/g' \
           -e 's/^\([<>]\)\([^<=>].*\)$/\1|\2/g'`)
