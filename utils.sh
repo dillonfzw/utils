@@ -1169,9 +1169,9 @@ function pkg_install_conda() {
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    if [ -n "$conda_env_prefix" ]; then
+    if [ -n "$conda_envs_dir" ]; then
         $_sudo $G_conda_bin install \
-            ${conda_env_name:+"--prefix=${conda_env_prefix}/${conda_env_name}"} \
+            ${conda_env_name:+"--prefix=${conda_envs_dir}/${conda_env_name}"} \
             ${G_conda_install_flags[@]} $pkgs
     else
         $_sudo $G_conda_bin install \
@@ -1227,7 +1227,13 @@ function pkg_list_installed_conda() {
                  xargs | tr ' ' '|'`
     local cnt=`echo "$pkgs" | wc -w`
     # we'd better to compare package name case insensitive.
-    local lines=`${G_conda_bin} list ${conda_env_name:+"-n"} ${conda_env_name} | \
+    local _alias=""
+    if [ -n "$conda_env_prefix" ]; then
+        _alias="--prefix $conda_env_prefix"
+    else
+        _alias="--name $conda_env_name"
+    fi
+    local lines=`${G_conda_bin} list $_alias | \
                    awk '$3 != "<pip>" {print $1"=="$2}' | \
                    sed -e 's/ *(\(.*\))$/==\1/g' | \
                    grep -Ei "$regex" | \
@@ -1648,7 +1654,7 @@ function conda_create_env() {
             _env_activated=true
         fi
         _ve_name=`basename $_ve_prefix`
-        _ve_prefix=`dirname $_ve_prefix`
+        _envs_dir=`dirname $_ve_prefix`
         env_arg_name="prefix"
     else
         if [ "$_ve_name" = "$CONDA_DEFAULT_ENV" ]; then
@@ -1667,12 +1673,12 @@ function conda_create_env() {
 
     # install conda VE
     if do_and_verify \
-        'eval ${G_conda_bin} env list | grep -Esq "^${_ve_name} +|^base +\/${_ve_name}$"' \
-        'eval if ! ${_user}; then _prefix=${sudo:+"${sudo} -i"}; fi; ${_prefix}${G_conda_bin} create --$env_arg_name ${_ve_prefix:+${_ve_prefix}/}${_ve_name} --yes ${G_conda_install_flags[@]} $extra_args pip' \
+        'eval ${G_conda_bin} env list | grep -Esq "^${_ve_name} +|^base +.*\/${_ve_name}$|^ +${_envs_dir:+${_envs_dir}/}${_ve_name}$"' \
+        'eval if ! ${_user}; then _prefix=${sudo:+"${sudo} -i"}; fi; ${_prefix}${G_conda_bin} create --$env_arg_name ${_envs_dir:+${_envs_dir}/}${_ve_name} --yes ${G_conda_install_flags[@]} $extra_args pip' \
         'true'; then
         {
-            ${G_conda_bin} env list | grep "^${_ve_name} *"
-            ${G_conda_bin} list --name $_ve_name
+            ${G_conda_bin} env list | grep -E "^${_ve_name} *|\/${_ve_name}$"
+            ${G_conda_bin} list --$env_arg_name ${_envs_dir:+${_envs_dir}/}${_ve_name}
         } | sed -e 's/^/>> /g' | log_lines debug
     else
         log_error "Fail to create conda environment \"$_ve_name\""
@@ -1681,12 +1687,12 @@ function conda_create_env() {
 
     # re-activate self VE
     if $_env_activated; then
-        _shadow_cmd_conda activate ${_ve_prefix:+${_ve_prefix}/}${_ve_name}
+        _shadow_cmd_conda activate ${_envs_dir:+${_envs_dir}/}${_ve_name}
     fi
 }
 DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"/opt/anaconda${python_ver_major}"}
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
-DEFAULT_conda_env_prefix=${DEFAULT_conda_env_prefix:-"$HOME/.conda/envs"}
+DEFAULT_conda_envs_dir=${DEFAULT_conda_envs_dir:-"$HOME/.conda/envs"}
 DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
 #"https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/Anaconda3-5.3.1-Linux-x86_64.sh"
 
