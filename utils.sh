@@ -1048,10 +1048,13 @@ function setup_conda_flags() {
 function setup_pip_flags() {
     if $use_conda && has_conda; then
         local env_activated=false
+        local _alias="$conda_env_name"
         if [ "${CONDA_DEFAULT_ENV}" = "$conda_env_name" ]; then
             env_activated=true
+        elif [ -n "$conda_env_prefix" ]; then
+            _alias="$conda_env_prefix"
         fi
-        if $env_activated || _shadow_cmd_conda activate ${conda_env_name} 2>/dev/null; then
+        if $env_activated || _shadow_cmd_conda activate ${_alias} 2>/dev/null; then
             G_pip_bin=`for_each_op --ignore_error --silent ls -1d -- $CONDA_PREFIX/bin/pip $(command -v pip) | head -n1`
             G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
             $env_activated || _shadow_cmd_conda deactivate
