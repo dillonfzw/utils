@@ -32,7 +32,7 @@ OS=`uname -s`
 
 if [ -z "$APP_STORE" ]; then APP_STORE=$PROGDIR/../apps; fi
 
-for item in $APP_STORE/mosh-1.2.5{.$ARCH.$OS,$ARCH,}
+for item in $APP_STORE/mosh-1.2.6{.$ARCH.$OS,$ARCH,}
 do
   if [ -d $item ]; then APP_HOME=$item; break; fi
 done
