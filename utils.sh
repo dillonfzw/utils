@@ -1236,8 +1236,10 @@ function pkg_list_installed_conda() {
     else
         _alias="--name $conda_env_name"
     fi
+    # for conda>=4.5,<4.6 pip pkg in conda shows as "<pip>"
+    # for conda>=4.6, pip pkg shows as pypi channel.
     local lines=`${G_conda_bin} list $_alias | \
-                   awk '$3 != "<pip>" {print $1"=="$2}' | \
+                   awk '($3 != "<pip>") && ($4 != "pypi") {print $1"=="$2}' | \
                    sed -e 's/ *(\(.*\))$/==\1/g' | \
                    grep -Ei "$regex" | \
                    sort -u`
