@@ -1350,7 +1350,10 @@ do
             for_each_line_op '$item'_deb "`filter_pkgs_deb $@`"
         fi && \
         if $use_conda; then
-            for_each_line_op '$item'_conda "`filter_pkgs_conda $@`"
+            for_each_line_op '$item'_conda "`filter_pkgs_conda $@`" && \
+            if [ "'$item'" = "pkg_install" ]; then
+                pkg_list_installed $@ | sed -e "s/^/[middle]>> /g" | log_lines debug
+            fi
         fi && \
         for_each_line_op '$item'_pip "`filter_pkgs_pip $@`"
     }'
