@@ -553,6 +553,7 @@ function __test_set_difference() {
 }
 function set_union() {
     # calculate the union of two input sets
+    # NOTE: the result will keep the order
     #
     # :param set_a:
     # :param set_b:
@@ -564,7 +565,7 @@ function set_union() {
     #declare -p _i4cF_set_a | sed -e 's/^/[set_union] >> /g' | log_lines debug
     #declare -p _i4cF_set_b | sed -e 's/^/[set_union] >> /g' | log_lines debug
 
-    local -a _i4cF_set_d=`set_difference _i4cF_set_a[@] _i4cF_set_b[@]`
+    local -a _i4cF_set_d=`set_difference _i4cF_set_b[@] _i4cF_set_a[@]`
 
     # log for debug
     #declare -p _i4cF_set_d | sed -e 's/^/[set_union] >> /g' | log_lines debug
@@ -573,9 +574,9 @@ function set_union() {
     for i in ${!_i4cF_set_d[@]}
     do
         e="${_i4cF_set_d[$i]}"
-        _i4cF_set_b+=("$e")
+        _i4cF_set_a+=("$e")
     done
-    declare_p_val _i4cF_set_b
+    declare_p_val _i4cF_set_a
 }
 function __test_set_union() {
     local err_cnt=0
