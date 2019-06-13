@@ -1056,7 +1056,7 @@ function setup_pip_flags() {
             _alias="$conda_env_prefix"
         fi
         if $env_activated || _shadow_cmd_conda activate ${_alias} 2>/dev/null; then
-            G_pip_bin=`for_each_op --ignore_error --silent ls -1d -- $CONDA_PREFIX/bin/pip $(command -v pip) | head -n1`
+            G_pip_bin=`for_each_op --ignore_error --silent ls -1d -- ${CONDA_PREFIX:+${CONDA_PREFIX}/bin/pip} $(command -v pip) | head -n1`
             G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
             $env_activated || _shadow_cmd_conda deactivate
         fi
