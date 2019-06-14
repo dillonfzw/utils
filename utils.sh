@@ -1699,7 +1699,7 @@ function conda_create_env() {
         _shadow_cmd_conda activate ${_envs_dir:+${_envs_dir}/}${_ve_name}
     fi
 }
-DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"/opt/anaconda${python_ver_major}"}
+DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"$HOME/anaconda${python_ver_major}"}
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
 DEFAULT_conda_envs_dir=${DEFAULT_conda_envs_dir:-"$HOME/.conda/envs"}
 DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
