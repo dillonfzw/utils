@@ -892,7 +892,7 @@ function download_by_cache() {
     if [ "$1" = "--cache_home" ]; then
         cache_home=$2
         shift 2
-    elif [ `G_expr_bin "#$1" : "#--cache_home="` -eq 13 ]; then
+    elif [ `$G_expr_bin "#$1" : "#--cache_home="` -eq 13 ]; then
         cache_home="`echo "$1" | cut -d= -f2-`"
         shift
     elif [ -z "$cache_home" ]; then
@@ -907,7 +907,7 @@ function download_by_cache() {
     if [ "$1" = "--dry-run" ]; then
         dry_run=true
         shift
-    elif [ `G_expr_bin "#$1" : "#--dry-run="` -eq 10 ]; then
+    elif [ `$G_expr_bin "#$1" : "#--dry-run="` -eq 10 ]; then
         dry_run="`echo "$1" | cut -d= -f2-`"
         shift
     fi && \
