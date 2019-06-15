@@ -1038,7 +1038,9 @@ function setup_conda_flags() {
         G_conda_bin="`conda info -s | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
         G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
     fi
-    if declare -F conda >/dev/null 2>&1 && [ -n "${G_conda_bin}" ]; then
+    # Remove $CONDA_PREFIX/bin from PATH only if conda function was not the first priority.
+    #if declare -F conda >/dev/null 2>&1 && [ -n "${G_conda_bin}" ]; then
+    if [ "`command -v conda`" != "conda" -a -n "${G_conda_bin}" ]; then
         export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "${G_conda_bin%/*}" | xargs | tr ' ' ':'`
         log_info "Remove ${G_conda_bin%/*} from PATH"
     fi
