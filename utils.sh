@@ -1427,14 +1427,22 @@ function __test_listFunctions() {
     }
     test $err_cnt -eq 0
 }
+#
+# bsd and sys-v compatible pstree
+#
 function pstree() {
-    pids="$@"
-    pids_old=""
+    local psinfo=`ps -o pid=,ppid= -ax | awk '{print $1,$2}' | sort -t' ' -k2 -n`
+    local pids="$@"
+    local pids_old=""
     while [ "$pids" != "$pids_old" ];
     do
         [ -n "$pids" ] || break
         pids_old="$pids"
-        pids=`ps --pid "$pids" --ppid "$pids" -o pid --no-headers | awk '{print $1}' | sort -u | xargs`
+        local regex=`echo "$pids" | sed -e 's/ /$| /g' -e 's/^/ /' -e 's/$/\$/'`
+        pids=`{
+            echo "$pids" | tr ' ' '\n';
+            echo "$psinfo" | grep -E "$regex" | cut -d' ' -f1;
+        } | sort -u | xargs`
     done
     [ -n "$pids" ] && echo "$pids"
 }
