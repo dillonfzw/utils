@@ -143,8 +143,9 @@ if [ -n "$_CONDA_PATH_Chae4dok9e" ]; then
     fi
     _CONDA_VER_Chae4dok9e=`echo "$_CONDA_INFO_Chae4dok9e" | grep ^sys.version | awk '{print $2}' | cut -d. -f1`
     unset _CONDA_INFO_Chae4dok9e
-    # clean unmatched conda from PATH, or if conda() exists
-    if [ "$_CONDA_VER_Chae4dok9e" != "$PYVER" ] || declare -f conda >/dev/null 2>&1; then
+    # clean unmatched conda from PATH, or if conda() exists while no condabin which new version of conda provides
+    if [ \( "$_CONDA_VER_Chae4dok9e" != "$PYVER" \) -o \
+         \( "`command -v conda`" = "conda" -a ! -d "$_CONDA_PATH_Chae4dok9e/../condabin" \) ]; then
         export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "$_CONDA_PATH_Chae4dok9e" | xargs | tr ' ' ':'`
         echo "Remove $_CONDA_PATH_Chae4dok9e from PATH"
         unset _CONDA_PATH_Chae4dok9e
