@@ -26,6 +26,29 @@ PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
 #-------------------------------------------------------------------------------
 # Utility functions
 #
+`command -v tac >/dev/null 2>&1` ||
+function tac() {
+    tail -r $@
+}
+function __test_tac() {
+    local err_cnt=0
+
+    #
+    # osx will have tac be redirected to own own function
+    #
+    ! $is_osx || \
+    { test `type -t tac` = "function"; } || { ((err_cnt+=1)); log_error "Fail sub-case 1"; }
+
+    { test "`echo '1
+2
+3' | tac`" = '3
+2
+1'; } || {
+        ((err_cnt+=1)); log_error "Fail sub-case 2";
+    }
+
+    test $err_cnt -eq 0
+}
 `command -v shuf >/dev/null 2>&1` ||
 function shuf() {
     #
