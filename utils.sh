@@ -1530,6 +1530,95 @@ function __test_get_relative_path() {
     [ -d "$tmp_dir" ]; rm -rf $tmp_dir
     test $err_cnt -eq 0
 }
+function monitor_and_terminate_timeout_process() {
+    local pattern=$1
+    local timeout=$2
+    local sleep_interval=$3
+    local shell_pid=$4
+    local -a exclude_pids=()
+
+    if [ -z "$pattern" ]; then
+        pattern="[a-zA-Z0-9]"
+    else
+        shift
+    fi
+    if [ -z "$timeout" ]; then
+        timeout=-1
+    else
+        shift
+    fi
+    if [ -z "$sleep_interval" ]; then
+        sleep_interval=10
+    else
+        shift
+    fi
+    if [ -z "$shell_pid" -o "$shell_pid" = "-" ]; then
+        shell_pid=$$
+    elif [ -n "$shell_pid" ]; then
+        shift
+    fi
+    exclude_pids=($@)
+
+    local t_beg=`date "+%s"`
+    local killing_iter=0
+    while true;
+    do
+        local -a _pids_tree=(`pstree $shell_pid`)
+        local -a _pids=`set_difference _pids_tree[@] exclude_pids[@]`
+        if [ "${#_pids[@]}" -eq 0 ]; then
+            killing_iter=0
+            break
+        fi
+
+        local _lines=`ps -opid=,command= -p ${_pids[@]}`
+        local -a _pids_pattern=(`echo "$_lines" | grep -E "$pattern" | awk '{print $1}'`)
+        if [ "${#_pids_pattern[@]}" -eq 0 ]; then
+            killing_iter=0
+            break
+        fi
+
+        local t_remains=`$G_expr_bin ${timeout} - $(date "+%s") + ${t_beg}`
+        if [ "$t_remains" -le 0 -a "$timeout" -gt 0 ]; then
+            if [ "$killing_iter" -eq 0 ]; then
+                log_warn "Terminate following timeout process..."
+                ps -o pid,ppid,command -p ${_pids_pattern[@]} | sed -e 's/^/>> /g' | log_lines warn
+
+                kill -TERM ${_pids_pattern[@]}
+                ((killing_iter+=1))
+
+            elif [ "$killing_iter" -eq 1 ]; then
+                log_warn "Kill following timeout process..."
+                ps -o pid,ppid,command -p ${_pids_pattern[@]} | sed -e 's/^/>> /g' | log_lines warn
+
+                kill -KILL ${_pids_pattern[@]}
+                ((killint_iter+=1))
+
+            else
+                log_error "Fail to terminate timeout process"
+                ps -o pid,ppid,command -p ${_pids_pattern[@]} | sed -e 's/^/>> /g' | log_lines error
+            fi
+        fi
+        sleep $sleep_interval
+    done
+    test $killing_iter -gt 0
+}
+function __test_monitor_and_terminate_timeout_process() {
+    local err_cnt=0
+
+    local -a pids=(`pstree $$`)
+    monitor_and_terminate_timeout_process "sleep" 5 1 - ${pids[@]} &
+    local t_beg=`date "+%s"`
+    /bin/sleep 120
+    local rc=$?
+    local dur=`date "+%s"`
+    ((dur-=t_beg))
+    if [ $rc -eq 0 -o $dur -gt 6 ]; then
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 1, \"dur=$dur, rc=$rc\"";
+    else
+        log_debug "succ: sub-case 1, dur=$dur, rc=$rc"
+    fi
+    test $err_cnt -eq 0
+}
 declare -F usage >/dev/null || \
 function usage() {
     echo "Usage $PROGNAME"
