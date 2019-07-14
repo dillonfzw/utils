@@ -1026,6 +1026,7 @@ function has_conda() {
 # shadow conda command
 function _shadow_cmd_conda() {
     if declare -F conda >/dev/null 2>&1; then
+        # if conda.sh had already been sourced, there will be conda function defined and use it!
         conda $@
     elif command -v conda >/dev/null; then
         if [ "$1" = "activate" -o "$1" = "deactivate" ]; then
@@ -1062,7 +1063,6 @@ function setup_conda_flags() {
         G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
     fi
     # Remove $CONDA_PREFIX/bin from PATH only if conda function was not the first priority.
-    #if declare -F conda >/dev/null 2>&1 && [ -n "${G_conda_bin}" ]; then
     if [ "`command -v conda`" != "conda" -a -n "${G_conda_bin}" ]; then
         export PATH=`echo "$PATH" | tr ':' '\n' | grep -vF "${G_conda_bin%/*}" | xargs | tr ' ' ':'`
         log_info "Remove ${G_conda_bin%/*} from PATH"
@@ -1819,6 +1819,36 @@ function conda_create_env() {
     # re-activate self VE
     if $_env_activated; then
         _shadow_cmd_conda activate ${_envs_dir:+${_envs_dir}/}${_ve_name}
+    fi
+}
+function conda_activate_env() {
+    local _ve_prefix=${1:-${CONDA_DEFAULT_ENV}}
+    local _ve_name=""
+    if echo "$_ve_prefix" | grep -siE "^\/|^\."; then
+        _ve_name=`basename $_ve_prefix`
+        _ve_prefix=`dirname $_ve_prefix`
+    else
+        _ve_name=$_ve_prefix
+        # >> #
+        # >> # conda environments:
+        # >> #
+        # >> darwin_cpu               /u/fuzhiwen/.conda/envs/darwin_cpu
+        # >> darwin_gpu               /u/fuzhiwen/.conda/envs/darwin_gpu
+        # >> base                  *  /u/fuzhiwen/.conda/envs/darwin_gpu_nomkl
+        # >> darwin_mkl               /u/fuzhiwen/.conda/envs/darwin_mkl
+        # >>                          /u/fuzhiwen/anaconda3
+        _ve_prefix=`dirname $(_shadow_cmd_conda env list | grep "\/${_ve_name}$" | sed -e 's,^.* \/,\/,')`
+    fi
+
+    # >> "active_prefix": "/u/fuzhiwen/.conda/envs/darwin_gpu_nomkl",
+    local _active_prefix=`_shadow_cmd_conda info --json | grep "\"active_prefix\":" | cut -d\" -f4`
+
+    # strict check if conda env had been activated or not
+    if [ "$_ve_prefix/$_ve_name" = "$_active_prefix" -a "`command -v python`" = "$_active_prefix/bin/python" ]; then
+        log_debug "Conda env \"$_active_prefix\" was already activated. Skip activating."
+    else
+        log_info "Activating conda env \"$_ve_prefix/$_ve_name\""
+        _shadow_cmd_conda activate $_ve_prefix/$_ve_name
     fi
 }
 DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"$HOME/anaconda${python_ver_major}"}
