@@ -1025,11 +1025,17 @@ function has_conda() {
 }
 # shadow conda command
 function _shadow_cmd_conda() {
+    local _is_activate_related=false
+    if [ "$1" = "activate" -o "$1" = "deactivate" ]; then
+        _is_activate_related=true
+    fi
+
     if declare -F conda >/dev/null 2>&1; then
         # if conda.sh had already been sourced, there will be conda function defined and use it!
         conda $@
+
     elif command -v conda >/dev/null; then
-        if [ "$1" = "activate" -o "$1" = "deactivate" ]; then
+        if [ "$_is_activate_related" = "true" ]; then
             # conda.sh sourced in func call will lost in invoker while the CONDA_* env
             # were actually kept. also, the path to conda binary might be removed from
             # PATH to co-operate a conda compatibility request.
@@ -1043,17 +1049,29 @@ function _shadow_cmd_conda() {
                 log_debug "$_cmd conda virtual environment \"$@\""
             fi
             source $_cmd $@
-
-            local rc=$?
-            setup_conda_flags
-            (exit $rc)
         else
             conda $@
         fi
+
     else
         log_error "Conda environment was not properly configured in current shell"
         false
+    fi && \
+    local _rc=$? && \
+
+    if [ "$_is_activate_related" = "true" ]; then
+        #
+        # be careful to endless recursive call
+        #
+        # NOTE:
+        # * if you update post-process of activate/deactivate, remember
+        #   to update your calling side in case these flags needs to be udpated
+        #
+        setup_conda_flags && \
+        setup_pip_flags && \
+        true
     fi
+    (exit $_rc)
 }
 # different pip version has different command line options
 function setup_conda_flags() {
@@ -1072,23 +1090,25 @@ function setup_conda_flags() {
 }
 # different pip version has different command line options
 function setup_pip_flags() {
-    if $use_conda && has_conda; then
-        local env_activated=false
-        local _alias="$conda_env_name"
-        if [ "${CONDA_DEFAULT_ENV}" = "$conda_env_name" ]; then
-            env_activated=true
-        elif [ -n "$conda_env_prefix" ]; then
-            _alias="$conda_env_prefix"
-        fi
-        if $env_activated || _shadow_cmd_conda activate ${_alias} 2>/dev/null; then
-            G_pip_bin=`for_each_op --ignore_error --silent ls -1d -- ${CONDA_PREFIX:+${CONDA_PREFIX}/bin/pip} $(command -v pip) | head -n1`
-            G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
-            $env_activated || _shadow_cmd_conda deactivate
-        fi
-    else
+    #
+    # NOTE: activate conda env before calling this setup, if you are actually means the pip in conda env
+    #
+    #if $use_conda && has_conda; then
+    #    local env_activated=false
+    #    local _active_prefix="`get_conda_active_prefix`"
+    #    if [ -n "$_active_prefix" ]; then
+    #        env_activated=true
+    #    fi
+    #
+    #    if $env_activated || conda_activate_env $conda_env_name; then
+    #        G_pip_bin=`for_each_op --ignore_error --silent ls -1d -- ${CONDA_PREFIX:+${CONDA_PREFIX}/bin/pip} $(command -v pip) | head -n1`
+    #        G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
+    #        $env_activated || _shadow_cmd_conda deactivate
+    #    fi
+    #else
         G_pip_bin=`command -v pip`
         G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
-    fi
+    #fi
     G_python_ver_major=`echo "$G_python_ver" | cut -d. -f1`
     G_python_ver_minor=`echo "$G_python_ver" | cut -d. -f2`
 
@@ -1777,7 +1797,7 @@ function conda_create_env() {
     elif [ `$G_expr_bin "#$1" : "^#--prefix="` -eq 10 ]; then
         _ve_prefix="${1/--prefix=}"; shift
     else
-        _ve_name=$conda_ve_name
+        _ve_name=$conda_env_name
     fi
     local _env_activated=false
     if [ -n "$_ve_prefix" ]; then
@@ -1865,7 +1885,7 @@ function __test_get_conda_env_prefixed_name() {
     }
 
     local conda_envs=`_shadow_cmd_conda env list | sed -e 's/ \* / /g' | grep -vE "^#|^ *\/" | tr -s ' '`
-    echo "$conda_envs" | log_lines debug
+    echo "$conda_envs" | sed -e 's/^/>> [conda env list]: /g' | log_lines debug
     local n_envs=`echo "$conda_envs" | wc -l | awk '{print $1}'`
 
     #
@@ -1906,11 +1926,77 @@ function __test_get_conda_env_prefixed_name() {
 
     test $err_cnt -eq 0
 }
+function get_conda_active_prefix() {
+    # >> "active_prefix": "/u/fuzhiwen/.conda/envs/darwin_gpu_nomkl",
+    # >> "conda_prefix": "/Users/fuzhiwen/anaconda3",
+    # >> "default_prefix": "/Users/fuzhiwen/anaconda3",
+    local _lines=`_shadow_cmd_conda info --json \
+        | grep -E "\"active_prefix\":|\"#conda_prefix\":|\"#default_prefix\":" \
+        | cut -d\" -f4 | grep -vE "^$|^null$"`
+
+    if [ -n "$_lines" ]; then
+        echo "$_lines" | head -n1
+    else
+        false
+    fi
+}
+function __test_get_conda_active_prefix() {
+    local err_cnt=0
+
+    # deactivate all ve first
+    _shadow_cmd_conda deactivate
+
+    # explore all conda envs
+    local conda_envs=`_shadow_cmd_conda env list | sed -e 's/ \* / /g' | grep -vE "^#|^ *\/" | tr -s ' '`
+    echo "$conda_envs" | sed -e 's/^/[conda envs] >> /g' | log_lines debug
+    local n_envs=`echo "$conda_envs" | wc -l | awk '{print $1}'`
+
+    #
+    # no ve activated means "base" activated, and will fail the call
+    #
+    get_conda_active_prefix && {
+        ((err_cnt+=1)); log_error "Fail sub-case 1: no activate should fail the get_conda_activate_prefix";
+    }
+
+    #
+    # no ve returns ""
+    #
+    local r="`get_conda_active_prefix`"
+    [ -z "$r" ] || {
+        ((err_cnt+=1)); log_error "Fail sub-case 2: no active should return null, instead of \"$r\"";
+    }
+
+    #
+    # can detect explicitly activated ve
+    #
+    for idx in `seq 1 $n_envs`
+    do
+        local ve_name=`echo "$conda_envs" | cut -d' ' -f1 | head -n$idx | tail -n1`
+        local ve_prefix=`echo "$conda_envs" | cut -d' ' -f2 | head -n$idx | tail -n1`
+        log_info "test_get_conda_active_prefix sub case 3.$idx for ve \"$ve_name $ve_prefix\""
+
+        local r="`get_conda_active_prefix`"
+        [ -z "$r" ] || {
+            ((err_cnt+=1)); log_error "Fail sub-case 3.$idx.0: base should be the active prefix when none activated, as \"$r\"";
+            break
+        }
+
+        conda_activate_env $ve_prefix
+
+        local r="`get_conda_active_prefix`" && \
+        if [ "$r" != "$ve_prefix" ]; then
+            ((err_cnt+=1)); log_error "Fail sub-case 3.$idx.1: detect explicitly activated ve \"$ve_prefix\" vs. \"$r\"";
+            break
+        fi
+
+        _shadow_cmd_conda deactivate
+    done
+
+    test $err_cnt -eq 0
+}
 function is_conda_env_activated() {
     local _ve_prefix=`get_conda_env_prefixed_name $1`
-
-    # >> "active_prefix": "/u/fuzhiwen/.conda/envs/darwin_gpu_nomkl",
-    local _active_prefix=`_shadow_cmd_conda info --json | grep "\"active_prefix\":" | cut -d\" -f4`
+    local _active_prefix=`get_conda_active_prefix`
 
     # strict check if conda env had been activated or not
     test  "$_ve_prefix" = "$_active_prefix" -a "`command -v python`" = "$_active_prefix/bin/python"
@@ -1968,7 +2054,8 @@ function conda_activate_env() {
         log_debug "Conda env \"$_ve_prefix\" was already activated. Skip activating."
     else
         log_info "Activating conda env \"$_ve_prefix\""
-        _shadow_cmd_conda activate $_ve_prefix
+        _shadow_cmd_conda activate $_ve_prefix && \
+        true
     fi
 }
 function __test_conda_activate_env() {
