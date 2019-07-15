@@ -1821,12 +1821,17 @@ function conda_create_env() {
         _shadow_cmd_conda activate ${_envs_dir:+${_envs_dir}/}${_ve_name}
     fi
 }
-function conda_activate_env() {
+function get_conda_env_prefixed_name() {
     local _ve_prefix=${1:-${CONDA_DEFAULT_ENV}}
     local _ve_name=""
-    if echo "$_ve_prefix" | grep -siE "^\/|^\."; then
+
+    if echo "$_ve_prefix" | grep -sqE "^\/|^\."; then
         _ve_name=`basename $_ve_prefix`
         _ve_prefix=`dirname $_ve_prefix`
+
+    elif [ "$_ve_prefix" = "base" -o "$_ve_prefix" = "$conda_install_home" ]; then
+        _ve_prefix=$conda_install_home
+
     else
         _ve_name=$_ve_prefix
         # >> #
@@ -1837,21 +1842,183 @@ function conda_activate_env() {
         # >> base                  *  /u/fuzhiwen/.conda/envs/darwin_gpu_nomkl
         # >> darwin_mkl               /u/fuzhiwen/.conda/envs/darwin_mkl
         # >>                          /u/fuzhiwen/anaconda3
-        _ve_prefix=`dirname $(_shadow_cmd_conda env list | grep "\/${_ve_name}$" | sed -e 's,^.* \/,\/,')`
+        _ve_prefix=`_shadow_cmd_conda env list | grep "\/${_ve_name}$" | sed -e 's,^.* \/,\/,'`
+        _ve_prefix=`dirname $_ve_prefix`
     fi
+    if [ -n "$_ve_prefix" -a -z "$_ve_name" ]; then
+        echo "$_ve_prefix"
+    elif [ -n "$_ve_prefix" -a -n "$_ve_name" ]; then
+        echo "$_ve_prefix/$_ve_name"
+    else
+        false
+    fi
+}
+function __test_get_conda_env_prefixed_name() {
+    local err_cnt=0
+
+    #
+    # "base" ve is special
+    #
+    local r="`get_conda_env_prefixed_name base`"
+    [ "$r" = "$conda_install_home" ] || {
+        ((err_cnt+=1)); log_error "Fail sub-case 1: detect base ve as \"$r\"";
+    }
+
+    local conda_envs=`_shadow_cmd_conda env list | sed -e 's/ \* / /g' | grep -vE "^#|^ *\/" | tr -s ' '`
+    echo "$conda_envs" | log_lines debug
+    local n_envs=`echo "$conda_envs" | wc -l | awk '{print $1}'`
+
+    #
+    # a named ve can be detected
+    #
+    for idx in `seq 1 $n_envs`
+    do
+        local ve_name=`echo "$conda_envs" | cut -d' ' -f1 | head -n$idx | tail -n1`
+        local ve_prefix=`echo "$conda_envs" | cut -d' ' -f2 | head -n$idx | tail -n1`
+        log_info "test_conda_env_prefixed_name sub case 2.$idx for ve \"$ve_name $ve_prefix\""
+
+        local r1="`get_conda_env_prefixed_name $ve_name`"
+        local r2="`get_conda_env_prefixed_name $ve_prefix`"
+        [ "$r1" = "$ve_prefix" -a "$r1" = "$r2" ] || {
+            ((err_cnt+=1)); log_error "Fail sub-case 2: detect named ve as \"$ve_prefix\" vs. \"$r1\" vs. \"$r2\"";
+            break;
+        }
+    done
+
+    #
+    # still work with an env activated
+    #
+    if [ $n_envs -ge 2 ]; then
+        local ve_prefix=`echo "$conda_envs" | cut -d' ' -f2 | head -n1 | tail -n1`
+        conda_activate_env $ve_prefix
+
+        local ve_name2=`echo "$conda_envs" | cut -d' ' -f1 | head -n2 | tail -n1`
+        local ve_prefix2=`echo "$conda_envs" | cut -d' ' -f2 | head -n2 | tail -n1`
+
+        local r1="`get_conda_env_prefixed_name $ve_name2`"
+        local r2="`get_conda_env_prefixed_name $ve_prefix2`"
+        [ "$r1" = "$ve_prefix2" -a "$r1" = "$r2" ] || {
+            ((err_cnt+=1)); log_error "Fail sub-case 2: detect named ve as \"$ve_prefix2\" vs. \"$r1\" vs. \"$r2\"";
+        }
+
+        _shadow_cmd_conda deactivate
+    fi
+
+    test $err_cnt -eq 0
+}
+function is_conda_env_activated() {
+    local _ve_prefix=`get_conda_env_prefixed_name $1`
 
     # >> "active_prefix": "/u/fuzhiwen/.conda/envs/darwin_gpu_nomkl",
     local _active_prefix=`_shadow_cmd_conda info --json | grep "\"active_prefix\":" | cut -d\" -f4`
 
     # strict check if conda env had been activated or not
-    if [ "$_ve_prefix/$_ve_name" = "$_active_prefix" -a "`command -v python`" = "$_active_prefix/bin/python" ]; then
-        log_debug "Conda env \"$_active_prefix\" was already activated. Skip activating."
+    test  "$_ve_prefix" = "$_active_prefix" -a "`command -v python`" = "$_active_prefix/bin/python"
+}
+function __test_is_conda_env_activated() {
+    local err_cnt=0
+
+    # deactivate any pre ve first
+    _shadow_cmd_conda deactivate
+
+    # explore all conda envs
+    local conda_envs=`_shadow_cmd_conda env list | sed -e 's/ \* / /g' | grep -vE "^#|^ *\/" | tr -s ' '`
+    echo "$conda_envs" | log_lines debug
+    local n_envs=`echo "$conda_envs" | wc -l | awk '{print $1}'`
+
+    #
+    # try every existing ve
+    #
+    local -a ve_prefixes=(`echo "$conda_envs" | cut -d' ' -f2`)
+    ve_prefixes+=("base")
+
+    local icnt=1
+    for ve_prefix in ${ve_prefixes[@]}
+    do
+        log_debug "test_is_conda_env_activated sub-case 1.$icnt: ve_prefix is \"$ve_prefix\""
+
+        local ve_prefix="`get_conda_env_prefixed_name $ve_prefix`"
+        is_conda_env_activated $ve_prefix && {
+            ((err_cnt+=1)); log_error "Fail sub-case 1.1: detect if base ve was activated";
+            break;
+        }
+
+        conda_activate_env $ve_prefix
+        if [ "$ve_prefix" != "$conda_install_home" -a "$ve_prefix" != "base" ]; then
+            is_conda_env_activated "base" && {
+                ((err_cnt+=1)); log_error "Fail sub-case 1.misc: base should not be detected as activated";
+                break;
+            }
+        fi
+
+        is_conda_env_activated $ve_prefix || {
+            ((err_cnt+=1)); log_error "Fail sub-case 1.2: detect if base ve was activated";
+            break;
+        }
+
+        _shadow_cmd_conda deactivate
+        ((icnt+=1))
+    done
+
+    test $err_cnt -eq 0
+}
+function conda_activate_env() {
+    local _ve_prefix=`get_conda_env_prefixed_name $1`
+    if is_conda_env_activated $_ve_prefix; then
+        log_debug "Conda env \"$_ve_prefix\" was already activated. Skip activating."
     else
-        log_info "Activating conda env \"$_ve_prefix/$_ve_name\""
-        _shadow_cmd_conda activate $_ve_prefix/$_ve_name
+        log_info "Activating conda env \"$_ve_prefix\""
+        _shadow_cmd_conda activate $_ve_prefix
     fi
 }
-DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"$HOME/anaconda${python_ver_major}"}
+function __test_conda_activate_env() {
+    local err_cnt=0
+
+    # deactivate all conda ve first
+    _shadow_cmd_conda deactivate
+
+    # explore all conda envs
+    local conda_envs=`_shadow_cmd_conda env list | sed -e 's/ \* / /g' | grep -vE "^#|^ *\/" | tr -s ' '`
+    echo "$conda_envs" | log_lines debug
+    local n_envs=`echo "$conda_envs" | wc -l | awk '{print $1}'`
+
+    #
+    # try activating each ve
+    #
+    for field_idx in 1 2
+    do
+        for ve_idx in `seq 1 $n_envs`
+        do
+            local ve_name=`echo "$conda_envs" | cut -d' ' -f1 | head -n$ve_idx | tail -n1`
+            local ve_prefix=`echo "$conda_envs" | cut -d' ' -f2 | head -n$ve_idx | tail -n1`
+            local ve_name_to_be_activated=""
+            if [ $field_idx -eq 1 ]; then
+                ve_name_to_be_activated=$ve_name
+            else
+                ve_name_to_be_activated=$ve_prefix
+            fi
+            log_info "test_conda_activate_env sub case 1.$ve_idx for ve \"$ve_name $ve_prefix\""
+
+            is_conda_env_activated $ve_name_to_be_activated && {
+                ((err_cnt+=1)); log_error "Fail sub-case 1.1.$field_idx.$ve_idx: check in-activate bef activating per ve \"$ve_name_to_be_activated\""
+                break;
+            }
+            conda_activate_env $ve_name_to_be_activated || {
+                ((err_cnt+=1)); log_error "Fail sub-case 1.2.$field_idx.$ve_idx: check activating rc per ve \"$ve_name_to_be_activated\""
+                break;
+            }
+            is_conda_env_activated $ve_name_to_be_activated || {
+                ((err_cnt+=1)); log_error "Fail sub-case 1.3.$field_idx.$ve_idx: check is-activated aft activating per ve \"$ve_name_to_be_activated\""
+                break;
+            }
+            _shadow_cmd_conda deactivate
+        done
+    done
+
+    test $err_cnt -eq 0
+}
+DEFAULT_python_ver_major=${DEFAULT_python_ver_major:-${python_ver_major:-"3"}}
+DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"$HOME/anaconda${DEFAULT_python_ver_major}"}
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
 DEFAULT_conda_envs_dir=${DEFAULT_conda_envs_dir:-"$HOME/.conda/envs"}
 DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
