@@ -1035,24 +1035,36 @@ function _shadow_cmd_conda() {
         conda $@
 
     elif command -v conda >/dev/null; then
-        if [ "$_is_activate_related" = "true" ]; then
+        log_debug "type of \"conda\" cmd is \"`type -t conda`\" at \"`command -v conda`\""
+        local _condabin=`basename $(dirname $(command -v conda))`
+        if [ "$_condabin" = "condabin" -a "$_is_activate_related" = "true" ]; then
+            # in case "conda init <shell_name>" was not done before calling this function
+            source `dirname $(command -v conda)`/../etc/profile.d/conda.sh
+        fi
+
+        local __conda=conda
+        if [ "`type -t conda`" != "function" -a "$_is_activate_related" = "true" ]; then
             # conda.sh sourced in func call will lost in invoker while the CONDA_* env
             # were actually kept. also, the path to conda binary might be removed from
             # PATH to co-operate a conda compatibility request.
             # in this case, the conda binary path needs to be explicitly add to the
             # "XX activate" command so that "source" can locate it
             local _cmd=$1; shift
-            if [ -n "$CONDA_EXE" ]; then
-                log_debug "$_cmd res conda virtual environment \"$@\""
+            log_debug "type of \"$_cmd\" cmd is \"`type -t $_cmd`\" at \"`command -v $_cmd`\""
+            declare -p PATH | sed -e 's/^/>> /g' | log_lines info
+
+            if [ "`type -t $_cmd`" != "file" -a -n "$CONDA_EXE" ]; then
+                log_warn "$_cmd conda virtual environment \"$@\" with legacy method!"
+                #          for backwoard compatibility only <-------+/^^^^^^^^^^^^^^
                 _cmd=${CONDA_EXE%/*}/$_cmd
+                __conda=source
             else
                 log_debug "$_cmd conda virtual environment \"$@\""
             fi
-            source $_cmd $@
+            $__conda $_cmd $@
         else
-            conda $@
+            $__conda $@
         fi
-
     else
         log_error "Conda environment was not properly configured in current shell"
         false
@@ -1072,6 +1084,24 @@ function _shadow_cmd_conda() {
         true
     fi
     (exit $_rc)
+}
+function __test__shadow_cmd_conda() {
+    local err_cnt=0
+    #
+    # 这个怎么测呢，要覆盖conda的不同版本，例如:
+    # 1) conda<4.6, pre
+    # 2) conda==4.6, stable
+    # 3) conda>4.6, dev, such as 4.7
+    #
+    # 要覆盖用户不同的shell rc/profile环境，例如：
+    # 1) 有无conda init <SHELL>的前置导入
+    # 2) 有无conda.sh的前置导入
+    # 3) 有无conda/bin在PATH里面的设定
+    # 4) 有无conda/condabin在PATH里面的设定，conda>=4.6
+    # 5) 有无active的conda env
+    #
+    log_warn "fake test, 我想桃桃了。"
+    test $err_cnt -eq 0
 }
 # different pip version has different command line options
 function setup_conda_flags() {
