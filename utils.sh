@@ -1002,6 +1002,23 @@ function download_by_cache() {
         false
     fi
 }
+function gen_lib_source_cmd() {
+    local f_sh=$1
+    local f_sh_url=$2
+    local f_sh_sum=$3
+    if ! command -v $f_sh >/dev/null; then
+        if [ -f "$PROGDIR/$f_sh" ]; then
+            f_sh="$PROGDIR/$f_sh"
+        else
+            f_sh=`download_by_cache $f_sh_url $f_sh_sum`
+        fi
+    fi >/dev/null
+    if [ -n "$f_sh" ]; then
+        echo "source $f_sh"
+    else
+        echo "false"
+    fi
+}
 function filter_pkgs_groupby() {
     local default_grp=${1:-"10"}
 
@@ -2168,15 +2185,41 @@ function enc_self_b64_gz() {
 # ------------------------------------------------------------------------------
 # begin of self run
 #
-if [ "$PROG_NAME" = "utils.sh" ]; then
-    source ${PROG_DIR}/log.sh
-    source ${PROG_DIR}/getopt.sh
+# call as:
+# 1) ./utils.sh    <-- self call
+# 2) cat utils.sh | bash -    <-- inline call
+if [ "$PROG_NAME" = "utils.sh" -o "$PROG_NAME" = "bash" ]; then
+    # loading log.sh
+    if [ ! -f "${PROG_DIR}/log.sh" -o "`type -t log.sh`" != "file" ]; then
+        # NOTE: unset fake or legacy log_XX before tring to import real ones
+        for item in error warn info debug lines; do unset log_$item; done
+        if ! eval `gen_lib_source_cmd log.sh https://github.com/dillonfzw/utils/raw/master/log.sh`; then
+            echo "Fail to source \"log.sh\". Abort!" >&2
+            exit 1
+        fi
+    else
+        source ${PROG_DIR}/log.sh
+    fi && \
 
+    # loading getopt.sh
+    if [ ! -f "${PROG_DIR}/getopt.sh" -o "`type -t getopt.sh`" != "file" ]; then
+        if ! eval `gen_lib_source_cmd getopt.sh https://github.com/dillonfzw/utils/raw/master/getopt.sh`; then
+            log_error "Fail to source \"getopt.sh\". Abort!"
+            exit 1
+        fi
+    else
+        source ${PROG_DIR}/getopt.sh
+    fi
+
+    # set global shell debug
     if [ "${DEBUG}" = "true" ]; then set -x; fi && \
 
     setup_os_flags && \
 
+    # default to "usage"
     if [ -z "$cmd" ]; then cmd=usage; fi && \
+
+    # issue real cmd
     if declare -F $cmd >/dev/null 2>&1; then
         $cmd $@
         exit $?
