@@ -2155,7 +2155,7 @@ DEFAULT_python_ver_major=${DEFAULT_python_ver_major:-${python_ver_major:-"3"}}
 DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"$HOME/anaconda${DEFAULT_python_ver_major}"}
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
 DEFAULT_conda_envs_dir=${DEFAULT_conda_envs_dir:-"$HOME/.conda/envs"}
-DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
+DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
 
 # end of feature functions
 #-------------------------------------------------------------------------------
