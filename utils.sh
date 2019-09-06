@@ -1,4 +1,6 @@
 #! /usr/bin/env bash
+# from https://github.com/dillonfzw/utils/raw/master/utils.sh, "1a53a79 tuna conda mirror had restored"
+
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1047,47 +1049,16 @@ function _shadow_cmd_conda() {
         _is_activate_related=true
     fi
 
-    if declare -F conda >/dev/null 2>&1; then
-        # if conda.sh had already been sourced, there will be conda function defined and use it!
-        conda $@
-
-    elif command -v conda >/dev/null; then
-        log_debug "type of \"conda\" cmd is \"`type -t conda`\" at \"`command -v conda`\""
-        local _condabin=`basename $(dirname $(command -v conda))`
-        if [ "$_condabin" = "condabin" -a "$_is_activate_related" = "true" ]; then
-            # in case "conda init <shell_name>" was not done before calling this function
-            source `dirname $(command -v conda)`/../etc/profile.d/conda.sh
-        fi
-
-        local __conda=conda
-        if [ "`type -t conda`" != "function" -a "$_is_activate_related" = "true" ]; then
-            # conda.sh sourced in func call will lost in invoker while the CONDA_* env
-            # were actually kept. also, the path to conda binary might be removed from
-            # PATH to co-operate a conda compatibility request.
-            # in this case, the conda binary path needs to be explicitly add to the
-            # "XX activate" command so that "source" can locate it
-            local _cmd=$1; shift
-            log_debug "type of \"$_cmd\" cmd is \"`type -t $_cmd`\" at \"`command -v $_cmd`\""
-            declare -p PATH | sed -e 's/^/>> /g' | log_lines info
-
-            if [ "`type -t $_cmd`" != "file" -a -n "$CONDA_EXE" ]; then
-                log_warn "$_cmd conda virtual environment \"$@\" with legacy method!"
-                #          for backwoard compatibility only <-------+/^^^^^^^^^^^^^^
-                _cmd=${CONDA_EXE%/*}/$_cmd
-                __conda=source
-            else
-                log_debug "$_cmd conda virtual environment \"$@\""
-            fi
-            $__conda $_cmd $@
-        else
-            $__conda $@
-        fi
-    else
-        log_error "Conda environment was not properly configured in current shell"
+    if ! do_and_verify \
+        "declare -F conda" \
+        'eval source $(dirname $(command -v conda)/)/../etc/profile.d/conda.sh' \
+        'true' >/dev/null; then
+        log_error "Conda(>4.6.14) environment was not properly configured in current shell"
         false
     fi && \
-    local _rc=$? && \
+    conda $@
 
+    local _rc=$? && \
     if [ "$_is_activate_related" = "true" ]; then
         #
         # be careful to endless recursive call
@@ -1909,7 +1880,7 @@ function get_conda_env_prefixed_name() {
         # >> base                  *  /u/fuzhiwen/.conda/envs/darwin_gpu_nomkl
         # >> darwin_mkl               /u/fuzhiwen/.conda/envs/darwin_mkl
         # >>                          /u/fuzhiwen/anaconda3
-        _ve_prefix=`_shadow_cmd_conda env list | grep "\/${_ve_name}$" | sed -e 's,^.* \/,\/,'`
+        _ve_prefix=`_shadow_cmd_conda env list | grep "\/${_ve_name}$" | sed -e 's,^.* \/,\/,' | head -n1`
         _ve_prefix=`dirname $_ve_prefix`
     fi
     if [ -n "$_ve_prefix" -a -z "$_ve_name" ]; then
