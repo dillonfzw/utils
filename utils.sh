@@ -2185,7 +2185,7 @@ if [ "$PROG_NAME" = "utils.sh" -o "$PROG_NAME" = "bash" ]; then
     # set global shell debug
     if [ "${DEBUG}" = "true" ]; then set -x; fi && \
 
-    setup_os_flags && \
+    run_initialize_ops && \
 
     # default to "usage"
     if [ -z "$cmd" ]; then cmd=usage; fi && \
