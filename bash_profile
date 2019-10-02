@@ -9,6 +9,13 @@ if [ -f ~/.bashrc ]; then
 fi
 
 ############################################################
+# setup EDITOR if no default
+if [ -z "$EDITOR" ]; then
+    EDITOR=vi
+fi
+export EDITOR
+
+############################################################
 # Pick up a mostly valid locale, en_US.UTF-8, if current one is invalid.
 # Background:
 # - OSX default locale, UTF-8, is mostly invalid in Linux box,
