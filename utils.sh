@@ -2169,13 +2169,71 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
     } && \
     true
 }
-function install_stable_nginx_on_ubuntu() {
-    local -a pkgs=("deb:nginx") && \
+function install_nginx_prereqs_on_rhel() {
+    local -a pkgs=(
+        "rpm:yum-utils"
+    )
     if do_and_verify \
         "pkg_verify ${pkgs[@]}" \
         "pkg_install ${pkgs[@]}" \
-        "true"; then
+        'true'; then
         pkg_list_installed ${pkgs[@]} | log_lines debug
+    else
+        log_error "Fail to install nginx prereqs \"${pkgs[@]}\" on rhel"
+        false
+    fi
+}
+function setup_rhel_yum_repo_for_nginx_stable() {
+    # refer to detailed instruction from nginx official web site:
+    # >> http://nginx.org/en/linux_packages.html
+    local ftmp=`mktemp /tmp/XXXXXXXX`
+
+    install_nginx_prereqs_on_rhel && \
+    echo '
+[nginx-stable]
+name=nginx stable repo
+baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
+gpgcheck=1
+enabled=1
+gpgkey=https://nginx.org/keys/nginx_signing.key
+module_hotfixes=true
+
+[nginx-mainline]
+name=nginx mainline repo
+baseurl=http://nginx.org/packages/mainline/centos/$releasever/$basearch/
+gpgcheck=1
+enabled=0
+gpgkey=https://nginx.org/keys/nginx_signing.key
+module_hotfixes=true
+' | sed -e "s/^ *//g" >$ftmp && \
+    if do_and_verify \
+        'eval $sudo yum-config-manager nginx-stable | grep -sq "\[nginx-stable\]"' \
+        'eval $sudo cp $ftmp /etc/yum.repos.d/nginx.repo'
+        'true'; then
+        $sudo yum-config-manager nginx-stable | sed -e 's/^/>> /g' | log_lines debug
+    else
+        log_error "Fail to setup yum source for stable nginx"
+        false
+    fi && {
+        # actively trigger repo update
+        $sudo yum repolist || true
+    } && \
+    true
+
+    local rc=$?
+    #[ -s $ftmp ] && rm -f $ftmp
+    (rxit $rc)
+}
+function install_stable_nginx() {
+    local -a pkgs=(
+        "deb:nginx"
+        "rpm:nginx"
+    ) && \
+    if do_and_verify \
+        'eval pkg_verify ${pkgs[@]}' \
+        'eval pkg_install ${pkgs[@]}' \
+        "true"; then
+        pkg_list_installed ${pkgs[@]} | log_lines debug || true
     else
         log_error "Fail to install nginx"
         false
