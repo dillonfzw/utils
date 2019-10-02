@@ -2127,6 +2127,60 @@ DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"$HOME/anaconda${DEFAUL
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
 DEFAULT_conda_envs_dir=${DEFAULT_conda_envs_dir:-"$HOME/.conda/envs"}
 DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
+function install_nginx_prereqs_on_ubuntu() {
+    local -a pkgs=(
+        "deb:curl"
+        "deb:gnupg2"
+        "deb:ca-certificates"
+        "deb:lsb-release"
+    )
+    if do_and_verify \
+        "pkg_verify ${pkgs[@]}" \
+        "pkg_install ${pkgs[@]}" \
+        'true'; then
+        pkg_list_installed ${pkgs[@]} | log_lines debug
+    else
+        log_error "Fail to install nginx prereqs \"${pkgs[@]}\" on ubuntu"
+        false
+    fi
+}
+function setup_ubuntu_apt_repo_for_nginx_stable() {
+    # refer to detailed instruction from nginx official web site:
+    # >> http://nginx.org/en/linux_packages.html
+    install_nginx_prereqs_on_ubuntu && \
+    if ! do_and_verify \
+        "test -s /etc/apt/sources.list.d/nginx.list" \
+        'eval echo "deb http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" | $sudo tee /etc/apt/sources.list.d/nginx.list' \
+        'true'; then
+        #echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | $sudo tee /etc/apt/sources.list.d/nginx.list && \
+        log_error "Fail to setup apt source for nginx"
+        false
+    fi && \
+    if do_and_verify \
+        'eval apt-key fingerprint ABF5BD827BD9BF62 | grep -sqi "ABF5 BD82"' \
+        'eval curl -fsSL https://nginx.org/keys/nginx_signing.key | $sudo apt-key add -' \
+        'true'; then
+        apt-key fingerprint ABF5BD827BD9BF62 | log_lines debug
+    else
+        log_error "Fail to setup nginx apt key"
+        false
+    fi && {
+        $sudo apt-get update || true
+    } && \
+    true
+}
+function install_stable_nginx_on_ubuntu() {
+    local -a pkgs=("deb:nginx") && \
+    if do_and_verify \
+        "pkg_verify ${pkgs[@]}" \
+        "pkg_install ${pkgs[@]}" \
+        "true"; then
+        pkg_list_installed ${pkgs[@]} | log_lines debug
+    else
+        log_error "Fail to install nginx"
+        false
+    fi
+}
 
 # end of feature functions
 #-------------------------------------------------------------------------------
