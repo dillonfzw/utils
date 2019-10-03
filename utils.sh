@@ -1,5 +1,4 @@
 #! /usr/bin/env bash
-# from https://github.com/dillonfzw/utils/raw/master/utils.sh, "1a53a79 tuna conda mirror had restored"
 
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,7 +104,7 @@ function __test_shuf() {
     test $err_cnt -eq 0
 }
 function get_env() {
-    eval "echo \$$1" 2>/dev/null
+    eval "echo \${$1}" 2>/dev/null
 }
 function declare_p() {
     declare -p $@
