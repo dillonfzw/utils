@@ -1055,6 +1055,9 @@ function _shadow_cmd_conda() {
         log_error "Conda(>4.6.14) environment was not properly configured in current shell"
         false
     fi && \
+    # 再次source这个文件，确保是符合conda调用规范的。因为发现在shell里面调用conda的时候，有时候
+    # 之前source这个文件的效果，不能被shell里面的conda所识别。
+    source $(dirname $(command -v conda)/)/../etc/profile.d/conda.sh && \
     conda $@
 
     local _rc=$? && \
@@ -2016,7 +2019,7 @@ function is_conda_env_activated() {
     local _active_prefix=`get_conda_active_prefix`
 
     # strict check if conda env had been activated or not
-    test  "$_ve_prefix" = "$_active_prefix" -a "`command -v python`" = "$_active_prefix/bin/python"
+    test "$_ve_prefix" = "$_active_prefix" -a "`command -v python`" = "$_active_prefix/bin/python"
 }
 function __test_is_conda_env_activated() {
     local err_cnt=0
@@ -2067,7 +2070,7 @@ function __test_is_conda_env_activated() {
 }
 function conda_activate_env() {
     local _ve_prefix=`get_conda_env_prefixed_name $1`
-    if is_conda_env_activated $_ve_prefix; then
+    if is_conda_env_activated $_ve_prefix && [ "$always_force_activating_conda_env" = "false" ]; then
         log_debug "Conda env \"$_ve_prefix\" was already activated. Skip activating."
     else
         log_info "Activating conda env \"$_ve_prefix\""
@@ -2126,6 +2129,7 @@ DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"$HOME/anaconda${DEFAUL
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
 DEFAULT_conda_envs_dir=${DEFAULT_conda_envs_dir:-"$HOME/.conda/envs"}
 DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
+DEFAULT_always_force_activating_conda_env=${DEFAULT_always_force_activating_conda_env:${always_force_activating_conda_env:-true}}
 function install_nginx_prereqs_on_ubuntu() {
     local -a pkgs=(
         "deb:curl"
