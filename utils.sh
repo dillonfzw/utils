@@ -1057,7 +1057,7 @@ function _shadow_cmd_conda() {
     fi && \
     # 再次source这个文件，确保是符合conda调用规范的。因为发现在shell里面调用conda的时候，有时候
     # 之前source这个文件的效果，不能被shell里面的conda所识别。
-    source $(dirname $(command -v conda)/)/../etc/profile.d/conda.sh && \
+    source `conda info -s | grep ^sys.prefix: | awk '{print $2}'`/etc/profile.d/conda.sh && \
     conda $@
 
     local _rc=$? && \
