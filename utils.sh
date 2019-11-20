@@ -726,6 +726,24 @@ function setup_linux_os_flags() {
         exit 1
     fi
 }
+function setup_gnu_utils() {
+    declare -g G_expr_bin=expr
+    if command -v gexpr >/dev/null; then
+        G_expr_bin=gexpr
+    fi
+    declare -g tail=tail
+    if command -v gtail >/dev/null; then
+        tail=gtail
+    fi
+    declare -g date=date
+    if command -v gdate >/dev/null; then
+        date=gdate
+    fi
+    declare -g sed=sed
+    if command -v gsed >/dev/null; then
+        sed=gsed
+    fi
+}
 function print_title() {
     echo -e "\n"
     echo "+-----------------------------------------------------------"
@@ -1713,6 +1731,8 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     setup_locale && \
 
     setup_os_flags && \
+
+    setup_gnu_utils && \
 
     declare -g DEFAULT_use_conda=${use_conda:-${DEFAULT_use_conda:-true}} && \
     declare -g DEFAULT_sudo=${sudo:-${DEFAULT_sudo:-sudo}} && \
