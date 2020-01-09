@@ -1118,6 +1118,10 @@ function __test__shadow_cmd_conda_info_s() {
     local err_cnt=0
 
     local conda=_shadow_cmd_conda
+
+    # 撤掉测试前已有的ve，以防干扰
+    $conda deactivate
+
     # 先清掉cache
     G_conda_c_info_s=""
     # 确保清掉了
@@ -1140,7 +1144,15 @@ function __test__shadow_cmd_conda_info_s() {
 }
 function cache_conda_info_s() {
     if has_conda; then
-        G_conda_c_info_s="`conda info -s`"
+        export G_conda_c_info_s="`conda info -s`"
+    else
+        # TODO: 是不是激活一下conda profile，然后再试
+        false
+    fi
+}
+function cache_conda_info_json() {
+    if has_conda; then
+        export G_conda_c_info_json="`conda info --json`"
     else
         # TODO: 是不是激活一下conda profile，然后再试
         false
@@ -1148,15 +1160,30 @@ function cache_conda_info_s() {
 }
 # different pip version has different command line options
 function setup_conda_flags() {
+    function get_conda_prefix_from_info_s() {
+        echo "${G_conda_c_info_s}" | grep "^CONDA_PREFIX:" | awk '{print $2}'
+    }
+    function get_conda_sys_prefix_from_info_s() {
+        echo "${G_conda_c_info_s}" | grep "^sys\.prefix:" | awk '{print $2}'
+    }
     if has_conda; then
-        cache_conda_info_s && \
+        if [ -z "$G_conda_c_info_s" ]; then cache_conda_info_s; fi && \
         conda_install_home=`echo "$G_conda_c_info_s" | grep ^sys.prefix: | awk '{print $2}'`
     fi
     local conda_profile=$conda_install_home/etc/profile.d/conda.sh
     if do_and_verify "has_conda" "source $conda_profile" 'true' 2>/dev/null; then
-        cache_conda_info_s
-        G_conda_bin="`echo \"${G_conda_c_info_s}\" | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
+        # 准备cache info_s信息，如果：
+        # 1) 没有cache信息
+        # 2) 好像不一致了
+        local _conda_prefix="`get_conda_prefix_from_info_s`"
+        if [ -z "$G_conda_c_info_s" -o "$_conda_prefix" != "$CONDA_PREFIX" ]; then
+            cache_conda_info_s
+        fi
+        G_conda_bin="`get_conda_sys_prefix_from_info_s`/bin/conda"
         G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
+        if true || [ "`get_conda_active_prefix`" != "$_conda_prefix" ]; then
+            cache_conda_info_json
+        fi
     fi
     # Remove $CONDA_PREFIX/bin from PATH only if conda function was not the first priority.
     if [ "`command -v conda`" != "conda" -a -n "${G_conda_bin}" ]; then
@@ -1784,7 +1811,8 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     declare -g G_conda_bin=${G_conda_bin:-`command -v conda`} && \
     declare -ag G_conda_install_flags=${G_conda_install_flags:-()} && \
     # cache变量，提升性能
-    declare -g G_conda_c_info_s="" && \
+    declare -gx G_conda_c_info_s=${G_conda_c_info_s} && \
+    declare -gx G_conda_c_info_json=${G_conda_c_info_json} && \
     setup_conda_flags && \
 
     declare -ag G_apt_install_flags=${G_apt_install_flags:-()} && \
@@ -2016,7 +2044,10 @@ function get_conda_active_prefix() {
     # >> "active_prefix": "/u/fuzhiwen/.conda/envs/darwin_gpu_nomkl",
     # >> "conda_prefix": "/Users/fuzhiwen/anaconda3",
     # >> "default_prefix": "/Users/fuzhiwen/anaconda3",
-    local _lines=`_shadow_cmd_conda info --json \
+    if [ -z "$G_conda_c_info_json" ]; then
+        cache_conda_info_json
+    fi
+    local _lines=`echo "$G_conda_c_info_json" \
         | grep -E "\"active_prefix\":|\"#conda_prefix\":|\"#default_prefix\":" \
         | cut -d\" -f4 | grep -vE "^$|^null$"`
 
@@ -2147,11 +2178,13 @@ function conda_activate_env() {
 function __test_conda_activate_env() {
     local err_cnt=0
 
+    local conda=_shadow_cmd_conda
+
     # deactivate all conda ve first
-    _shadow_cmd_conda deactivate
+    $conda deactivate
 
     # explore all conda envs
-    local conda_envs=`_shadow_cmd_conda env list | sed -e 's/ \* / /g' | grep -vE "^#|^ *\/" | tr -s ' '`
+    local conda_envs=`$conda env list | sed -e 's/ \* / /g' | grep -vE "^#|^ *\/" | tr -s ' '`
     echo "$conda_envs" | log_lines debug
     local n_envs=`echo "$conda_envs" | wc -l | awk '{print $1}'`
 
