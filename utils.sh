@@ -1073,9 +1073,12 @@ function _shadow_cmd_conda() {
         log_error "Conda(>4.6.14) environment was not properly configured in current shell"
         false
     fi && \
+    if [ -z "${G_conda_c_info_s}" ]; then
+        cache_conda_info_s
+    fi && \
     # 再次source这个文件，确保是符合conda调用规范的。因为发现在shell里面调用conda的时候，有时候
     # 之前source这个文件的效果，不能被shell里面的conda所识别。
-    source `conda info -s | grep ^sys.prefix: | awk '{print $2}'`/etc/profile.d/conda.sh && \
+    source `echo "${G_conda_c_info_s}" | grep ^sys.prefix: | awk '{print $2}'`/etc/profile.d/conda.sh && \
     conda $@
 
     local _rc=$? && \
@@ -1111,11 +1114,48 @@ function __test__shadow_cmd_conda() {
     log_warn "fake test, 我想桃桃了。"
     test $err_cnt -eq 0
 }
+function __test__shadow_cmd_conda_info_s() {
+    local err_cnt=0
+
+    local conda=_shadow_cmd_conda
+    # 先清掉cache
+    G_conda_c_info_s=""
+    # 确保清掉了
+    test -z "$G_conda_c_info_s" || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 1, \"`declare -p G_conda_c_info_s`\"";
+    }
+
+    # 激活一个ve，看info_s被cache住没
+    $conda activate base
+    echo "$G_conda_c_info_s" | grep -sq "CONDA_DEFAULT_ENV: base" || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 2, \"`declare -p G_conda_c_info_s`\"";
+    }
+
+    # 解激活后，info_s的缓冲应该还在
+    $conda deactivate
+    [ -z "`echo \"$G_conda_c_info_s\" | grep \"CONDA_DEFAULT_ENV:\"`" -a -n "$G_conda_c_info_s" ] || {
+        ((err_cnt+=1)); log_error "Fail ${FUNCNAME[0]} sub-case 3, \"`declare -p G_conda_c_info_s`\"";
+    }
+    test $err_cnt -eq 0
+}
+function cache_conda_info_s() {
+    if has_conda; then
+        G_conda_c_info_s="`conda info -s`"
+    else
+        # TODO: 是不是激活一下conda profile，然后再试
+        false
+    fi
+}
 # different pip version has different command line options
 function setup_conda_flags() {
+    if has_conda; then
+        cache_conda_info_s && \
+        conda_install_home=`echo "$G_conda_c_info_s" | grep ^sys.prefix: | awk '{print $2}'`
+    fi
     local conda_profile=$conda_install_home/etc/profile.d/conda.sh
     if do_and_verify "has_conda" "source $conda_profile" 'true' 2>/dev/null; then
-        G_conda_bin="`conda info -s | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
+        cache_conda_info_s
+        G_conda_bin="`echo \"${G_conda_c_info_s}\" | grep ^sys.prefix: | awk '{print $2}'`/bin/conda"
         G_conda_install_flags=("--yes" ${conda_install_flags_extra[@]})
     fi
     # Remove $CONDA_PREFIX/bin from PATH only if conda function was not the first priority.
@@ -1743,6 +1783,8 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
     # Setup conda related global variables/envs
     declare -g G_conda_bin=${G_conda_bin:-`command -v conda`} && \
     declare -ag G_conda_install_flags=${G_conda_install_flags:-()} && \
+    # cache变量，提升性能
+    declare -g G_conda_c_info_s="" && \
     setup_conda_flags && \
 
     declare -ag G_apt_install_flags=${G_apt_install_flags:-()} && \
@@ -1882,6 +1924,10 @@ function conda_create_env() {
     fi
 }
 function get_conda_env_prefixed_name() {
+    if declare -F conda >/dev/null; then
+        cache_conda_info_s && \
+        conda_install_home=`echo "$G_conda_c_info_s" | grep ^sys.prefix: | awk '{print $2}'`
+    fi
     local _ve_prefix=${1:-${CONDA_DEFAULT_ENV}}
     local _ve_name=""
 
