@@ -129,6 +129,12 @@ function __test_shuf() {
 function get_env() {
     eval "echo \${$1}" 2>/dev/null
 }
+function is_running_in_docker() {
+    # * https://stackoverflow.com/questions/23513045/how-to-check-if-a-process-is-running-inside-docker-container
+    awk -F/ '$2 == "docker"' /proc/self/cgroup 2>/dev/null | read || \
+    # * https://stackoverflow.com/questions/20010199/how-to-determine-if-a-process-runs-inside-lxc-docker
+    [ -f /.dockerenv ]
+}
 function declare_p() {
     declare -p $@
 }
@@ -1056,8 +1062,8 @@ function gen_lib_source_cmd() {
     local f_sh_url=$2
     local f_sh_sum=$3
     if ! command -v $f_sh >/dev/null; then
-        if [ -f "$PROGDIR/$f_sh" ]; then
-            f_sh="$PROGDIR/$f_sh"
+        if [ -f "$PROG_DIR/$f_sh" ]; then
+            f_sh="$PROG_DIR/$f_sh"
         else
             f_sh=`download_by_cache $f_sh_url $f_sh_sum`
         fi
@@ -2375,6 +2381,32 @@ function install_stable_nginx() {
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
+function _pri_init_1_inline() {
+    echo \
+'
+# TODO: workaround OSX gnu expr replacement
+if command -v gexpr >/dev/null; then
+    G_expr_bin=gexpr
+else
+    G_expr_bin=expr
+fi
+# TODO: workaround OSX gnu base64 replacement
+if command -v gbase64 >/dev/null; then
+    base64=gbase64
+else
+    base64=base64
+fi
+# initialize fake log_XXX in case log.sh could not be loaded.
+for item in error warn info debug
+do
+    p=`$G_expr_bin substr $item 1 1 | tr "[a-z]" "[A-Z]"`
+    declare -F log_$item &>/dev/null || \
+    eval "function log_$item { echo \"[$p]: \$@\" >&2; }"
+done
+declare -F log_lines &>/dev/null || \
+eval "function log_lines { true; }"
+'
+}
 function enc_self_b64_gz() {
     # 把以上功能函数（包含在{begin,end} of feature functions中间的代码）编码成自包含的代码
     local fself=$1
@@ -2400,31 +2432,8 @@ PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
 USER=${USER:-`id -u -n`}
 hostname_s=`hostname -s`
 
-
-# TODO: workaround OSX gnu expr replacement
-if command -v gexpr >/dev/null; then
-    G_expr_bin=gexpr
-else
-    G_expr_bin=expr
-fi
-# TODO: workaround OSX gnu base64 replacement
-if command -v gbase64 >/dev/null; then
-    base64=gbase64
-else
-    base64=base64
-fi
-# initialize fake log_XXX in case log.sh could not be loaded.
-for item in error warn info debug
-do
-    p=`$G_expr_bin substr $item 1 1 | tr "[a-z]" "[A-Z]"`
-    declare -F log_$item &>/dev/null || \
-    eval "function log_$item { echo \"[$p]: \$@\" >&2; }"
-done
-declare -F log_lines &>/dev/null || \
-eval "function log_lines { true; }"
-
-# 1274b08 new usleep and pstree to support rhel init functions
-declare -F download_by_cache &>/dev/null || \
+'"`_pri_init_1_inline`"'
+declare -F run_initialize_ops &>/dev/null || \
 if ! eval "`(cat - <<EOF'
             echo "$lines" | gzip | base64 -w 80
             echo \
@@ -2448,6 +2457,7 @@ fi'
 # 1) ./utils.sh    <-- self call
 # 2) cat utils.sh | bash -    <-- inline call
 if [ "$PROG_NAME" = "utils.sh" -o "$PROG_NAME" = "bash" ]; then
+    eval "`_pri_init_1_inline`"
     # loading log.sh
     if [ ! -f "${PROG_DIR}/log.sh" -o "`type -t log.sh`" != "file" ]; then
         # NOTE: unset fake or legacy log_XX before tring to import real ones
