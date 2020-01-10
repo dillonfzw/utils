@@ -17,6 +17,29 @@
 #               THIS SCRIPT PROVIDED AS IS WITHOUT SUPPORT
 #               ------------------------------------------
 
+# --------------------------------------------------------------------------------
+# Typical usage:
+# $ bash ./utils.sh cmd=<function_name> -- arg1 arg2 arg3 ...
+#
+# examples:
+# 1) list all cmds
+# $ bash ./utils.sh cmd=usage
+#
+#
+# 2) run unit test
+# # run all tests
+# $ bash ./utils.sh cmd=run_unit_test
+#
+# # run a list of specific tests
+# $ bash ./utils.sh cmd=run_unit_test -- test_tac test_shuf
+#
+#
+# 3) 把本工具库做成内嵌代码段，放到其他脚本
+# $ bash ./utils.sh cmd=enc_self_b64_gz | tee -a 1.sh
+# # 试验一下，看看内嵌代码段能否展开
+# $ bash -x ./1.sh
+# --------------------------------------------------------------------------------
+
 
 PROG_CLI=${PROG_CLI:-`command -v $0`}
 PROG_NAME=${PROG_NAME:-${PROG_CLI##*/}}
@@ -175,7 +198,8 @@ function run_unit_test() {
         _NC3v_target_cases=($@)
     fi
 
-    local i f_case
+    local i f_case cnt_fail
+    ((cnt_fail=0))
     for i in ${!_NC3v_target_cases[@]}
     do
         f_case=${_NC3v_target_cases[$i]}
@@ -184,8 +208,14 @@ function run_unit_test() {
             log_info "Test $((i+1))/${#_NC3v_target_cases[@]} \"$f_case\"... succ"
         else
             log_error "Test $((i+1))/${#_NC3v_target_cases[@]} \"$f_case\"... fail"
+            ((cnt_fail+=1))
         fi
     done
+    if [ ${cnt_fail} -gt 0 ]; then
+        echo -e "\n\nRun ${#_NC3v_target_cases[@]} case(s) with $cnt_fail failed.\n" | log_lines error
+    else
+        echo -e "\n\nRun ${#_NC3v_target_cases[@]} case(s) with all succ.\n" | log_lines info
+    fi
 }
 function _fail_unit_test() {
     log_error "Fail shell unit case \"${FUNCNAME[1]}\" $@"
@@ -2346,6 +2376,7 @@ function install_stable_nginx() {
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
 function enc_self_b64_gz() {
+    # 把以上功能函数（包含在{begin,end} of feature functions中间的代码）编码成自包含的代码
     local fself=$1
     if [ -n "$fself" -a -f "$fself" ]; then
         shift
@@ -2357,7 +2388,50 @@ function enc_self_b64_gz() {
     if [ -n "$fself" -a -f "$fself" ]; then
         local lines=`sed -e '1,/cut here beg '$tbeg'/d' -e '/cut here end '$tend'/,$d' $fself`
         if [ -n "$lines" ]; then
-               echo "$lines" | gzip | base64 -w 80
+            echo \
+'#! /usr/bin/env bash
+
+PROG_CLI=${PROG_CLI:-`command -v $0`}
+PROG_NAME=${PROG_NAME:-${PROG_CLI##*/}}
+PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
+
+
+[ "$DEBUG" = "true" ] && set -x
+USER=${USER:-`id -u -n`}
+hostname_s=`hostname -s`
+
+
+# TODO: workaround OSX gnu expr replacement
+if command -v gexpr >/dev/null; then
+    G_expr_bin=gexpr
+else
+    G_expr_bin=expr
+fi
+# TODO: workaround OSX gnu base64 replacement
+if command -v gbase64 >/dev/null; then
+    base64=gbase64
+else
+    base64=base64
+fi
+# initialize fake log_XXX in case log.sh could not be loaded.
+for item in error warn info debug
+do
+    p=`$G_expr_bin substr $item 1 1 | tr "[a-z]" "[A-Z]"`
+    declare -F log_$item &>/dev/null || \
+    eval "function log_$item { echo \"[$p]: \$@\" >&2; }"
+done
+declare -F log_lines &>/dev/null || \
+eval "function log_lines { true; }"
+
+# 1274b08 new usleep and pstree to support rhel init functions
+declare -F download_by_cache &>/dev/null || \
+if ! eval "`(cat - <<EOF'
+            echo "$lines" | gzip | base64 -w 80
+            echo \
+'EOF
+) | $base64 -i -d | gzip -d`"; then
+    log_error "Fail to import function \"download_by_cache\""
+fi'
         else
             false
         fi
