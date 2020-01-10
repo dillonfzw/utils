@@ -2430,7 +2430,7 @@ if ! eval "`(cat - <<EOF'
             echo \
 'EOF
 ) | $base64 -i -d | gzip -d`"; then
-    log_error "Fail to import function \"download_by_cache\""
+    log_error "Fail to import lib \"'${PROG_CLI}'\""
 fi'
         else
             false
