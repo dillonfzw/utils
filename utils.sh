@@ -153,18 +153,22 @@ function declare_p_val() {
 function __test_declare_p_val() {
     local err_cnt=0
 
+    # 测试数值变量
     local a=1237
     local b=`declare_p_val a`
     [ $a -eq $b ] || { ((err_cnt+=1)); log_error "fail sub-test 1: `declare -p b`"; }
 
+    # 测试字符串变量
     local a="hello world"
     local b=`declare_p_val a`
     [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 2: `declare -p b`"; }
 
+    # 测试多行文本
     local a="$(</etc/hosts)"
     local b=`declare_p_val a`
     [ "$a" == "$b" ] || { ((err_cnt+=1)); log_error "fail sub-test 3: `declare -p b`"; }
 
+    # 测试简单数组
     local -a a=(1 2)
     local -a b=`declare_p_val a`
     array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 4:
@@ -172,6 +176,7 @@ function __test_declare_p_val() {
     |`declare -p a`|
     |`declare -p b`|"; }
 
+    # 测试复杂数组
     local -a a=(1 2 "hello" 5.88 "$(</etc/hosts)")
     local -a b=`declare_p_val a`
     array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail sub-test 5: `declare -p b`"; }
@@ -1443,6 +1448,15 @@ function pkg_verify_yum() {
         _sudo=""
     fi
     $_sudo rpm -V ${pkgs[@]}
+
+    # 在docker容器里面验证包的时候，有时候会因为容器的aufs等文件系统扥原因，
+    # 导致验证错误，实际是没问题的，这里旁路一下，避免这样无效的失败
+    local rc=$?
+    if [ $rc -ne 0 ] && is_running_in_docker; then
+        log_info "Skip yum pkg verification in docker container due to known problem."
+        return 0
+    fi
+    (exit $rc)
 }
 function pkg_verify_deb() {
     declare -a pkgs=($@)
@@ -1459,6 +1473,15 @@ function pkg_verify_deb() {
         echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
         false
     fi
+
+    # 在docker容器里面验证包的时候，有时候会因为容器的aufs等文件系统扥原因，
+    # 导致验证错误，实际是没问题的，这里旁路一下，避免这样无效的失败
+    local rc=$?
+    if [ $rc -ne 0 ] && is_running_in_docker; then
+        log_info "Skip deb pkg verification in docker container due to known problem."
+        return 0
+    fi
+    (exit $rc)
 }
 function _cmp_op_pair() {
     local pkg_op_pair="$1"
