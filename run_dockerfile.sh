@@ -3,6 +3,7 @@
 
 for DOCKER_FILE in $@
 do
+    echo
     echo "echo -e \"\n\nAppling Dockerfile \"$DOCKER_FILE\"...\n\" >&2"
     sed \
         -e "s/^FROM  *\(.*\)$/echo FROM \1/g" \
