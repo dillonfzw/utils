@@ -13,7 +13,7 @@ do
         -e "s/^ARG  *\([^ =]*\)[ =]*\"*\(.*[^\"]\)\"*$/declare -gx \1=\${\1:-\"\2\"}/g" \
         -e "s/^ENV  *\([^ =]*\)[ =]*\"*\(.*[^\"]\)\"*$/declare -gx \1=\${\1:-\"\2\"}/g" \
         \
-        -e "s/^RUN  *\(.*\)$/if \[ \$\? -ne 0 \]; then true || exit -1; fi \&\& \1/g" \
+        -e "s/^RUN  *\(.*\)$/if \[ \$\? -ne 0 \]; then false || exit -1; fi \&\& \1/g" \
         \
         -e "s/^CMD  *\(.*\)$/\1/g" \
         $DOCKER_FILE </dev/null
