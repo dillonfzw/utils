@@ -24,4 +24,4 @@ function run_dockerfile() {
 }
 
 
-run_docker_file $@
+run_dockerfile $@
