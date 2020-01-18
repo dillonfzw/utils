@@ -2400,6 +2400,33 @@ function install_stable_nginx() {
         false
     fi
 }
+function install_docker() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    local _get_docker_sh=`mktemp /tmp/XXXXXXXX`
+    if do_and_verify \
+        'command -v docker >/dev/null' \
+        'eval curl -fsSL https://get.docker.com -o $_get_docker_sh
+           && test -s $_get_docker_sh
+           && $sudo sh get-docker.sh' \
+        'true'; then
+       {
+           command -v docker
+           docker version
+           docker info
+       } | \
+       sed -e 's/^/>> [docker]: /g' | \
+       log_lines info
+    else
+        log_error "Fail to install docker"
+        false
+    fi
+    local rc=$?
+    rm -f $_get_docker_sh
+    (exit $rc)
+}
 
 # end of feature functions
 #-------------------------------------------------------------------------------
