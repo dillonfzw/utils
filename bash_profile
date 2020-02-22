@@ -226,10 +226,16 @@ unset KERNEL
 ############################################################
 # iTerm2 shell integration
 #
-# https://iterm2.com/documentation-shell-integration.html
+# - https://gitlab.com/gnachman/iterm2/-/wikis/tmux-Integration-Best-Practices
+# - https://iterm2.com/documentation-shell-integration.html
 # >> curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
 # >> curl -L https://iterm2.com/shell_integration/bash -o ~/.iterm2_shell_integration.bash
-test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
+if [ "$LC_TERMINAL" = "iTerm2" ]; then
+    export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=YES
+fi
+if [ -e "${HOME}/.iterm2_shell_integration.bash" ]; then
+    source "${HOME}/.iterm2_shell_integration.bash"
+fi
 
 
 ############################################################
