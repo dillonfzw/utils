@@ -224,6 +224,12 @@ unset KERNEL
 
 
 ############################################################
+# iTerm2 shell integration
+#
+test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
+
+
+############################################################
 # Configure bash behavior
 #
 # - enforce vi mode
