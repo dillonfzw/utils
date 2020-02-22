@@ -226,6 +226,9 @@ unset KERNEL
 ############################################################
 # iTerm2 shell integration
 #
+# https://iterm2.com/documentation-shell-integration.html
+# >> curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
+# >> curl -L https://iterm2.com/shell_integration/bash -o ~/.iterm2_shell_integration.bash
 test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
 
 
