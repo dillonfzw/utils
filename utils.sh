@@ -2406,17 +2406,19 @@ function install_docker() {
         _sudo=""
     fi
     local _get_docker_sh=`mktemp /tmp/XXXXXXXX`
+    local _enforce=${enforce:-false}
     if do_and_verify \
-        'command -v docker >/dev/null' \
-        'eval curl -fsSL https://get.docker.com -o $_get_docker_sh
+        'eval command -v docker >/dev/null && test "$_enforce" = "false"' \
+        'eval true
+           && curl -fsSL https://get.docker.com -o $_get_docker_sh
            && test -s $_get_docker_sh
-           && $sudo sh get-docker.sh' \
-        'true'; then
+           && $sudo sh $_get_docker_sh' \
+        'eval _enforce=false'; then
        {
            command -v docker
            docker version
            docker info
-       } | \
+       } 2>&1 | \
        sed -e 's/^/>> [docker]: /g' | \
        log_lines info
     else
