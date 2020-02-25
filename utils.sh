@@ -2401,6 +2401,22 @@ function install_stable_nginx() {
     fi
 }
 function install_docker() {
+    # https://get.docker.com/
+    # >> # This script is meant for quick & easy install via:
+    # >> #   $ curl -fsSL https://get.docker.com -o get-docker.sh
+    # >> #   $ sh get-docker.sh
+    # >> #
+    # >> # For test builds (ie. release candidates):
+    # >> #   $ curl -fsSL https://test.docker.com -o test-docker.sh
+    # >> #   $ sh test-docker.sh
+    # >> #
+    # >> # NOTE: Make sure to verify the contents of the script
+    # >> #       you downloaded matches the contents of install.sh
+    # >> #       located at https://github.com/docker/docker-install
+    # >> #       before executing.
+    # >> # Git commit from https://github.com/docker/docker-install when
+    # >> # the script was uploaded (Should only be modified by upload job):
+    # >> SCRIPT_COMMIT_SHA="f45d7c11389849ff46a6b4d94e0dd1ffebca32c1"
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
