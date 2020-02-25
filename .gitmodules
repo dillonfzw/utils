@@ -1,0 +1,3 @@
+[submodule "syntastic"]
+	path = dot_vim/bundle/syntastic
+	url = https://github.com/scrooloose/syntastic.git
