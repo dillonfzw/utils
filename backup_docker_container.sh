@@ -47,6 +47,7 @@ function _duplicity_docker_run() {
     #    -v $vol:/volume:ro \
     docker run --rm \
         --hostname ${backup_host} \
+        -e TZ=`date +"%Z%:::z" | tr '+-' '-+'` \
         -v $backup_dir:/.backup \
         -v ~/.gnupg:/home/duplicity/.gnupg \
         -v ~/.cache/duplicity:/home/duplicity/.cache/duplicity \
