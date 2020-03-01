@@ -202,7 +202,7 @@ function restore_vol() {
 }
 
 
-vols=(`docker inspect $container | grep -A1 "\"Type\": \"volume\"" | grep "\"Name\":" | cut -d: -f2 | cut -d\" -f2 | xargs`)
+vols=(`docker inspect $container | grep -A1 "\"Type\": \"volume\"" | grep "\"Name\":" | cut -d: -f2 | cut -d\" -f2 | sort -u | xargs`)
 ((fail_cnt=0))
 for vol in ${vols[@]}
 do
