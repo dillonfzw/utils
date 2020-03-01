@@ -15,6 +15,19 @@ DEFAULT_LOG_LEVEL=${LOG_LEVEL:-debug}
 DEFAULT_cmd=${cmd:-backup}
 
 
+function usage() {
+    echo "Usage: ${PROG_NAME} [options]"
+    echo "Options:"
+    echo "   *container=<container_name>          :被操作的目标容器"
+    echo "   *cmd={*backup|status|verify|restore} :操作指令"
+    echo "    LOG_LEVEL=*debug|info|warning|error :日志等级"
+    echo "    backup_dir=~/.backup/usb1/backup    :备份的目标本地目录"
+    echo "    gpg_passphrase=tho..............u9N :备份用的对称秘钥"
+    echo "    include_bind=true|*false            :是否操作\"bind\"类型的挂载点"
+    echo "    volsize=*500                        :备份卷的大小"
+}
+
+
 source $PROG_DIR/log.sh
 source $PROG_DIR/getopt.sh
 
