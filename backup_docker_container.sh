@@ -218,14 +218,23 @@ function restore_vol() {
 function _vol_op() {
     local cmd=$1
 
-    declare -a vols=()
+    local -a vols=()
+    function _gen_vol_filter() {
+        grep -Ev "^\/sys\/|^\/dev\/|^\/proc\/"
+    }
     # include named volumes
-    vols+=(`docker inspect $container | grep -A1 "\"Type\": \"volume\"" | grep "\"Name\":" | cut -d: -f2 | cut -d\" -f2 | sort -u | xargs`)
+    vols+=(`docker inspect $container | grep -A1 "\"Type\": \"volume\"" | grep "\"Name\":" | \
+            cut -d: -f2 | cut -d\" -f2 | sort -u | \
+            _gen_vol_filter | \
+            xargs`)
     # include local bind
-    if $incude_bind; then
-        vols+=(`docker inspect $container | grep -A1 "\"Type\": \"bind\"" | grep "\"Name\":" | cut -d: -f2 | cut -d\" -f2 | sort -u | xargs`)
+    if $include_bind; then
+        vols+=(`docker inspect $container | grep -A1 "\"Type\": \"bind\"" | grep "\"Name\":" | \
+                cut -d: -f2 | cut -d\" -f2 | sort -u | \
+                _gen_vol_filter | \
+                xargs`)
     fi
-    ((fail_cnt=0))
+    local fail_cnt=0
     for vol in ${vols[@]}
     do
         if eval "${cmd}_vol $args"; then
