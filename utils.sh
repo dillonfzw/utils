@@ -2445,6 +2445,46 @@ function install_docker() {
     rm -f $_get_docker_sh
     (exit $rc)
 }
+function install_docker_compose() {
+    if $is_osx; then
+        install_docker_compose_osx $@
+    else
+        install_docker_compose_linux $@
+    fi
+}
+function install_docker_compose_osx() {
+    brew install docker-compose
+}
+function install_docker_compose_linux() {
+    # https://docs.docker.com/compose/install/
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    local _enforce=${enforce:-false}
+    local docker_compose_url="https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)"
+    if do_and_verify \
+        'eval command -v docker-compose >/dev/null && test "$_enforce" = "false"' \
+        'eval true
+           && f=`download_by_cache $docker_compose_url`
+           && $_sudo cp $f /usr/local/bin/
+           && f=`basename $f`
+           && $_sudo chmod a+rx /usr/local/bin/$f
+           && $_sudo update-alternatives --install /usr/bin/docker-compose docker-compose /usr/local/bin/$f 10
+           && true' \
+        'eval _enforce=false'; then
+       {
+           command -v docker-compose
+           docker-compose version
+       } 2>&1 | \
+       sed -e 's/^/>> [docker-compose]: /g' | \
+       log_lines info
+    else
+        log_error "Fail to install docker-compose"
+        false
+    fi
+    local rc=$?
+}
 
 # end of feature functions
 #-------------------------------------------------------------------------------
