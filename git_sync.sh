@@ -41,6 +41,8 @@ declare -a rsync_args=()
 rsync_args+=("-av")
 #rsync_args+=("--relative")
 rsync_args+=("--exclude=**/.git")
+rsync_args+=("--exclude=**/__pycache__")
+rsync_args+=("--exclude=**/.DS_Store")
 if $dry_run; then
     rsync_args+=("--dry-run")
 fi
