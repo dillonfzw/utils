@@ -39,10 +39,12 @@ declare -p phome
 # prepare the sync cli
 declare -a rsync_args=()
 rsync_args+=("-av")
+rsync_args+=("--compress")
 #rsync_args+=("--relative")
 rsync_args+=("--exclude=**/.git")
 rsync_args+=("--exclude=**/__pycache__")
 rsync_args+=("--exclude=**/.DS_Store")
+rsync_args+=("--exclude=**/.idea")
 if $dry_run; then
     rsync_args+=("--dry-run")
 fi
