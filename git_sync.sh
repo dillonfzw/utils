@@ -56,7 +56,7 @@ function transfer() {
 
     # convert the XXhome parameter
     local _rlhome=`eval "ls -1d $rlhome" | sed -e 's,/*$,,'`
-    local _phome=`eval "ls -1d $phome" | sed -e "s,^$rlhome/,," -e 's,/*$,,'`
+    local _phome=`eval "ls -1d $phome" | sed -e "s,^$_rlhome/,," -e 's,/*$,,'`
     local _rrhome=${rrhome}
     local _r2host=${r2host}
     local _r4host=${r4host}
