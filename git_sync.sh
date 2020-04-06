@@ -9,7 +9,8 @@ PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
 source log.sh
 
 
-DEFAULT_ignore_dot_git=true
+DEFAULT_no_dot_git=true
+DEFAULT_no_cscope=true
 # relative local home which should be the phome's parent
 DEFAULT_rlhome="~${USER}"
 # relative remote home which should be the phome's parent
@@ -72,14 +73,16 @@ function transfer() {
     rsync_args+=("-av")
     rsync_args+=("--compress")
     #rsync_args+=("--relative")
-    if ${ignore_dot_git}; then
+    if ${no_dot_git}; then
         rsync_args+=("--exclude=**/.git")
     fi
     rsync_args+=("--exclude=**/__pycache__")
     rsync_args+=("--exclude=**/.DS_Store")
     rsync_args+=("--exclude=**/.idea")
-    rsync_args+=("--exclude=**/cscope.*")
-    rsync_args+=("--exclude=**/tags")
+    if ${no_cscope}; then
+        rsync_args+=("--exclude=**/cscope.*")
+        rsync_args+=("--exclude=**/tags")
+    fi
     if $dry_run; then
         rsync_args+=("--dry-run")
     fi
@@ -101,5 +104,4 @@ function transfer() {
     fi
 }
 
-set -x
 transfer
