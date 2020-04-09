@@ -1552,6 +1552,25 @@ function filter_pkgs() {
         filter_pkgs_conda $@
     fi
 }
+function pkg_meta_clean_yum() {
+    yum clean all --yes
+}
+function pkg_meta_clean_deb() {
+    apt-get clean
+}
+function pkg_meta_clean_conda() {
+    conda clean --all -y
+}
+function pkg_meta_clean() {
+    if $is_rhel; then
+        pkg_meta_clean_yum $@
+    elif $is_ubuntu; then
+        pkg_meta_clean_deb $@
+    fi
+    if $use_conda; then
+        pkg_meta_clean_conda $@
+    fi
+}
 # meta functions
 for item in pkg_install pkg_list_installed pkg_verify
 do
