@@ -2514,7 +2514,7 @@ function install_epel() {
     # but disable it by default
     if $is_rhel && ! yum list installed epel-release | grep -sq epel-release; then
         $_sudo yum install -y $epel_url && \
-        $_sudo sed -i -e 's/enabled=1/enabled=0/g' /etc/yum.repos.d/epel.repo
+        true
     fi
 }
 function _switch_epel() {
@@ -2527,8 +2527,8 @@ function _switch_epel() {
         $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/epel.repo
     fi
 }
-function enable_epel() { _switch_epel 0; }
 function enable_epel() { _switch_epel 1; }
+function disable_epel() { _switch_epel 0; }
 
 # end of feature functions
 #-------------------------------------------------------------------------------
