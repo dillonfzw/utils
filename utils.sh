@@ -2500,6 +2500,35 @@ function install_homebrew_mirror() {
     echo 'export HOMEBREW_BOTTLE_DOMAIN=https://mirrors.aliyun.com/homebrew/homebrew-bottles' >> ~/.bash_profile
     source ~/.bash_profile
 }
+#
+# install epel yum repo
+#
+DEFAULT_epel_url=https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+function install_epel() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    # install epel repo
+    # but disable it by default
+    if $is_rhel && ! yum list installed epel-release | grep -sq epel-release; then
+        $_sudo yum install -y $epel_url && \
+        $_sudo sed -i -e 's/enabled=1/enabled=0/g' /etc/yum.repos.d/epel.repo
+    fi
+}
+function _switch_epel() {
+    local on_off=$1
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    if $is_rhel && yum list installed epel-release | grep -sq epel-release; then
+        $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/epel.repo
+    fi
+}
+function enable_epel() { _switch_epel 0; }
+function enable_epel() { _switch_epel 1; }
 
 # end of feature functions
 #-------------------------------------------------------------------------------
