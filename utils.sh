@@ -2530,6 +2530,147 @@ function _switch_epel() {
 function enable_epel() { _switch_epel 1; }
 function disable_epel() { _switch_epel 0; }
 
+DEFAULT_PRE_USER_LIST="root fuzhiwen boya_market boya_sip"
+# PRE_USER_<user_name>=<uid>:<grp>:<gid>:<group1{,group2...}:<passwd>
+DEFAULT_PRE_USER_fuzhiwen=320437::537693:sudo:
+DEFAULT_SSH_KEY_fuzhiwen="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDUSgSae50ZzJtBexFMDloqvrYxR2uRMAV82lEFN0Ff8dpEieSHGscfIxIXO1uxBg/+X66xQszb8kvkekadArMXDlZxLc1jT5E2tItJocaZODci+xnWR8XfdeTfSjJ+7TNyY22uRX3hOaT/ACTnKQ4grWGzlf+D29oTsXKefIKkEziNF9kye/k3TBmntetDCAcYDbuBwaQV4qa1X5IzkST0lEFyejqngj8iu1c8Sf4JbpCTgm4XkteVsly2ds9cvZEp5JUtwOri2BMue9gkz9Hm/nTgsV5OvxD8bxyNGnkAlw9FVxrBTeW8N2EY1DIcGpaD7vDaeylmu6Pt47Aa59VJfbaP3qw0v7x+auITkfA0UBC+02Rb33TbZRu1mYHUk0qPySeCkrBMeQlXhu7TGcdSgzsYkJWWxlYvy+Dmn/VRMGl/Z18kOftsxX34fp5Dd83/mux1zTLJfjRHznqDLhWlGkLNIbQpjAtHCThUuY1tJ1o3+cSUd2+zoWrsTBa93HNddi45Y/OFqv3udHVkwaZFSVlanej2pTm5VemtsNjQkR8vav2ntgsTqLrBJOThgs5P5yQynCmsR9BdaeFmxz4U7ZjkUX/ufeMvLx81pLOrMKBIlB/kp0VodYVq20dRYDXif3JapBlGJJgFihNkU7z7s7CiTKZkIGr+OH1mXO1MTQ== fuzhiwen@aliceneworld ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrMpLIRC338AkTChoskYLPjjN/LikxSdutXrgsNnFc8Wm9VoEuAwv4FQE6Rr/uQUIsJPjgFgRveYQDUbRfZpSsKRgz1MrP/eYOSX05oJP0fOX9HNqZzPbQAK2tu8DzCOEpAhqOThRMPnKxWH3JXSNf//MrlGaq6GWr8s/gUJV8r2J3ttCosmexUnIWOx4lWmdBwPBVixWqd+otWnoQi/YqSv2JLlbz/V6PzWhsDedLYPF4iZq49Dp5g+JcWLi98RiwJ4F3PbaUVWEOWrfy73IHmSBLnliH5n+Un8XxJpMpAnRnxhF14gqGs/ZeaBJVH8xNkaIWvgnukNTT6sVAvrLB fuzhiwen@bladesk ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDjS1i8oM5l23ebp4RmYeo19GjfZbCIhCxRobf1e2gyCXskZ3gVDhKMGVh3lqXCFpU5JKuB7yqhaEj0PzJg/zquIgkWrw0DbKv+iPeGa/BdLVFwv3uCwmTfCD21hjJ5BAyQTT2Suvf9q6lZdu/4oN5n18uwPSpgp8r66Pdq14lLEz2CqtalKsRIUwr0AdcgIC7Al2qjdkb2V2rfpY6aH7vNkSz5p45s2IDVHhbd4paRVkxl6E54UEV8GeUs8i3WbSs5cnVqkM1e+7kdeTJBs53+QK+0qCiAfhtYT1yFFStEJflFqAjnOq4VufLfNDJHm13tA85ijGsZ3lOcKwaauE8XGCkQ/6FtXz/R6gPq/Ag52S2AuN2ojP3dEHTUk3PCddAeJLcutQwP9+Fb0AGXweH/lLJiKTvTcO4be9A8ScnhYmLYsWNIeri/uU8B7dVn+NliYwWKcN0nK3Q8seqg95L6NjncxXcmhIAz6SZzY+EY1wfmiA6zSHRVoGywlWSOZc7y+Q1Q31oppVdr9+si3nwpEC21beaYl0M4MdCHF8Ex/XskrT94oGjMpl9XQKmEPPwwMxj2yrcZ+/9n7Qx2ank4R617trjPue8+vQJixUJ2rSEZOOe+VNqwFseXG6hSX15QnOzv2kegd4x/1h+LOhJUmPP/JPJm4NxWuN9TvLyzBw== fuzhiwen@blahome"
+DEFAULT_PRE_USER_root=::::
+DEFAULT_SSH_KEY_root=fuzhiwen
+DEFAULT_PRE_USER_boya_market=117641::276591::
+DEFAULT_SSH_KEY_boya_market=fuzhiwen
+DEFAULT_PRE_USER_boya_sip=117642::276592:sudo:
+DEFAULT_SSH_KEY_boya_sip=fuzhiwen
+function setup_users() {
+    local _GID
+    local _GID_E
+    local _GPS
+    local _GRP
+    local _GRP_E
+    local _PRE_USER_PASSWD
+    local _PWD
+    local _SSH_KEYS
+    local _UID
+    local _USR
+    local _d_tmp
+    local _line
+    local _ref_user
+    local err_cnt
+
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    true \
+ && log_info "" \
+ && log_info "Setup users \"${PRE_USER_LIST}\"" \
+ && log_info "" \
+ \
+ && err_cnt=0 \
+ && for _USR in ${PRE_USER_LIST}; \
+    do true \
+     && _line=`eval "echo \\$PRE_USER_${_USR}" 2>/dev/null` \
+     && true 'PRE_USER_<USR>=<UID>:<GRP>:<GID>:<group1{,group2...}:<PWD>' \
+     && _UID=`echo ${_line} | cut -d: -f1 -s` \
+     && _GRP=`echo ${_line} | cut -d: -f2 -s` \
+     && _GID=`echo ${_line} | cut -d: -f3 -s` \
+     && _GPS=`echo ${_line} | cut -d: -f4 -s` \
+     && _PWD=`echo ${_line} | cut -d: -f5 -s` \
+     && _PRE_USER_PASSWD=`eval "echo \\$PRE_USER_PASSWD_${_USR}" 2>/dev/null` \
+     && _PWD=${_PRE_USER_PASSWD:-${_PWD}} \
+     && if [ -z "${_GRP}" ]; then true \
+         && if _GRP_E="`id -n -g ${_USR} 2>/dev/null`"; then true \
+             && _GRP=$_GRP_E \
+             && true; \
+            else true \
+             && _GRP=$_USR \
+             && true; \
+            fi \
+         && true; \
+        fi \
+     && if [ -n "$_GID" ]; then true \
+         && if _GID_E="`getent group $_GRP 2>/dev/null`"; then true \
+             && _GID_E="`echo \"$_GID_E\" | cut -d: -f3`" \
+             && if [ "$_GID" != "$_GID_E" ]; then true \
+                 && log_error "Error: unix group \"${_GRP:-${_USR}}\" was already exist but has different id \"$_GID_E\" than requested \"$_GID\"" \
+                 && false; \
+                fi \
+             && true; \
+            fi \
+         && true; \
+       fi \
+     && if [ -z "`getent group ${_GRP:-$_USR} 2>/dev/null`" ]; then true \
+         && log_info "" \
+         && log_info "Create unix group \"${_GRP}\"" \
+         && log_info "" \
+         && eval $_sudo groupadd ${_GID:+"-g ${_GID}"} ${_GRP} \
+         && log_info ">> `getent group ${_GRP}`" \
+         && true; \
+        fi \
+     && if [ -z "`getent passwd ${_USR} 2>/dev/null`" ]; then true \
+         && log_info "" \
+         && log_info "Create unix user \"${_USR}\"" \
+         && log_info "" \
+         && eval $_sudo useradd \
+                ${_UID:+"-u ${_UID}"} \
+                ${_GRP:+"-g ${_GRP}"} \
+                ${_GPS:+"-G ${_GPS}"} \
+                -s /bin/bash -m \
+                ${_USR} \
+         && log_info ">> `getent passwd ${_USR}`" \
+         && true; \
+        fi \
+     && if [ -n "${_PWD}" ]; then true \
+         && log_info "" \
+         && log_info "Change password of unix user \"${_USR}\"" \
+         && log_info "" \
+         && echo "${_USR}:${_PWD}" | $_sudo chpasswd \
+         && true; \
+        fi \
+     && _SSH_KEYS=`eval "echo \\$SSH_KEY_${_USR}" 2>/dev/null` \
+     && if [ -n "$_SSH_KEYS" ]; then true \
+         && if [ "`echo \"$_SSH_KEYS\" | wc -w`" = "1" ]; then true \
+             && _ref_user=$_SSH_KEYS \
+             && log_info "Reference ssh keys of user \"$_USR\" from \"$_ref_user\"" \
+             && if _SSH_KEYS="`eval ${_sudo:+${_sudo} -u ${_ref_user}} cat ~${_ref_user}/.ssh/authorized_keys 2>/dev/null`"; then true \
+                 && _SSH_KEYS=`echo "$_SSH_KEYS" | xargs` \
+                 && true; \
+                else true \
+                 && _SSH_KEYS=`eval "echo \\$SSH_KEY_${_ref_user}" 2>/dev/null` \
+                 && true; \
+                fi \
+             && true; \
+            fi \
+         && log_info "" \
+         && log_info "Setup ssh keys of unix user \"${_USR}\"" \
+         && log_info "" \
+         && eval ${_sudo:+${_sudo} -u ${_USR}} mkdir -p ~${_USR}/.ssh \
+         && _d_tmp=`mktemp -d /tmp/XXXXXXXX` \
+         && { eval ${_sudo:+${_sudo} -u ${_USR}} sort -u ~${_USR}/.ssh/authorized_keys | cat - >$_d_tmp/old 2>/dev/null || true; } \
+         && { cat $_d_tmp/old; echo "${_SSH_KEYS}"; } | \
+            sed -e 's/^"//g' -e 's/"$//g' -e 's/  *ssh-/\nssh-/g' | sort -u >$_d_tmp/new \
+         && if ! _diff=`diff -u $_d_tmp/old $_d_tmp/new`; then true \
+             && echo "$_diff" | sed -e "s/^/>> [${_USR}'s ssh_key diff]: /g" | log_lines debug \
+             && cat $_d_tmp/new | eval ${_sudo:+${_sudo} -u ${_USR}} tee ~${_USR}/.ssh/authorized_keys >/dev/null \
+             && true; \
+            fi \
+         && eval ${_sudo:+${_sudo} -u ${_USR}} chmod -R go-rwx ~${_USR}/.ssh \
+         && eval ${_sudo:+${_sudo} -u ${_USR}} chown -R ${_USR} ~${_USR}/.ssh \
+         && if [ -d "$_d_tmp" ]; then true \
+             && rm -f $_d_tmp/* \
+             && rmdir $_d_tmp \
+             && true; \
+            fi \
+         && true; \
+        fi \
+     \
+     && true; \
+     if [ $? -ne 0 ]; then ((err_cnt+=1)); break; fi; \
+    done \
+ && test ${err_cnt} -eq 0 \
+ && true;
+}
+
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
