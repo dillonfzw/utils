@@ -41,7 +41,10 @@
 # --------------------------------------------------------------------------------
 
 
-PROG_CLI=${PROG_CLI:$0}
+PROG_CLI=${PROG_CLI:-$0}
+if echo "$PROG_CLI" | grep -sq "^\/"; then
+    PROG_CLI=`command -v $PROG_CLI`
+fi
 PROG_NAME=${PROG_NAME:-${PROG_CLI##*/}}
 PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
 
