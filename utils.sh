@@ -2597,6 +2597,11 @@ function setup_users() {
      && _GRP=`echo ${_line} | cut -d: -f2 -s` \
      && _GID=`echo ${_line} | cut -d: -f3 -s` \
      && _GPS=`echo ${_line} | cut -d: -f4 -s` \
+     && if $is_rhel; then true \
+         && true "translate \"sudo\" as \"wheel\" in rh" \
+         && _GPS=`echo "${_GPS}" | sed -e 's/sudo/wheel/g'` \
+         && true; \
+        fi \
      && _PWD=`echo ${_line} | cut -d: -f5 -s` \
      && _PRE_USER_PASSWD=`eval "echo \\$PRE_USER_PASSWD_${_USR}" 2>/dev/null` \
      && _PWD=${_PRE_USER_PASSWD:-${_PWD}} \
