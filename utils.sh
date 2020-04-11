@@ -41,7 +41,7 @@
 # --------------------------------------------------------------------------------
 
 
-PROG_CLI=${PROG_CLI:-`command -v $0`}
+PROG_CLI=${PROG_CLI:$0}
 PROG_NAME=${PROG_NAME:-${PROG_CLI##*/}}
 PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
 
@@ -1553,7 +1553,7 @@ function filter_pkgs() {
     fi
 }
 function pkg_meta_clean_yum() {
-    yum clean all --yes
+    yum clean all
 }
 function pkg_meta_clean_deb() {
     apt-get clean
