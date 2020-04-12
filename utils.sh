@@ -2601,6 +2601,10 @@ function setup_users() {
          && true "translate \"sudo\" as \"wheel\" in rh" \
          && _GPS=`echo "${_GPS}" | sed -e 's/sudo/wheel/g'` \
          && true; \
+        elif $is_ubuntu; then true \
+         && true "translate \"wheel\" as \"sudo\" in rh" \
+         && _GPS=`echo "${_GPS}" | sed -e 's/wheel/sudo/g'` \
+         && true; \
         fi \
      && _PWD=`echo ${_line} | cut -d: -f5 -s` \
      && _PRE_USER_PASSWD=`eval "echo \\$PRE_USER_PASSWD_${_USR}" 2>/dev/null` \
