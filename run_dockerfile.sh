@@ -12,6 +12,7 @@ function run_dockerfile() {
             -e "s/^LABEL *\(.*\)$/echo \1/g" \
             -e "s/^USER  *\(.*\)$/echo USER \1/g" \
             -e "s/^SHELL *\(.*\)$/echo USER \1/g" \
+            -e "s/^ADD *\(.*\)$/echo USER \1/g" \
             \
             -e "s/^ARG  *\([^ =]*\)[ =]*\"*\(.*[^\"]\)\"*$/declare -gx \1=\${\1:-\"\2\"}/g" \
             -e "s/^ENV  *\([^ =]*\)[ =]*\"*\(.*[^\"]\)\"*$/declare -gx \1=\${\1:-\"\2\"}/g" \
