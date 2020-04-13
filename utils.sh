@@ -963,7 +963,11 @@ function do_and_verify() {
     local i=0
     while [ $i -lt 2 ]; do
         # silent in first round
-        if [ $i -eq 0 ]; then $verify_op >/dev/null 2>&1; else $verify_op; fi && break;
+        if [ $i -eq 0 ]; then
+            $verify_op >/dev/null 2>&1;
+        else
+            $verify_op;
+        fi && break;
         if [ $i -eq 0 ]; then $do_op; fi
         $wait_op
         ((i+=1))
@@ -2700,6 +2704,73 @@ function setup_users() {
     done \
  && test ${err_cnt} -eq 0 \
  && true;
+}
+function install_slurm_rh() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    local _slurm_build_url_prefix="https://bitbucket.org/dillonfzw/erots/raw/8346748b1875ab0cdd22f7e25cbca8cc69434b61/slurm/RPMS_ssl_auth_none/x86_64/"
+    local _slurm_build_ver=${slurm_build_ver:-"17.11.9-1.el7.x86_64"}
+    local -a _pkgs=(
+        "slurm"
+        "slurm-contribs"
+        "slurm-devel"
+        "slurm-example-configs"
+        "slurm-libpmi"
+        "slurm-openlava"
+        "slurm-pam_slurm"
+        "slurm-perlapi"
+        "slurm-slurmctld"
+        "slurm-slurmd"
+        "slurm-slurmdbd"
+        "slurm-torque"
+    )
+    function _join_url() {
+        echo "${_slurm_build_url_prefix}${1}-${_slurm_build_ver}.rpm"
+    }
+    function _install_slurm() {
+        local -a _rpm_urls=(`for_each_op --silent _join_url ${_pkgs[@]}`)
+        local -a _rpm_files=(`for_each_op --silent download_by_cache ${_rpm_urls[@]}`)
+        #$_sudo yum install -y ${_rpm_files[@]}
+        pkg_install_yum ${_rpm_files[@]}
+    }
+    if do_and_verify \
+        'eval pkg_list_installed ${_pkgs[@]}' \
+        '_install_slurm' \
+        "true"; then
+        set -x
+        pkg_list_installed ${_pkgs[@]} | log_lines debug
+    else
+        log_error "Fail to install \"slurm\""
+        false
+    fi
+}
+function install_slurm_ubuntu() {
+    local -a _pkgs=(
+        "deb:slurm-wlm"
+        "deb:munge"
+    ) && \
+    if do_and_verify \
+        'eval pkg_verify ${_pkgs[@]}' \
+        'eval pkg_install ${_pkgs[@]}' \
+        "true"; then
+        pkg_list_installed ${_pkgs[@]} | log_lines debug
+    else
+        log_error "Fail to install \"slurm\""
+        false
+    fi
+}
+function install_slurm() {
+    print_title "Check and install \"Slurm\" ..." && \
+    if $is_rhel; then
+        install_slurm_rh $@
+    elif $is_ubuntu; then
+        install_slurm_ubuntu $@
+    else
+        false
+    fi
 }
 
 # end of feature functions
