@@ -1454,13 +1454,24 @@ function pkg_verify_yum() {
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    $_sudo rpm -V ${pkgs[@]}
+
+    declare -a pkgs_m=(`echo "${pkgs[@]}" | tr ' ' '\n' | sed -e 's/=.*$//g'`)
+    local out_lines=`$_sudo rpm -V ${pkgs_m[@]} 2>&1`
+    local rc=$?
+    if [ $rc -ne 0 -a -n "$out_lines" ]; then
+        if ! is_running_in_docker; then
+            log_error "Fail to verify yum packages \"${pkgs[@]}\""
+            echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
+        fi
+        false
+    fi
 
     # 在docker容器里面验证包的时候，有时候会因为容器的aufs等文件系统扥原因，
     # 导致验证错误，实际是没问题的，这里旁路一下，避免这样无效的失败
     local rc=$?
     if [ $rc -ne 0 ] && is_running_in_docker; then
-        log_info "Skip yum pkg verification in docker container due to known problem."
+        log_info "Fall back to yum pkg list from real verification in docker container due to known problem."
+        pkg_list_installed_yum ${pkgs[@]}
         return 0
     fi
     (exit $rc)
@@ -1476,8 +1487,10 @@ function pkg_verify_deb() {
     declare -a pkgs_m=(`echo "${pkgs[@]}" | tr ' ' '\n' | sed -e 's/=.*$//g'`)
     local out_lines=`$_sudo dpkg -V ${pkgs_m[@]} 2>&1`
     if [ -n "$out_lines" ]; then
-        log_error "Fail to verify packages \"${pkgs[@]}\""
-        echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
+        if ! is_running_in_docker; then
+            log_error "Fail to verify deb packages \"${pkgs[@]}\""
+            echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
+        fi
         false
     fi
 
@@ -1485,8 +1498,9 @@ function pkg_verify_deb() {
     # 导致验证错误，实际是没问题的，这里旁路一下，避免这样无效的失败
     local rc=$?
     if [ $rc -ne 0 ] && is_running_in_docker; then
-        log_info "Skip deb pkg verification in docker container due to known problem."
-        return 0
+        log_info "Fall back to deb pkg list from real verification in docker container due to known problem."
+        pkg_list_installed_deb ${pkgs[@]}
+        rc=$?
     fi
     (exit $rc)
 }
