@@ -685,6 +685,11 @@ function setup_locale() {
         log_info "Change $item from \"$val\" to \""`eval "echo \\\$$item"`"\""
       fi
     done
+    # 确保LANG在LANGUAGE的第一个，保证显示的语言和设置的一致
+    local _LANG=`echo "$LANG" | cut -d. -f1`
+    if ! echo "$LANGUAGE" | grep -sq "^${_LANG}"; then
+        export LANGUAGE=${_LANG}${LANGUAGE:+":"}${LANGUAGE}
+    fi
 }
 function setup_os_flags() {
     function declare_g() { declare -g $1; }
@@ -2793,6 +2798,8 @@ function install_slurm() {
 function _pri_init_1_inline() {
     echo \
 '
+# 防止诸如: alias grep="grep -n"之类的改变grep默认输出行为的alias
+unalias grep 2>/dev/null
 # TODO: workaround OSX gnu expr replacement
 if command -v gexpr >/dev/null; then
     G_expr_bin=gexpr
