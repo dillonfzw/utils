@@ -138,6 +138,9 @@ function is_running_in_docker() {
     # * https://stackoverflow.com/questions/20010199/how-to-determine-if-a-process-runs-inside-lxc-docker
     [ -f /.dockerenv ]
 }
+function declare_f() {
+    declare -f $@
+}
 function declare_p() {
     declare -p $@
 }
