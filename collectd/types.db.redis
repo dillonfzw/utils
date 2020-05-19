@@ -1,0 +1,142 @@
+# Server
+# --------------------------------------------------------------------------------
+#redis_version		value:GUAGE:0:U		# 4.0.11
+#redis_git_sha1		value:GUAGE:0:U		# 00000000
+#redis_git_dirty		value:GUAGE:0:U		# 0
+#redis_build_id		value:GUAGE:0:U		# 5a87e09071dc2f93
+#redis_mode		value:GUAGE:0:U		# standalone
+#os		value:GUAGE:0:U		# Linux 4.4.0-116-generic x86_64
+#arch_bits		value:GUAGE:0:U		# 64
+#multiplexing_api		value:GUAGE:0:U		# epoll
+#atomicvar_api		value:GUAGE:0:U		# atomic-builtin
+#gcc_version		value:GUAGE:0:U		# 7.2.0
+#process_id		value:GUAGE:0:U		# 93481
+#run_id		value:GUAGE:0:U		# 278bb40f66d18218967215259795658025fd9d4b
+#tcp_port		value:GUAGE:0:U		# 26379
+uptime_in_seconds		value:DERIVE:0:U		# 11015
+#uptime_in_days		value:GUAGE:0:U		# 0
+#hz		value:GUAGE:0:U		# 10
+#lru_clock		value:GUAGE:0:U		# 12814615
+#executable		value:GUAGE:0:U		# /home/darwin02/.conda/envs/darwin_ocr_20191122/bin/redis-server
+#config_file		value:GUAGE:0:U		# /workspace/darwin-inference_newpipeline/conf/redis.conf
+
+# Clients
+# --------------------------------------------------------------------------------
+connected_clients		value:GUAGE:0:U		# 155
+client_longest_output_list		value:GUAGE:0:U		# 0
+client_biggest_input_buf		value:GUAGE:0:U		# 0
+blocked_clients		value:GUAGE:0:U		# 5
+
+# Stats
+# --------------------------------------------------------------------------------
+total_connections_received		value:GUAGE:0:U		# 186
+total_commands_processed		value:GUAGE:0:U		# 9887021
+instantaneous_ops_per_sec		value:GUAGE:0:U		# 293
+total_net_input_bytes		value:GUAGE:0:U		# 202458709124
+total_net_output_bytes		value:GUAGE:0:U		# 202023234054
+instantaneous_input_kbps		value:GUAGE:0:U		# 29506.40
+instantaneous_output_kbps		value:GUAGE:0:U		# 29499.44
+rejected_connections		value:GUAGE:0:U		# 0
+#sync_full		value:GUAGE:0:U		# 0
+#sync_partial_ok		value:GUAGE:0:U		# 0
+#sync_partial_err		value:GUAGE:0:U		# 0
+expired_keys		value:GUAGE:0:U		# 4793
+expired_stale_perc		value:GUAGE:0:U		# 0.01
+expired_time_cap_reached_count		value:GUAGE:0:U		# 0
+evicted_keys		value:GUAGE:0:U		# 13061
+keyspace_hits		value:GUAGE:0:U		# 24999
+keyspace_misses		value:GUAGE:0:U		# 9717614
+pubsub_channels		value:GUAGE:0:U		# 20
+pubsub_patterns		value:GUAGE:0:U		# 10
+latest_fork_usec		value:GUAGE:0:U		# 0
+migrate_cached_sockets		value:GUAGE:0:U		# 0
+slave_expires_tracked_keys		value:GUAGE:0:U		# 0
+active_defrag_hits		value:GUAGE:0:U		# 0
+active_defrag_misses		value:GUAGE:0:U		# 0
+active_defrag_key_hits		value:GUAGE:0:U		# 0
+active_defrag_key_misses		value:GUAGE:0:U		# 0
+
+# Memory
+# --------------------------------------------------------------------------------
+used_memory		value:GUAGE:0:U		# 10640342624
+#used_memory_human		value:GUAGE:0:U		# 9.91G
+used_memory_rss		value:GUAGE:0:U		# 11702034432
+#used_memory_rss_human		value:GUAGE:0:U		# 10.90G
+used_memory_peak		value:GUAGE:0:U		# 10786300952
+#used_memory_peak_human		value:GUAGE:0:U		# 10.05G
+used_memory_peak_perc		value:GUAGE:0:U		# 98.65%
+used_memory_overhead		value:GUAGE:0:U		# 27546219
+used_memory_startup		value:GUAGE:0:U		# 1950480
+used_memory_dataset		value:GUAGE:0:U		# 10612796405
+used_memory_dataset_perc		value:GUAGE:0:U		# 99.76%
+total_system_memory		value:GUAGE:0:U		# 540624691200
+#total_system_memory_human		value:GUAGE:0:U		# 503.50G
+used_memory_lua		value:GUAGE:0:U		# 45056
+#used_memory_lua_human		value:GUAGE:0:U		# 44.00K
+maxmemory		value:GUAGE:0:U		# 10737418240
+#maxmemory_human		value:GUAGE:0:U		# 10.00G
+#maxmemory_policy		value:GUAGE:0:U		# volatile-lru
+mem_fragmentation_ratio		value:GUAGE:0:U		# 1.10
+mem_allocator		value:GUAGE:0:U		# jemalloc-4.0.3
+active_defrag_running		value:GUAGE:0:U		# 0
+lazyfree_pending_objects		value:GUAGE:0:U		# 0
+
+# Replication
+# --------------------------------------------------------------------------------
+#role		value:GUAGE:0:U		# master
+connected_slaves		value:GUAGE:0:U		# 0
+#master_replid		value:GUAGE:0:U		# be3da8cbc0dd4a5dec15f1af10dd0e9d9004a55d
+#master_replid2		value:GUAGE:0:U		# 0000000000000000000000000000000000000000
+master_repl_offset		value:GUAGE:0:U		# 0
+second_repl_offset		value:GUAGE:0:U		# -1
+repl_backlog_active		value:GUAGE:0:U		# 0
+repl_backlog_size		value:GUAGE:0:U		# 1048576
+repl_backlog_first_byte_offset		value:GUAGE:0:U		# 0
+repl_backlog_histlen		value:GUAGE:0:U		# 0
+
+# CPU
+# --------------------------------------------------------------------------------
+used_cpu_sys		value:GUAGE:0:U		# 499.98
+used_cpu_user		value:GUAGE:0:U		# 232.40
+used_cpu_sys_children		value:GUAGE:0:U		# 0.00
+used_cpu_user_children		value:GUAGE:0:U		# 0.00
+
+# Cluster
+# --------------------------------------------------------------------------------
+#cluster_enabled		value:GUAGE:0:U		# 0
+
+# Keyspace
+# --------------------------------------------------------------------------------
+db0_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db0_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db0_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db1_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db1_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db1_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db2_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db2_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db2_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db3_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db3_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db3_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db4_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db4_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db4_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db5_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db5_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db5_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db6_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db6_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db6_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db7_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db7_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db7_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db8_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db8_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db8_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db9_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db9_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db9_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db10_keys		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db10_expires		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
+db10_avg_ttl		value:GUAGE:0:U		# keys=6585,expires=6568,avg_ttl=2743950
