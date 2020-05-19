@@ -234,10 +234,10 @@ do
     info=$({
         #echo "$sample_info" | tail -n10;
         redis-cli -h $REDIS_HOST -p $REDIS_PORT ${REDIS_PASS:+-a} $REDIS_PASS info 2>/dev/null;
-    } | grep -E "$egrep_expr")
+    } | grep -E "$egrep_expr" | col -b)
     if true; then
         IFS_OLD=$IFS
-        IFS=$'\n\r'
+        IFS=$'\n'
         for LINE in `echo "$info" | awk -F: '
             $1 == "#" { next; }
             NF < 2 { next; }
