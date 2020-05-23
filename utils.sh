@@ -1464,7 +1464,9 @@ function pkg_verify_yum() {
     fi
 
     declare -a pkgs_m=(`echo "${pkgs[@]}" | tr ' ' '\n' | sed -e 's/=.*$//g'`)
-    local out_lines=`$_sudo rpm -V ${pkgs_m[@]} 2>&1`
+    # local var=`cmd <arg>`; rc=$?  这样的形式，会导致后一条rc总是取到0，所以换成2条语句
+    local out_lines=""
+    out_lines=`$_sudo rpm -V ${pkgs_m[@]} 2>&1`
     local rc=$?
     if [ $rc -ne 0 -a -n "$out_lines" ]; then
         if ! is_running_in_docker; then
@@ -2369,6 +2371,9 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
         'eval apt-key fingerprint ABF5BD827BD9BF62 | grep -sqi "ABF5 BD82"' \
         'eval curl -fsSL https://nginx.org/keys/nginx_signing.key | $sudo apt-key add -' \
         'true'; then
+        # pub   rsa2048 2011-08-19 [SC] [expires: 2024-06-14]
+        #  573B FD6B 3D8F BC64 1079  A6AB ABF5 BD82 7BD9 BF62
+        #  uid           [ unknown] nginx signing key <signing-key@nginx.com>
         apt-key fingerprint ABF5BD827BD9BF62 | log_lines debug
     else
         log_error "Fail to setup nginx apt key"
@@ -2790,6 +2795,74 @@ function install_slurm() {
         install_slurm_rh $@
     elif $is_ubuntu; then
         install_slurm_ubuntu $@
+    else
+        false
+    fi
+}
+function install_openresty_centos() {
+    # https://openresty.org/cn/linux-packages.html
+    $sudo yum-config-manager --add-repo https://openresty.org/package/centos/openresty.repo && \
+    local -a _pkgs=(
+        "openresty"
+            "rpm:openresty-doc"
+        "openresty-opm"
+        "openresty-resty"
+    ) && \
+    if do_and_verify \
+        'eval pkg_verify ${_pkgs[@]}' \
+        'eval pkg_install ${_pkgs[@]}' \
+        "true"; then
+        pkg_list_installed ${_pkgs[@]} | log_lines debug
+    else
+        echo 'fail' && \
+        log_error "Fail to install \"openresty\""
+        false
+    fi && \
+    true
+}
+function install_openresty_ubuntu() {
+    # https://openresty.org/cn/linux-packages.html
+    # 导入我们的 GPG 密钥：
+    if do_and_verify \
+        'eval apt-key fingerprint 97DB7443D5EDEB74 | grep -sqi "97DB 7443 D5ED EB74"' \
+        'eval curl -fsSL https://openresty.org/package/pubkey.gpg | $sudo apt-key add -' \
+        'true'; then
+        # pub   rsa2048 2017-05-21 [SC]
+        #      E522 18E7 0878 97DC 6DEA  6D6D 97DB 7443 D5ED EB74
+        #      uid           [ unknown] OpenResty Admin <admin@openresty.com>
+        #      sub   rsa2048 2017-05-21 [E]
+        apt-key fingerprint 97DB7443D5EDEB74 | log_lines debug
+    else
+        log_error "Fail to setup openresty apt key"
+        false
+    fi && \
+    local codename=`grep "^UBUNTU_CODENAME=" /etc/os-release | cut -d= -f2-` && \
+    echo "deb https://openresty.org/package/ubuntu $codename main" \
+        | $sudo tee /etc/apt/sources.list.d/openresty.list && \
+    $sudo apt-get update && \
+    local -a _pkgs=(
+        "openresty"
+        "openresty-opm"
+        "openresty-resty"
+            "deb:openresty-restydoc"
+    ) && \
+    if do_and_verify \
+        'eval pkg_verify ${_pkgs[@]}' \
+        'eval pkg_install ${_pkgs[@]}' \
+        "true"; then
+        pkg_list_installed ${_pkgs[@]} | log_lines debug
+    else
+        log_error "Fail to install \"openresty\""
+        false
+    fi && \
+    true
+}
+function install_openresty() {
+    print_title "Check and install \"Openresty\" ..." && \
+    if $is_rhel; then
+        install_openresty_centos $@
+    elif $is_ubuntu; then
+        install_openresty_ubuntu $@
     else
         false
     fi
