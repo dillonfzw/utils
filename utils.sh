@@ -1390,12 +1390,15 @@ function pkg_install_conda() {
     fi
 }
 function pkg_list_installed_yum() {
-    local pkgs="$@"
+    local pkgs=($@)
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    $_sudo yum ${G_yum_flags[@]} list installed $pkgs
+    local _lines=`$_sudo yum ${G_yum_flags[@]} list installed ${pkgs[@]} | grep -A9999 "Installed Packages" | tail -n+2`
+    local _cnt=`echo "$_lines" </dev/null | awk 'END {print NR}'`
+    echo "$_lines"
+    test $_cnt -eq ${#pkgs[@]}
 }
 function pkg_list_installed_deb() {
     local pkgs="$@"
@@ -1482,7 +1485,6 @@ function pkg_verify_yum() {
     if [ $rc -ne 0 ] && is_running_in_docker; then
         log_info "Fall back to yum pkg list from real verification in docker container due to known problem."
         pkg_list_installed_yum ${pkgs[@]}
-        return 0
     fi
     (exit $rc)
 }
@@ -2858,7 +2860,7 @@ function install_openresty_ubuntu() {
     true
 }
 function install_openresty() {
-    print_title "Check and install \"Openresty\" ..." && \
+    print_title "Check and install \"OpenResty\" ..." && \
     if $is_rhel; then
         install_openresty_centos $@
     elif $is_ubuntu; then
