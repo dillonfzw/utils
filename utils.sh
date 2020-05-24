@@ -2357,7 +2357,10 @@ function install_nginx_prereqs_on_ubuntu() {
         false
     fi
 }
-function setup_ubuntu_apt_repo_for_nginx_stable() {
+#
+# deprecated by "setup_ubuntu_apt_repo_for_nginx_stable"
+#
+function _setup_ubuntu_apt_repo_for_nginx_stable_legacy() {
     # refer to detailed instruction from nginx official web site:
     # >> http://nginx.org/en/linux_packages.html
     install_nginx_prereqs_on_ubuntu && \
@@ -2377,6 +2380,35 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
         #  573B FD6B 3D8F BC64 1079  A6AB ABF5 BD82 7BD9 BF62
         #  uid           [ unknown] nginx signing key <signing-key@nginx.com>
         apt-key fingerprint ABF5BD827BD9BF62 | log_lines debug
+    else
+        log_error "Fail to setup nginx apt key"
+        false
+    fi && {
+        $sudo apt-get update || true
+    } && \
+    true
+}
+function setup_ubuntu_apt_repo_for_nginx_stable() {
+    # https://launchpad.net/~nginx/+archive/ubuntu/stable
+    # --------------------------------------------------------------------------------
+    # PPA description
+    # This PPA contains the latest Stable Release version of the nginx web server software.
+    #
+    # **Only Non-End-of-Life Ubuntu Releases are supported in this PPA**
+    #
+    # **Development releases of Ubuntu are not officially supported by this PPA, and uploads for those will not be available until Beta releases for those versions**
+    #
+    install_nginx_prereqs_on_ubuntu && \
+    if do_and_verify \
+        'eval apt-key fingerprint 00A6F0A3C300EE8C | grep -sqi "00A6 F0A3 C300 EE8C"' \
+        'eval $sudo add-apt-repository -y ppa:nginx/stable' \
+        'true'; then
+        # /etc/apt/trusted.gpg.d/nginx_ubuntu_stable.gpg
+        # ----------------------------------------------
+        # pub   1024R/C300EE8C 2010-07-21
+        #       Key fingerprint = 8B39 81E7 A685 2F78 2CC4  9516 00A6 F0A3 C300 EE8C
+        #       uid                  Launchpad Stable
+        apt-key fingerprint 00A6F0A3C300EE8C | log_lines debug
     else
         log_error "Fail to setup nginx apt key"
         false
@@ -2442,8 +2474,8 @@ module_hotfixes=true
 }
 function install_stable_nginx() {
     local -a pkgs=(
-        "deb:nginx"
-        "rpm:nginx"
+        "nginx"
+        "deb:libnginx-mod-http-lua"
     ) && \
     if do_and_verify \
         'eval pkg_verify ${pkgs[@]}' \
