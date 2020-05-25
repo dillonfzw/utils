@@ -2475,7 +2475,7 @@ module_hotfixes=true
 
     local rc=$?
     #[ -s $ftmp ] && rm -f $ftmp
-    (rxit $rc)
+    (exit $rc)
 }
 function install_stable_nginx() {
     if $is_rhel; then true \
