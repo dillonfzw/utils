@@ -1594,7 +1594,9 @@ function pkg_meta_clean_deb() {
     apt-get clean
 }
 function pkg_meta_clean_conda() {
-    conda clean --all -y
+    if command -v conda >/dev/null 2>&1 || declare -F conda >/dev/null 2>&1; then
+        conda clean --all -y
+    fi
 }
 function pkg_meta_clean() {
     if $is_rhel; then
@@ -2850,7 +2852,6 @@ function install_openresty_centos() {
         "true"; then
         pkg_list_installed ${_pkgs[@]} | log_lines debug
     else
-        echo 'fail' && \
         log_error "Fail to install \"openresty\""
         false
     fi && \
