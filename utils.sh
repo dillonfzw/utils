@@ -1978,7 +1978,7 @@ function install_anaconda() {
     declare -a pkgs=() && \
     if ! $is_osx; then
         pkgs+=("bzip2")
-        if do_and_verify "pkg_verify ${pkgs[@]}" "pkg_install ${pkgs[@]}" "true"; then
+        if do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' "true"; then
             pkg_list_installed ${pkgs[@]}
         else
             log_error "Fail to install anaconda installer's dependent pkgs \"`filter_pkgs ${pkgs[@]} | xargs`\""
@@ -2346,15 +2346,16 @@ DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna
 DEFAULT_always_force_activating_conda_env=${DEFAULT_always_force_activating_conda_env:${always_force_activating_conda_env:-true}}
 function install_nginx_prereqs_on_ubuntu() {
     local -a pkgs=(
+        "deb:ca-certificates"
         "deb:curl"
         "deb:gnupg2"
-        "deb:ca-certificates"
         "deb:lsb-release"
+        "deb:software-properties-common"
     )
     if do_and_verify \
-        "pkg_verify ${pkgs[@]}" \
-        "pkg_install ${pkgs[@]}" \
-        'true'; then
+        'eval pkg_verify ${pkgs[@]}' \
+        'eval pkg_install ${pkgs[@]}' \
+        "true"; then
         pkg_list_installed ${pkgs[@]} | log_lines debug
     else
         log_error "Fail to install nginx prereqs \"${pkgs[@]}\" on ubuntu"
@@ -2364,34 +2365,34 @@ function install_nginx_prereqs_on_ubuntu() {
 #
 # deprecated by "setup_ubuntu_apt_repo_for_nginx_stable"
 #
-function _setup_ubuntu_apt_repo_for_nginx_stable_legacy() {
-    # refer to detailed instruction from nginx official web site:
-    # >> http://nginx.org/en/linux_packages.html
-    install_nginx_prereqs_on_ubuntu && \
-    if ! do_and_verify \
-        "test -s /etc/apt/sources.list.d/nginx.list" \
-        'eval echo "deb http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" | $sudo tee /etc/apt/sources.list.d/nginx.list' \
-        'true'; then
-        #echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | $sudo tee /etc/apt/sources.list.d/nginx.list && \
-        log_error "Fail to setup apt source for nginx"
-        false
-    fi && \
-    if do_and_verify \
-        'eval apt-key fingerprint ABF5BD827BD9BF62 | grep -sqi "ABF5 BD82"' \
-        'eval curl -fsSL https://nginx.org/keys/nginx_signing.key | $sudo apt-key add -' \
-        'true'; then
-        # pub   rsa2048 2011-08-19 [SC] [expires: 2024-06-14]
-        #  573B FD6B 3D8F BC64 1079  A6AB ABF5 BD82 7BD9 BF62
-        #  uid           [ unknown] nginx signing key <signing-key@nginx.com>
-        apt-key fingerprint ABF5BD827BD9BF62 | log_lines debug
-    else
-        log_error "Fail to setup nginx apt key"
-        false
-    fi && {
-        $sudo apt-get update || true
-    } && \
-    true
-}
+#function _setup_ubuntu_apt_repo_for_nginx_stable_legacy() {
+#    # refer to detailed instruction from nginx official web site:
+#    # >> http://nginx.org/en/linux_packages.html
+#    install_nginx_prereqs_on_ubuntu && \
+#    if ! do_and_verify \
+#        "test -s /etc/apt/sources.list.d/nginx.list" \
+#        'eval echo "deb http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" | $sudo tee /etc/apt/sources.list.d/nginx.list' \
+#        'true'; then
+#        #echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | $sudo tee /etc/apt/sources.list.d/nginx.list && \
+#        log_error "Fail to setup apt source for nginx"
+#        false
+#    fi && \
+#    if do_and_verify \
+#        'eval apt-key fingerprint ABF5BD827BD9BF62 | grep -sqi "ABF5 BD82"' \
+#        'eval curl -fsSL https://nginx.org/keys/nginx_signing.key | $sudo apt-key add -' \
+#        'true'; then
+#        # pub   rsa2048 2011-08-19 [SC] [expires: 2024-06-14]
+#        #  573B FD6B 3D8F BC64 1079  A6AB ABF5 BD82 7BD9 BF62
+#        #  uid           [ unknown] nginx signing key <signing-key@nginx.com>
+#        apt-key fingerprint ABF5BD827BD9BF62 | log_lines debug
+#    else
+#        log_error "Fail to setup nginx apt key"
+#        false
+#    fi && {
+#        $sudo apt-get update || true
+#    } && \
+#    true
+#}
 function setup_ubuntu_apt_repo_for_nginx_stable() {
     # https://launchpad.net/~nginx/+archive/ubuntu/stable
     # --------------------------------------------------------------------------------
@@ -2426,8 +2427,8 @@ function install_nginx_prereqs_on_rhel() {
         "rpm:yum-utils"
     )
     if do_and_verify \
-        "pkg_verify ${pkgs[@]}" \
-        "pkg_install ${pkgs[@]}" \
+        'eval pkg_verify ${pkgs[@]}' \
+        'eval pkg_install ${pkgs[@]}' \
         'true'; then
         pkg_list_installed ${pkgs[@]} | log_lines debug
     else
@@ -2477,6 +2478,13 @@ module_hotfixes=true
     (rxit $rc)
 }
 function install_stable_nginx() {
+    if $is_rhel; then true \
+     && setup_rhel_yum_repo_for_nginx_stable \
+     && true;
+    elif $is_ubuntu; then true \
+     && setup_ubuntu_apt_repo_for_nginx_stable \
+     && true;
+    fi && \
     local -a pkgs=(
         "nginx"
         "deb:libnginx-mod-http-lua"
