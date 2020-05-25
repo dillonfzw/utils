@@ -1398,7 +1398,7 @@ function pkg_list_installed_yum() {
     # yum list installed对于存在部分没有安装的包，他也会返回成功，这不是我们期望的
     local _lines=`$_sudo yum ${G_yum_flags[@]} list installed ${pkgs[@]} | grep -A9999 "Installed Packages" | tail -n+2`
     # 有时候yum会把一条记录显示为多行，后续行有缩进，我们滤掉那些缩进行
-    local _cnt=`echo "$_lines" </dev/null | grep '^[a-zA-Z0-9\-_.]' | awk 'END {print NR}'`
+    local _cnt=`echo "$_lines" </dev/null | grep '^[a-zA-Z0-9_.-]' | awk 'END {print NR}'`
     echo "$_lines"
     test $_cnt -eq ${#pkgs[@]}
 }
