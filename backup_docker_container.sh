@@ -243,7 +243,7 @@ function _vol_op() {
             xargs`)
     # include local bind
     if $include_bind; then
-        vols+=(`docker inspect $container | grep -A1 "\"Type\": \"bind\"" | grep "\"Name\":" | \
+        vols+=(`docker inspect $container | grep -A1 "\"Type\": \"bind\"" | grep "\"Source\":" | \
                 cut -d: -f2 | cut -d\" -f2 | sort -u | \
                 _gen_vol_filter | \
                 xargs`)
