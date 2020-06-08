@@ -2912,6 +2912,30 @@ function install_openresty() {
         false
     fi
 }
+function download_os_pkgs() {
+    if $is_rhel; then
+        download_os_pkgs_rh $@
+    elif $is_ubuntu; then
+        download_os_pkgs_ubuntu $@
+    fi
+}
+function download_os_pkgs_rh() {
+    local -a pkgs=($($sudo yum list installed | grep -A99999 "^Installed Packages" | tail -n+2 | \
+        awk '{print $1,$2}' | \
+        sed -e "s/\.`arch` \+/ /" \
+            -e "s/\.noarch \+/ /" \
+            -e "s/ \+[0-9]\+://g" \
+            -e "s/ \+/-/g"
+    ))
+    $sudo yumdownloader $@ ${pkgs[@]}
+}
+function download_os_pkgs_ubuntu() {
+    local -a pkgs=($(
+        dpkg -l | grep -A99999 "========" | tail -n+2 | \
+        awk '{print $2"="$3}'
+    ))
+    apt-get download $@ ${pkgs[@]}
+}
 
 # end of feature functions
 #-------------------------------------------------------------------------------
