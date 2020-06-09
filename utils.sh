@@ -2919,15 +2919,55 @@ function download_os_pkgs() {
         download_os_pkgs_ubuntu $@
     fi
 }
+function _continue_lines_blank() {
+    awk '
+        BEGIN {
+            line="";
+            cnt=0;
+        }
+        /^[^ ]/ {
+            if(cnt>0){
+                print line;
+            }
+            line=$0;
+            cnt=1;
+        }
+        /^[ ]/ {
+            line=line$0;
+            cnt+=1;
+            next;
+        }
+        END{
+            print line;
+        }
+    '
+}
 function download_os_pkgs_rh() {
+    # 常用参数--verbose --version=false
+    local _arg
+    local -a _arg_stage=()
+    local _version=true
+    for _arg in $@
+    do
+        if echo "$_arg" | grep -sq "^--version="; then
+            _version=`echo $_arg | cut -d= -f2`
+            continue
+        fi
+        _arg_stage+=("$_arg")
+    done
     local -a pkgs=($($sudo yum list installed | grep -A99999 "^Installed Packages" | tail -n+2 | \
-        awk '{print $1,$2}' | \
+        _continue_lines_blank | \
+        if $_version; then
+            awk '{print $1,$2}'
+        else
+            awk '{print $1}'
+        fi | \
         sed -e "s/\.`arch` \+/ /" \
             -e "s/\.noarch \+/ /" \
             -e "s/ \+[0-9]\+://g" \
             -e "s/ \+/-/g"
     ))
-    $sudo yumdownloader $@ ${pkgs[@]}
+    $sudo yumdownloader ${_arg_stage[@]} ${pkgs[@]}
 }
 function download_os_pkgs_ubuntu() {
     local -a pkgs=($(
