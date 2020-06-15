@@ -2628,6 +2628,85 @@ function _switch_epel() {
 }
 function enable_epel() { _switch_epel 1; }
 function disable_epel() { _switch_epel 0; }
+DEFAULT_remi_url=http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+# full mirror in CN: https://mirrors.tuna.tsinghua.edu.cn/remi/
+function install_remi() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    # install epel repo
+    # but disable it by default
+    if $is_rhel && ! yum list installed remi-release | grep -sq remi-release; then
+        $_sudo yum install -y $remi_url && \
+        true
+    fi
+}
+function _switch_remi() {
+    local on_off=$1
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    if $is_rhel && yum list installed remi-release | grep -sq remi-release; then
+        $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/remi.repo
+    fi
+}
+function enable_remi() { _switch_remi 1; }
+function disable_remi() { _switch_remi 0; }
+DEFAULT_rpmfusion_free_url="https://download1.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm"
+function install_rpmfusion_free() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    # install rpmfusion-free repo
+    # but disable it by default
+    if $is_rhel && ! yum list installed rpmfusion-free-release | grep -sq rpmfusion-free-release; then
+        $_sudo yum install -y $rpmfusion_free_url && \
+        true
+    fi
+}
+function _switch_rpmfusion_free() {
+    local on_off=$1
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    if $is_rhel && yum list installed rpmfusion-free-release | grep -sq rpmfusion-free-release; then
+        $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/rpmfusion-free.repo
+    fi
+}
+function enable_rpmfusion_free() { _switch_rpmfusion_free 1; }
+function disable_rpmfusion_free() { _switch_rpmfusion_free 0; }
+DEFAULT_rpmfusion_nonfree_url="https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-7.noarch.rpm"
+function install_rpmfusion_nonfree() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    # install rpmfusion-nonfree repo
+    # but disable it by default
+    if $is_rhel && ! yum list installed rpmfusion-nonfree-release | grep -sq rpmfusion-nonfree-release; then
+        $_sudo yum install -y $rpmfusion_nonfree_url && \
+        true
+    fi
+}
+function _switch_rpmfusion_nonfree() {
+    local on_off=$1
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    if $is_rhel && yum list installed rpmfusion-nonfree-release | grep -sq rpmfusion-nonfree-release; then
+        $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/rpmfusion-nonfree.repo
+    fi
+}
+function enable_rpmfusion_nonfree() { _switch_rpmfusion_nonfree 1; }
+function disable_rpmfusion_nonfree() { _switch_rpmfusion_nonfree 0; }
 
 DEFAULT_PRE_USER_LIST="root fuzhiwen boya_market boya_sip"
 # PRE_USER_<user_name>=<uid>:<grp>:<gid>:<group1{,group2...}:<passwd>
