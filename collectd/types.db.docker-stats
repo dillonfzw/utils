@@ -1,0 +1,9 @@
+CPUPerc value:GAUGE:0:U
+MemPerc value:GAUGE:0:U
+MemUsage value:GAUGE:0:U
+MemLimit value:GAUGE:0:U
+NetIO_r value:DERIVE:0:U
+NetIO_w value:DERIVE:0:U
+BlockIO_r value:DERIVE:0:U
+BlockIO_w value:DERIVE:0:U
+PIDs value:GAUGE:0:U
