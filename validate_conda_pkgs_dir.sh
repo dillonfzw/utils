@@ -21,7 +21,7 @@ source $PROG_DIR/log.sh
 source $PROG_DIR/getopt.sh
 
 
-if [ -z "$conda_pkgs_dirs" ]; then
+if [ -z "$conda_pkgs_dir" ]; then
     conda_pkgs_dirs=(`conda config --show pkgs_dirs | grep "^ *-" | awk '{print $2}'`)
 else
     conda_pkgs_dirs=(`echo "$conda_pkgs_dir" | tr ',' ' '`)
