@@ -3,7 +3,7 @@
 
 declare HOSTNAME="${COLLECTD_HOSTNAME:-`hostname -s`}"
 declare INTERVAL="${COLLECTD_INTERVAL:-10}"
-declare CONTAINER_NAME_PATTERNS=${CONTAINER_NAME_PATTERNS:-"dev_`hostname -s`_.*\.[0-9]\."}
+declare CONTAINER_NAME_PATTERNS=${CONTAINER_NAME_PATTERNS:-"[_-]`hostname -s`[_-].*\.[0-9]\."}
 
 
 function get_timestamp() {
@@ -43,7 +43,7 @@ declare last_batch_beg_time=`get_timestamp`
 last_batch_beg_time=`echo "scale=0; $last_batch_beg_time - $INTERVAL" | bc -l | sed -e 's/\.0\+$//g'`
 
 declare skip_batch=false
-docker stats --all --no-trunc --format="|{{.ID}},{{.Name}},{{.CPUPerc}},{{.MemUsage}},{{.MemPerc}},{{.NetIO}},{{.BlockIO}},{{.PIDs}}" | while read LINE;
+docker stats --no-trunc --format="|{{.ID}},{{.Name}},{{.CPUPerc}},{{.MemUsage}},{{.MemPerc}},{{.NetIO}},{{.BlockIO}},{{.PIDs}}" | while read LINE;
 do
     # pick the right batch to process, for others, just skip it
     if echo "$LINE" | grep -sq "^[^|]"; then
