@@ -178,13 +178,13 @@ repl_backlog_histlen value:GAUGE:0:U
 # CPU
 # --------------------------------------------------------------------------------
 # :499.98
-used_cpu_sys value:GAUGE:0:U
+used_cpu_sys value:DERIVE:0:U
 # :232.40
-used_cpu_user value:GAUGE:0:U
+used_cpu_user value:DERIVE:0:U
 # :0.00
-used_cpu_sys_children value:GAUGE:0:U
+used_cpu_sys_children value:DERIVE:0:U
 # :0.00
-used_cpu_user_children value:GAUGE:0:U
+used_cpu_user_children value:DERIVE:0:U
 
 # Cluster
 # --------------------------------------------------------------------------------
