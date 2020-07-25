@@ -3,7 +3,10 @@
 
 declare HOSTNAME="${COLLECTD_HOSTNAME:-`hostname -s`}"
 declare INTERVAL="${COLLECTD_INTERVAL:-10}"
-declare CONTAINER_NAME_PATTERNS=${CONTAINER_NAME_PATTERNS:-"[_-]`hostname -s`[_-].*\.[0-9]\."}
+# all activate containers
+# "grep -E" pattern
+declare CONTAINER_NAME_PATTERNS=${CONTAINER_NAME_PATTERNS:-"*"}
+#declare CONTAINER_NAME_PATTERNS=${CONTAINER_NAME_PATTERNS:-"[_-]`hostname -s`[_-].*\.[0-9]\."}
 
 
 function get_timestamp() {
