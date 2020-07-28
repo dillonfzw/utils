@@ -3034,6 +3034,9 @@ function download_os_pkgs_rh() {
         fi
         _arg_stage+=("$_arg")
     done
+    # * 带arch后缀的，就不要限定了，因为yum终将自己选择
+    # * N:xxx-xxx-xx的，前面的N看起来不是我们想要的。# TODO: 那是啥？
+    # * 连续的空格，用-接上，这样pkg名字和version就接上了 
     local -a pkgs=($($sudo yum list installed | grep -A99999 "^Installed Packages" | tail -n+2 | \
         _continue_lines_blank | \
         if $_version; then
@@ -3046,6 +3049,11 @@ function download_os_pkgs_rh() {
             -e "s/ \+[0-9]\+://g" \
             -e "s/ \+/-/g"
     ))
+    # log for debug only
+    if declare -F log_lines >/dev/null 2>&1; then
+        log_info "#pkgs=${#pkgs[@]}"
+        declare -p pkgs | log_lines info;
+    fi
     $sudo yumdownloader ${_arg_stage[@]} ${pkgs[@]}
 }
 function download_os_pkgs_ubuntu() {
@@ -3053,6 +3061,11 @@ function download_os_pkgs_ubuntu() {
         dpkg -l | grep -A99999 "========" | tail -n+2 | \
         awk '{print $2"="$3}'
     ))
+    # log for debug only
+    if declare -F log_lines >/dev/null 2>&1; then
+        log_info "#pkgs=${#pkgs[@]}"
+        declare -p pkgs | log_lines info;
+    fi
     apt-get download $@ ${pkgs[@]}
 }
 
