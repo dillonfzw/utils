@@ -3,7 +3,10 @@
 
 declare HOSTNAME="${COLLECTD_HOSTNAME:-`hostname -s`}"
 declare INTERVAL="${COLLECTD_INTERVAL:-10}"
-declare CONTAINER_NAME_PATTERNS=${CONTAINER_NAME_PATTERNS:-"[_-]`hostname -s`[_-].*\.[0-9]\."}
+# all activate containers
+# "grep -E" pattern
+declare CONTAINER_NAME_PATTERNS=${CONTAINER_NAME_PATTERNS:-"*"}
+#declare CONTAINER_NAME_PATTERNS=${CONTAINER_NAME_PATTERNS:-"[_-]`hostname -s`[_-].*\.[0-9]\."}
 
 
 function get_timestamp() {
@@ -101,11 +104,11 @@ do
     # 内存用量，分开为用量和上限
     NODE_MemLimit=`echo "${NODE_MemUsage}" | awk '{print $3}' | translate_to_KiB`
     NODE_MemUsage=`echo "${NODE_MemUsage}" | awk '{print $1}' | translate_to_KiB`
-    # IO的数据，要分开提取成i和o
-    NODE_NetIO_r=`echo "${NODE_NetIO}" | awk '{print $1}' | translate_to_KiB`
-    NODE_NetIO_w=`echo "${NODE_NetIO}" | awk '{print $3}' | translate_to_KiB`
-    NODE_BlockIO_r=`echo "${NODE_BlockIO}" | awk '{print $1}' | translate_to_KiB`
-    NODE_BlockIO_w=`echo "${NODE_BlockIO}" | awk '{print $3}' | translate_to_KiB`
+    # IO的数据，要分开提取成r(ead)和w(rite)，且derived的值，是int
+    NODE_NetIO_r=`echo "${NODE_NetIO}" | awk '{print $1}' | translate_to_KiB | sed -e 's/\.[0-9]\+$//g'`
+    NODE_NetIO_w=`echo "${NODE_NetIO}" | awk '{print $3}' | translate_to_KiB | sed -e 's/\.[0-9]\+$//g'`
+    NODE_BlockIO_r=`echo "${NODE_BlockIO}" | awk '{print $1}' | translate_to_KiB | sed -e 's/\.[0-9]\+$//g'`
+    NODE_BlockIO_w=`echo "${NODE_BlockIO}" | awk '{print $3}' | translate_to_KiB | sed -e 's/\.[0-9]\+$//g'`
     # 百分号要去掉
     NODE_CPUPerc=`echo "${NODE_CPUPerc}" | sed -e 's/%$//g'`
     NODE_MemPerc=`echo "${NODE_MemPerc}" | sed -e 's/%$//g'`
