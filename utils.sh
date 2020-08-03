@@ -968,19 +968,28 @@ function do_and_verify() {
     local do_op="$2"
     local wait_op="$3"
 
-    local i=0
-    while [ $i -lt 2 ]; do
+    local loop_cnt=0
+    while [ $loop_cnt -lt 2 ]; do
         # silent in first round
-        if [ $i -eq 0 ]; then
+        if [ $loop_cnt -eq 0 ]; then
             $verify_op >/dev/null 2>&1;
         else
             $verify_op;
         fi && break;
-        if [ $i -eq 0 ]; then $do_op; fi
+        if [ $loop_cnt -eq 0 ]; then $do_op; fi
         $wait_op
-        ((i+=1))
+        ((loop_cnt+=1))
     done
-    test $i -lt 2
+    test $loop_cnt -lt 2
+}
+function __test_do_and_verify() {
+    local err_cnt=0
+    # 测试loop_cnt的使用是可以的
+    # 注意，要加eval到verify_op上，否则，不会执行${loop_cnt}的展开
+    do_and_verify 'eval test ${loop_cnt} -gt 0' 'false' 'true' || {
+        ((err_cnt+=1)); log_error "Fail sub-case 1"
+    }
+    test $err_cnt -eq 0
 }
 # download by checking cache first
 function download_by_cache() {
