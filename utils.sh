@@ -149,7 +149,7 @@ function declare_p_val() {
     local G_expr_bin=${G_expr_bin:-expr}
     for var;
     do
-	    declare -p $var 2>/dev/null | \
+        declare -p $var 2>/dev/null | \
             sed -e "1s/^.*$var=//" | \
             sed -e '1s/^"//' -e '$s/"$//' | \
             sed -e "1s/^'//" -e "\$s/'$//" | \
@@ -742,9 +742,9 @@ function setup_os_flags() {
 }
 function setup_osx_os_flags() {
     # $ sw_vers
-    # ProductName:	Mac OS X
-    # ProductVersion:	10.13.5
-    # BuildVersion:	17F77
+    # ProductName:        Mac OS X
+    # ProductVersion:        10.13.5
+    # BuildVersion:        17F77
     local sw_vers_lines=`sw_vers`
     eval "OS_ID=`echo "$sw_vers_lines" | grep "^ProductName:" | awk '{print $2}'`"
     eval "OS_VER=`echo "$sw_vers_lines" | grep "^ProductVersion:" | awk '{print $2}'`"
@@ -1903,7 +1903,7 @@ function __test_monitor_and_terminate_timeout_process() {
 }
 declare -F usage >/dev/null || \
 function usage() {
-    echo "Usage $PROGNAME"
+    echo "Usage $PROG_NAME"
     listFunctions | grep -v "^_" | sed -e 's/^/[cmd] >> /g' | log_lines info
     exit 0
 }
@@ -2901,7 +2901,6 @@ function install_slurm_rh() {
         'eval pkg_list_installed ${_pkgs[@]}' \
         '_install_slurm' \
         "true"; then
-        set -x
         pkg_list_installed ${_pkgs[@]} | log_lines debug
     else
         log_error "Fail to install \"slurm\""
@@ -3066,16 +3065,67 @@ function download_os_pkgs_rh() {
     $sudo yumdownloader ${_arg_stage[@]} ${pkgs[@]}
 }
 function download_os_pkgs_ubuntu() {
+    # 常用参数--verbose --version=false
+    local _arg
+    local -a _arg_stage=()
+    local _version=true
+    for _arg in $@
+    do
+        if echo "$_arg" | grep -sq "^--version="; then
+            _version=`echo $_arg | cut -d= -f2`
+            continue
+        fi
+        _arg_stage+=("$_arg")
+    done
+    function _filter_arch() {
+        sed -e 's/x86_64/amd64/g'
+    }
+    local _ARCH="`echo "$ARCH" | _filter_arch`"
+    function _filter_arch() {
+        sed -e "s/:${_ARCH}=/=/" -e "s/:${_ARCH}$//g"
+    }
     local -a pkgs=($(
         dpkg -l | grep -A99999 "========" | tail -n+2 | \
-        awk '{print $2"="$3}'
+        if $_version; then
+            awk '{print $2"="$3}'
+        else
+            awk '{print $2}'
+        fi | \
+        # 统一去掉arch，这样方便后续exclude那些下载不了的pkgs
+        _filter_arch
     ))
-    # log for debug only
-    if declare -F log_lines >/dev/null 2>&1; then
-        log_info "#pkgs=${#pkgs[@]}"
-        declare -p pkgs | log_lines info;
+    if ! $_version; then
+        apt-get download ${_arg_stage[@]} ${pkgs[@]}
+    # NOTE:
+    #     以下注释掉的代码是一个不成功的尝试，apt-get download会因为某一个不能下载的包，
+    #     而拒绝下载其他能下载的包而失败退出，这不是我期望的
+    #elif false; then
+    #    declare -g err_cnt_nato7Pho=0
+    #    function _download() {
+    #        if apt-get download ${_arg_stage[@]} $@; then
+    #            declare -g err_cnt_nato7Pho=$((err_cnt_nato7Pho+1))
+    #        fi
+    #    }
+    #    for_each_op --silent _download -- ${pkgs[@]}
+    #    test ${err_cnt_nato7Pho} -eq 0
+    else
+        # E: Can't find a source to download version '1:2.31.1-0.4ubuntu3.4' of 'bsdutils:amd64'
+        log_debug "Try downloading ${#pkgs[@]} original pkgs"
+        local lines=`apt-get download ${_arg_stage[@]} ${pkgs[@]} 2>&1`
+        local -a bad_pkgs=($(echo "$lines" | \
+            grep "E: Can't find a source to download version" | \
+            awk -F\' '{print $5"="$3}' | \
+            # 统一去掉arch，这样方便后续exclude那些下载不了的pkgs
+            _filter_arch
+        ))
+
+        log_warn "Exclude ${#bad_pkgs[@]} bad pkgs"
+        echo "$lines" | grep "E: Can't find a source to download version" | log_lines warn
+        local -a pkgs=`set_difference pkgs[@] bad_pkgs[@]`
+
+        log_debug "Downloading ${#pkgs[@]} good pkgs"
+        apt-get download ${_arg_stage[@]} ${pkgs[@]}
     fi
-    apt-get download $@ ${pkgs[@]}
 }
 
 # end of feature functions
@@ -3160,27 +3210,31 @@ fi'
 # 2) cat utils.sh | bash -    <-- inline call
 if [ "$PROG_NAME" = "utils.sh" -o "$PROG_NAME" = "bash" ]; then
     eval "`_pri_init_1_inline`"
+    #
     # loading log.sh
-    if [ ! -f "${PROG_DIR}/log.sh" -o "`type -t log.sh`" != "file" ]; then
-        # NOTE: unset fake or legacy log_XX before tring to import real ones
-        for item in error warn info debug lines; do unset log_$item; done
-        if ! eval `gen_lib_source_cmd log.sh https://github.com/dillonfzw/utils/raw/master/log.sh`; then
-            echo "Fail to source \"log.sh\". Abort!" >&2
-            exit 1
-        fi
+    #
+    # NOTE: unset fake or legacy log_XX before tring to import real ones
+    for item in error warn info debug lines; do unset log_$item; done && \
+    # load the lib
+    if ! eval "$(if [ ! -f "${PROG_DIR}/log.sh" -o "`type -t log.sh`" != "file" ]; then
+        echo "gen_lib_source_cmd log.sh https://github.com/dillonfzw/utils/raw/master/log.sh"
     else
-        source ${PROG_DIR}/log.sh
+        echo "source ${PROG_DIR}/log.sh"
+    fi)"; then
+        echo "[E]: Fail to source \"log.sh\". Abort!" >&2
+        exit 1
     fi && \
-
+    #
     # loading getopt.sh
-    if [ ! -f "${PROG_DIR}/getopt.sh" -o "`type -t getopt.sh`" != "file" ]; then
-        if ! eval `gen_lib_source_cmd getopt.sh https://github.com/dillonfzw/utils/raw/master/getopt.sh`; then
-            log_error "Fail to source \"getopt.sh\". Abort!"
-            exit 1
-        fi
+    #
+    if ! eval "$(if [ ! -f "${PROG_DIR}/getopt.sh" -o "`type -t getopt.sh`" != "file" ]; then
+        echo "gen_lib_source_cmd getopt.sh https://github.com/dillonfzw/utils/raw/master/getopt.sh"
     else
-        source ${PROG_DIR}/getopt.sh
-    fi
+        echo "source ${PROG_DIR}/getopt.sh"
+    fi)"; then
+        log_error "Fail to source \"getopt.sh\". Abort!"
+        exit 1
+    fi && \
 
     # set global shell debug
     if [ "${DEBUG}" = "true" ]; then set -x; fi && \
