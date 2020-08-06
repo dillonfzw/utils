@@ -2716,18 +2716,20 @@ function _switch_rpmfusion_nonfree() {
 }
 function enable_rpmfusion_nonfree() { _switch_rpmfusion_nonfree 1; }
 function disable_rpmfusion_nonfree() { _switch_rpmfusion_nonfree 0; }
-function install_centos7() {
+function install_centos7_repo() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
 
     local releasever=7
-    cat >/etc/yum.repos.d/CentOS-Base.repo <<EOF
+    local f_repo=/etc/yum.repos.d/CentOS-Base.repo
+    if [ ! -f $f_repo ]; then
+        cat >$f_repo <<EOF
 [base]
 name=CentOS-$releasever - Base
-mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$$basearch&repo=os&infra=$$infra
-#baseurl=http://mirror.centos.org/centos/$releasever/os/$$basearch/
+mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=\$basearch&repo=os&infra=\$infra
+#baseurl=http://mirror.centos.org/centos/$releasever/os/\$basearch/
 gpgcheck=1
 #gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
 gpgkey=http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
@@ -2735,28 +2737,29 @@ gpgkey=http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
 #released updates
 [updates]
 name=CentOS-$releasever - Updates
-mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$$basearch&repo=updates&infra=$$infra
-#baseurl=http://mirror.centos.org/centos/$releasever/updates/$$basearch/
+mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=\$basearch&repo=updates&infra=\$infra
+#baseurl=http://mirror.centos.org/centos/$releasever/updates/\$basearch/
 gpgcheck=1
 gpgkey=http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
 
 #additional packages that may be useful
 [extras]
 name=CentOS-$releasever - Extras
-mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$$basearch&repo=extras&infra=$$infra
-#baseurl=http://mirror.centos.org/centos/$releasever/extras/$$basearch/
+mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=\$basearch&repo=extras&infra=\$infra
+#baseurl=http://mirror.centos.org/centos/$releasever/extras/\$basearch/
 gpgcheck=1
 gpgkey=http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
 
 #additional packages that extend functionality of existing packages
 [centosplus]
 name=CentOS-$releasever - Plus
-mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$$basearch&repo=centosplus&infra=$$infra
-#baseurl=http://mirror.centos.org/centos/$releasever/centosplus/$$basearch/
+mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=\$basearch&repo=centosplus&infra=\$infra
+#baseurl=http://mirror.centos.org/centos/$releasever/centosplus/\$basearch/
 gpgcheck=1
 enabled=0
 gpgkey=http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
 EOF
+    fi
 }
 
 DEFAULT_PRE_USER_LIST="root fuzhiwen boya_market boya_sip"
