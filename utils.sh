@@ -3155,7 +3155,7 @@ EOF
     { $_sudo apt-get update || true; } && \
     local -a _pkgs=(
         "deb:rabbitmq-server"
-    )
+    ) && \
     if do_and_verify \
         'eval pkg_verify ${_pkgs[@]}' \
         'eval pkg_install ${_pkgs[@]}' \
@@ -3164,15 +3164,48 @@ EOF
     else
         log_error "Fail to install rabbitmq-server"
         false
-    fi
+    fi && \
+    true
 }
-function install_rabbitmq_centos() {
+function install_rabbitmq_rh() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    local releasever=7
+    local f_repo=/etc/yum.repos.d/Bintray-rabbitmq.repo
+    if [ ! -f $f_repo ]; then
+        { cat >$f_repo <<EOF
+[bintray-rabbitmq-server]
+name=bintray-rabbitmq-rpm
+baseurl=https://dl.bintray.com/rabbitmq/rpm/rabbitmq-server/v3.8.x/el/$releasever/
+gpgcheck=0
+repo_gpgcheck=0
+enabled=1
+EOF
+        } | $_sudo tee $f_repo
+    fi && \
+    $_sudo rpm --import https://www.rabbitmq.com/rabbitmq-release-signing-key.asc && \
+    #$_sudo rpm --import https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc && \
+    local -a _pkgs=(
+        "rpm:rabbitmq-server"
+    ) && \
+    if do_and_verify \
+        'eval pkg_verify ${_pkgs[@]}' \
+        'eval pkg_install ${_pkgs[@]}' \
+        "true"; then
+        pkg_list_installed ${_pkgs[@]}
+    else
+        log_error "Fail to install rabbitmq-server"
+        false
+    fi && \
     true
 }
 function install_rabbitmq() {
     print_title "Check and install \"RabbitMQ\" ..." && \
     if $is_rhel; then
-        install_rabbitmq_centos $@
+        install_rabbitmq_rh $@
     elif $is_ubuntu; then
         install_rabbitmq_ubuntu $@
     else
