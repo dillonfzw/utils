@@ -2351,6 +2351,7 @@ DEFAULT_python_ver_major=${DEFAULT_python_ver_major:-${python_ver_major:-"3"}}
 DEFAULT_conda_install_home=${DEFAULT_conda_install_home:-"$HOME/anaconda${DEFAULT_python_ver_major}"}
 DEFAULT_conda_env_name=${DEFAULT_conda_env_name:-"base"}
 DEFAULT_conda_envs_dir=${DEFAULT_conda_envs_dir:-"$HOME/.conda/envs"}
+# https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 DEFAULT_conda_installer_url=${DEFAULT_conda_installer_url:-"https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"}
 DEFAULT_always_force_activating_conda_env=${DEFAULT_always_force_activating_conda_env:${always_force_activating_conda_env:-true}}
 function install_nginx_prereqs_on_ubuntu() {
@@ -3339,6 +3340,67 @@ function download_os_pkgs_ubuntu() {
         log_debug "Downloading ${#pkgs[@]} good pkgs"
         apt-get download ${_arg_stage[@]} ${pkgs[@]}
     fi
+}
+function generate_self_signed_ssl_certificate_4_nginx() {
+    # $ vim openssl.cnf
+    # [req]
+    # default_bits       = 2048
+    # default_keyfile    = localhost.key
+    # distinguished_name = req_distinguished_name
+    # req_extensions     = req_ext
+    # x509_extensions    = v3_ca
+
+    # [req_distinguished_name]
+    # countryName                 = Country Name (2 letter code)
+    # countryName_default         = US
+    # stateOrProvinceName         = State or Province Name (full name)
+    # stateOrProvinceName_default = New York
+    # localityName                = Locality Name (eg, city)
+    # localityName_default        = Rochester
+    # organizationName            = Organization Name (eg, company)
+    # organizationName_default    = localhost
+    # organizationalUnitName      = organizationalunit
+    # organizationalUnitName_default = Development
+    # commonName                  = Common Name (e.g. server FQDN or YOUR name)
+    # commonName_default          = localhost
+    # commonName_max              = 64
+
+    # [req_ext]
+    # subjectAltName = @alt_names
+
+    # [v3_ca]
+    # subjectAltName = @alt_names
+
+    # [alt_names]
+    # DNS.1   = localhost
+    # DNS.2   = 127.0.0.1
+    local SSL_KEY_OUT_FILE=${SSL_KEY_OUT_FILE:-localhost.key}
+    local SSL_CRT_OUT_FILE=${SSL_KEY_OUT_FILE:-localhost.crt}
+    local SSL_KEY_PARAM=${SSL_KEY_PARAM:-"rsa:2048"}
+    local SSL_CRT_DAYS=${SSL_CRT_DAYS:-365}
+    local SSL_CNF_FILE=
+    true \
+    && if do_and_verify \
+        'command -v openssl' \
+        'pkg_install openssl' \
+        'true'; then true \
+     && pkg_list_installed openssl \
+     && true
+    else true \
+     && log_error "Fail to install \"openssl\" package before trying to generate ssl certificate" \
+     && false
+    fi \
+    && print_title "Generate self-signed ssl certificate \"$SSL_CRT_OUT_FILE\"" \
+    && openssl req \
+        -x509 \
+        -nodes \
+        -days $SSL_CRT_DAYS \
+        -newkey $SSL_KEY_PARAM \
+        -keyout ${SSL_KEY_OUT_FILE} \
+        -out ${SSL_CRT_OUT_FILE} \
+        ${SSL_CNF_FILE:+"-config"} ${SSL_CNF_FILE} \
+        -batch \
+    && ls -ld ${SSL_KEY_OUT_FILE} ${SSL_CRT_OUT_FILE}
 }
 
 # end of feature functions
