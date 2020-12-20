@@ -20,7 +20,8 @@ function usage() {
     echo "Options:"
     echo "   *container=<container_name>             :被操作的目标容器"
     echo "   *cmd={backup|status|verify|restore:*ls} :操作指令"
-    echo "    exclude_vols=<vol1>,<vol2>             :排除掉不要操作的卷,逗号分割,缺省是没有要排除的卷"
+    echo "    include_vols=<vol1>,<vol2>             :一定要操作的卷,逗号分割,缺省是所有"
+    echo "    exclude_vols=<vol1>,<vol2>             :排除掉不要操作的卷,逗号分割,缺省是没有要排除的卷,注意:排除操作优先!"
     echo "    LOG_LEVEL=*debug|info|warning|error    :日志等级"
     echo "    backup_dir=~/.backup/usb1/backup       :备份的目标本地目录"
     echo "    gpg_passphrase=tho..............u9N    :备份用的对称秘钥"
@@ -261,10 +262,20 @@ function _vol_op() {
                 xargs`)
     fi
     declare -p vols | sed -e 's/^/>> [__all_vols]: /g' | log_lines debug
+
+    # 如果有显式的include_vols集合，和实际的vols取交
+    declare -a _include_vols=(`echo "${include_vols}" | tr ',' ' '`)
+    declare -p _include_vols | sed -e 's/^/>> [__inc_vols]: /g' | log_lines debug
+    if [ 0 -lt ${#_include_vols} ]; then
+        declare -a vols=`set_intersection vols[@] _include_vols[@]`
+    fi
+
+    # 如果显式的exclude_vols集合，和过滤玩的vols取补
     declare -a _exclude_vols=(`echo "${exclude_vols}" | tr ',' ' '`)
     declare -p _exclude_vols | sed -e 's/^/>> [__exc_vols]: /g' | log_lines debug
     declare -a vols=`set_difference vols[@] _exclude_vols[@]`
     declare -p vols | sed -e 's/^/>> [final_vols]: /g' | log_lines debug
+
     local fail_cnt=0
     for vol in ${vols[@]}
     do
