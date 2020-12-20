@@ -12,19 +12,19 @@ DEFAULT_volsize=${volsize:-500}
 DEFAULT_gpg_passphrase=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}
 DEFAULT_include_bind=${include_bind:-false}
 DEFAULT_LOG_LEVEL=${LOG_LEVEL:-debug}
-DEFAULT_cmd=${cmd:-backup}
+DEFAULT_cmd=${cmd:-ls}
 
 
 function usage() {
     echo "Usage: ${PROG_NAME} [options]"
     echo "Options:"
-    echo "   *container=<container_name>          :被操作的目标容器"
-    echo "   *cmd={*backup|status|verify|restore} :操作指令"
-    echo "    LOG_LEVEL=*debug|info|warning|error :日志等级"
-    echo "    backup_dir=~/.backup/usb1/backup    :备份的目标本地目录"
-    echo "    gpg_passphrase=tho..............u9N :备份用的对称秘钥"
-    echo "    include_bind=true|*false            :是否操作\"bind\"类型的挂载点"
-    echo "    volsize=*500                        :备份卷的大小"
+    echo "   *container=<container_name>             :被操作的目标容器"
+    echo "   *cmd={backup|status|verify|restore:*ls} :操作指令"
+    echo "    LOG_LEVEL=*debug|info|warning|error    :日志等级"
+    echo "    backup_dir=~/.backup/usb1/backup       :备份的目标本地目录"
+    echo "    gpg_passphrase=tho..............u9N    :备份用的对称秘钥"
+    echo "    include_bind=true|*false               :是否操作\"bind\"类型的挂载点"
+    echo "    volsize=*500                           :备份卷的大小"
 }
 
 
@@ -69,6 +69,15 @@ function _duplicity_docker_run() {
         ${_docker_args[@]} \
         wernight/duplicity \
         $@
+}
+#
+# List volume name of a docker container
+#
+# deps:
+# - ${vol}
+#
+function ls_vol() {
+    echo "${vol}"
 }
 #
 # Backup a docker container
@@ -262,6 +271,7 @@ function _vol_op() {
     done
     test ${fail_cnt} -eq 0
 }
+function ls() { _vol_op ${FUNCNAME[0]} $@; }
 function backup() { _vol_op ${FUNCNAME[0]} $@; }
 function status() { _vol_op ${FUNCNAME[0]} $@; }
 function verify() { _vol_op ${FUNCNAME[0]} $@; }
