@@ -241,6 +241,7 @@ function _vol_op() {
             cut -d: -f2 | cut -d\" -f2 | sort -u | \
             _gen_vol_filter | \
             xargs`)
+    declare -p vols | sed -e 's/^/>> [named_vols]: /g' | log_lines debug
     # include local bind
     if $include_bind; then
         vols+=(`docker inspect $container | grep -A1 "\"Type\": \"bind\"" | grep "\"Source\":" | \
@@ -248,6 +249,7 @@ function _vol_op() {
                 _gen_vol_filter | \
                 xargs`)
     fi
+    declare -p vols | sed -e 's/^/>> [__all_vols]: /g' | log_lines debug
     local fail_cnt=0
     for vol in ${vols[@]}
     do
