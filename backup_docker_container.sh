@@ -230,7 +230,7 @@ function restore_vol() {
     #
     local -a docker_args=(
         "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
-        "-v $vol:/volume:ro"
+        "-v $vol:/volume:rw"
     )
     _duplicity_docker_run docker_args[@] duplicity \
         restore \
@@ -242,7 +242,8 @@ function restore_vol() {
     && true
 }
 function _vol_op() {
-    local cmd=$1
+    local cmd=$1; shift
+    local args=$@
 
     local -a vols=()
     function _gen_vol_filter() {
