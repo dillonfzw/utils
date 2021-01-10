@@ -160,7 +160,11 @@ if [ -n "$_CONDA_PATH_Chae4dok9e" ]; then
     unset _CONDA_VER_Chae4dok9e
 fi
 if true || [ -z "$_CONDA_PATH_Chae4dok9e" ]; then
-    for item in $HOME/anaconda${PYVER} /opt/anaconda${PYVER}
+    for item in \
+        $HOME/anaconda${PYVER} \
+        /opt/anaconda${PYVER} \
+        $HOME/miniconda${PYVER} \
+        /opt/miniconda${PYVER}
     do
         if [ -d $item ]; then
             #
