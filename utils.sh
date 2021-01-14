@@ -3341,7 +3341,7 @@ function download_os_pkgs_ubuntu() {
         apt-get download ${_arg_stage[@]} ${pkgs[@]}
     fi
 }
-function generate_self_signed_ssl_certificate_4_nginx() {
+function generate_self_signed_ssl_certificate() {
     # $ vim openssl.cnf
     # [req]
     # default_bits       = 2048
@@ -3375,9 +3375,10 @@ function generate_self_signed_ssl_certificate_4_nginx() {
     # DNS.1   = localhost
     # DNS.2   = 127.0.0.1
     local SSL_KEY_OUT_FILE=${SSL_KEY_OUT_FILE:-localhost.key}
-    local SSL_CRT_OUT_FILE=${SSL_KEY_OUT_FILE:-localhost.crt}
+    local SSL_CRT_OUT_FILE=${SSL_CRT_OUT_FILE:-localhost.crt}
     local SSL_KEY_PARAM=${SSL_KEY_PARAM:-"rsa:2048"}
     local SSL_CRT_DAYS=${SSL_CRT_DAYS:-365}
+    local SSL_CRT_SUBJ=${SSL_CRT_SUBJ:-"/C=CN/ST=Zhenjiang/L=Jiangsu/O=myCorp/OU=myDept/CN=myTestHost"}
     local SSL_CNF_FILE=
     true \
     && if do_and_verify \
@@ -3391,16 +3392,18 @@ function generate_self_signed_ssl_certificate_4_nginx() {
      && false
     fi \
     && print_title "Generate self-signed ssl certificate \"$SSL_CRT_OUT_FILE\"" \
+    && true 'openssl req -new -newkey rsa:2048 -nodes -out myTestHost.csr -keyout myTestHost.key -subj "/C=CN/ST=Zhenjiang/L=Jiangsu/O=myCorp/OU=myDept/CN=myTestHost"' \
     && openssl req \
         -x509 \
         -nodes \
         -days $SSL_CRT_DAYS \
-        -newkey $SSL_KEY_PARAM \
-        -keyout ${SSL_KEY_OUT_FILE} \
-        -out ${SSL_CRT_OUT_FILE} \
-        ${SSL_CNF_FILE:+"-config"} ${SSL_CNF_FILE} \
+        -subj "${SSL_CRT_SUBJ}" \
+        -newkey "${SSL_KEY_PARAM}" \
+        -keyout "${SSL_KEY_OUT_FILE}" \
+        -out "${SSL_CRT_OUT_FILE}" \
+        ${SSL_CNF_FILE:+"-config"} ${SSL_CNF_FILE:+"${SSL_CNF_FILE}"} \
         -batch \
-    && ls -ld ${SSL_KEY_OUT_FILE} ${SSL_CRT_OUT_FILE}
+    && ls -ld "${SSL_KEY_OUT_FILE}" "${SSL_CRT_OUT_FILE}"
 }
 
 # end of feature functions
