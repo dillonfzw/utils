@@ -7,6 +7,7 @@ PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
 
 
 source log.sh
+USER=${USER:-`id -u -n`}
 
 
 DEFAULT_no_dot_git=true
