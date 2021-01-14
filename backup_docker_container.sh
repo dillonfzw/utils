@@ -13,6 +13,7 @@ DEFAULT_gpg_passphrase=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}
 DEFAULT_include_bind=${include_bind:-false}
 DEFAULT_LOG_LEVEL=${LOG_LEVEL:-debug}
 DEFAULT_cmd=${cmd:-ls}
+DEFAULT_container_name_translate=${container_name_translate:=true}
 
 
 function usage() {
@@ -26,7 +27,26 @@ function usage() {
     echo "    backup_dir=~/.backup/usb1/backup       :备份的目标本地目录"
     echo "    gpg_passphrase=tho..............u9N    :备份用的对称秘钥"
     echo "    include_bind=true|*false               :是否操作\"bind\"类型的挂载点"
+    echo "    container_name_translate=*true|false   :是否翻译swarm容器名字"
     echo "    volsize=*500                           :备份卷的大小"
+}
+#
+# 查询容器的全名，消除swarm等添加后缀的造成的备份恢复错误
+#
+# deps:
+# - ${container}
+#
+function get_container_long_name() {
+    docker ps --format "{{.ID}}\t{{.Names}}" | awk "\$2 ~ /^${container}/{print \$2;}"
+}
+#
+# 获取容器的短名，消除swarm等添加后缀的造成的备份恢复错误
+#
+# deps:
+# - ${container}
+#
+function get_container_short_name() {
+    echo "${container}" | cut -d\. -f1
 }
 
 
@@ -124,14 +144,14 @@ function backup_vol() {
             --full-if-older-than=6M \
             $args \
             /volume \
-            file:///.backup/${container}/${vol} \
+            file:///.backup/${container_short}/${vol} \
     && {
         # log for debug
         echo
         echo "#"
-        echo "# content in backup dir for volume \"${vol}\" at container \"${container}\""
+        echo "# content in backup dir for volume \"${vol}\" at container \"${container_short}\""
         echo "#"
-        ls -lat ${backup_dir}/${container}/${vol}/ | sed -e 's/^/>> /g'
+        ls -lat ${backup_dir}/${container_short}/${vol}/ | sed -e 's/^/>> /g'
     } | log_lines debug \
     && status_vol \
     && true
@@ -152,7 +172,7 @@ function status_vol() {
     {
         echo
         echo "#"
-        echo "# Show backup status of volume \"${vol}\" at container \"${container}\""
+        echo "# Show backup status of volume \"${vol}\" at container \"${container_short}\""
         echo "#"
     } | log_lines debug
 
@@ -166,7 +186,7 @@ function status_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container}/${vol} \
+            file:///.backup/${container_short}/${vol} \
     && true
 }
 #
@@ -176,7 +196,7 @@ function status_vol() {
 # - ${backup_host}
 # - ${PASSPHRASE} if sym enc
 # - ${backup_dir}
-# - ${container}
+# - ${container_short}
 # - ${vol}
 #
 function verify_vol() {
@@ -185,7 +205,7 @@ function verify_vol() {
     {
         echo
         echo "#"
-        echo "# Verify backup of volume \"${vol}\" at container \"${container}\""
+        echo "# Verify backup of volume \"${vol}\" at container \"${container_short}\""
         echo "#"
     } | log_lines debug
 
@@ -201,7 +221,7 @@ function verify_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container}/${vol} \
+            file:///.backup/${container_short}/${vol} \
             /volume \
     && true
 }
@@ -212,7 +232,7 @@ function verify_vol() {
 # - ${backup_host}
 # - ${PASSPHRASE} if sym enc
 # - ${backup_dir}
-# - ${container}
+# - ${container_short}
 # - ${vol}
 #
 function restore_vol() {
@@ -221,7 +241,7 @@ function restore_vol() {
     {
         echo
         echo "#"
-        echo "# Restore backup of volume \"${vol}\" at container \"${container}\""
+        echo "# Restore backup of volume \"${vol}\" at container \"${container_short}\""
         echo "#"
     } | log_lines debug
 
@@ -237,7 +257,7 @@ function restore_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container}/${vol} \
+            file:///.backup/${container_short}/${vol} \
             /volume \
     && true
 }
@@ -250,14 +270,16 @@ function _vol_op() {
         grep -Ev "^\/sys\/|^\/dev\/|^\/proc\/"
     }
     # include named volumes
-    vols+=(`docker inspect $container | grep -A1 "\"Type\": \"volume\"" | grep "\"Name\":" | \
+    vols+=(`docker inspect ${container_long} | \
+            grep -A1 "\"Type\": \"volume\"" | grep "\"Name\":" | \
             cut -d: -f2 | cut -d\" -f2 | sort -u | \
             _gen_vol_filter | \
             xargs`)
     declare -p vols | sed -e 's/^/>> [named_vols]: /g' | log_lines debug
     # include local bind
     if $include_bind; then
-        vols+=(`docker inspect $container | grep -A1 "\"Type\": \"bind\"" | grep "\"Source\":" | \
+        vols+=(`docker inspect ${container_long} | \
+                grep -A1 "\"Type\": \"bind\"" | grep "\"Source\":" | \
                 cut -d: -f2 | cut -d\" -f2 | sort -u | \
                 _gen_vol_filter | \
                 xargs`)
@@ -298,8 +320,22 @@ function restore() { _vol_op ${FUNCNAME[0]} $@; }
 
 # issue real cmd
 if declare -F $cmd >/dev/null 2>&1; then
-    $cmd $@
-    exit $?
+    if [ "${container_name_translate}" = "true" ]; then
+        container_long=`get_container_long_name ${container}` && \
+        if [ -z "${container_long}" ]; then
+            log_error "Fail to get container ${container}'s long name. Abort!"
+        fi && \
+        container_short=`get_container_short_name ${container}` && \
+        if [ -z "${container_short}" ]; then
+            log_error "Fail to get container ${container}'s short name. Abort!"
+        fi && \
+        true;
+    else
+        container_long=${container}
+        container_short=${container}
+    fi && \
+    $cmd $@ && \
+    true
 else
     echo "Unknown cmd \"$cmd\""
     false
