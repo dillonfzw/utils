@@ -823,6 +823,12 @@ function version_cmp() {
     local pkg_vmin=`echo -e "${pkg_verE}\n${pkg_verR}" | sort -V | grep -v "^$" | head -n1`
     local msg="name=\"$pkg_name\", verA=\"$pkg_verR\", op=\"$pkg_op\", verB=\"$pkg_verE\", vMin=\"$pkg_vmin\""
 
+    # 比较成功的条件如下:
+    # * 没有期望的版本，那么任何安装上的版本都算成功
+    # * 完全一致，那么所有>=, <=, ==, =的op都算成功
+    # * 非数字的前缀完全一致，那么所有>=, <=, ==, =的op都算成功
+    #   NOTE: pip有xxxx+flag的格式语法，xxxx我称为非数字前缀
+    # * sort -V的排序下，符合>=, >, <=, <的期望，就算成功
     if [ \( -z "$pkg_verE" -a -n "$pkg_verR" \) -o \
          \( -n "$pkg_verE" -a -n "$pkg_verR" -a \( \
              \( "${pkg_verE}"  = "${pkg_verR}" -a `$G_expr_bin "#$pkg_op" : "^#.*=$"` -gt 1 \) -o \
@@ -1555,15 +1561,22 @@ function pkg_verify_pip() {
     for pkg in ${pkgs[@]}
     do
         # separate the pkg_name, operator and target version
-        # for pkg_name, remove pip pkg's bundle xxx[bundle1,bundle2]
+        # for pkg_name, remove pip pkg's bundle xxx[bundle1,bundle2], such as celery[redis]<5.0
+        # for pkg_version, remove pip pkg's +xxx version suffix, such as torch==1.7.1+cu101
         local pkg_line=`echo "$pkg" | sed -e 's/\([<=>!]\)/|\1/'`
         local pkg_name=`echo "$pkg_line" | cut -d'|' -f1 | sed -e 's/\[.*\]//g'`
         declare -a pkg_op_pairs=(`echo "$pkg_line" | cut -d'|' -f2- | tr ',' '\n' | sed \
-          -e 's/^\([<=>!]=\)\([^<=>].*\)$/\1|\2/g' \
-          -e 's/^\([<>]\)\([^<=>].*\)$/\1|\2/g'`)
+            -e 's/^\([<=>!]=\)\([^<=>].*\)$/\1|\2/g' \
+            -e 's/^\([<>]\)\([^<=>].*\)$/\1|\2/g' \
+            -e 's/\+.*$//g' \
+        `)
 
         # we'd better to compare pip package name case insensitive.
-        local pkg_verR=`echo "$out_lines" | grep -i "^$pkg_name==" | sed -e 's/^.*==//g'`
+        # for pkg_version, remove pip pkg's +xxx version suffix, such as torch==1.7.1+cu101
+        local pkg_verR=`echo "$out_lines" | grep -i "^$pkg_name==" | sed \
+            -e 's/^.*==//g' \
+            -e 's/\+.*$//g' \
+        `
 
         for_each_op --silent _cmp_op_pair ${pkg_op_pairs[@]} || break
         ((i+=1))
