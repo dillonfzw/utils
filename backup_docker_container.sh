@@ -214,6 +214,7 @@ function list-current-files_vol() {
     } | log_lines debug
 
     local -a docker_args=(
+        "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
     )
     _duplicity_docker_run docker_args[@] duplicity \
         list-current-files \
