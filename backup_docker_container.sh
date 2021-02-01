@@ -114,30 +114,22 @@ function ls_vol() {
 # - ${volsize}
 #
 function backup_vol() {
+    local backup_method=${backup_method:-"incr"}
     local args=$@
     [ -d "$backup_dir" ] || mkdir -p $backup_dir
     {
         echo
         echo "#"
-        echo "# Backup volume \"${vol}\" at container \"${container}\""
+        echo "# Backup(${backup_method}) volume \"${vol}\" at container \"${container}\""
         echo "#"
     } | log_lines debug
 
-    #
-    # method 1
-    #
-    #docker run -it --rm -v $vol:/volume -v $backup_dir:/.backup busybox sh -c "tar -C /volume -zcf - . | split -b 500m - /.backup/${container}_${vol}.tar.gz.split."
-    #ls -lat $backup_dir/${container}_${vol}.tar.gz.split.*
-
-    #
-    # method 2
-    #
     local -a docker_args=(
         "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
         "-v $vol:/volume:ro"
     )
     _duplicity_docker_run docker_args[@] duplicity \
-        incremental \
+        $backup_method \
             -vnotice \
             --allow-source-mismatch \
             --volsize=${volsize} \
@@ -156,6 +148,14 @@ function backup_vol() {
     && status_vol \
     && true
 }
+function incr_op() {
+    local backup_method="incr"
+    backup_op $@
+}
+function full_op() {
+    local backup_method="full"
+    backup_op $@
+}
 #
 # Show status of a docker container's backup
 #
@@ -166,7 +166,7 @@ function backup_vol() {
 # - ${container}
 # - ${vol}
 #
-function status_vol() {
+function collection-status_vol() {
     local args=$@
     [ -d "$backup_dir" ] || mkdir -p $backup_dir
     {
@@ -184,6 +184,38 @@ function status_vol() {
     _duplicity_docker_run docker_args[@] duplicity \
         collection-status \
             -vnotice \
+            --allow-source-mismatch \
+            $args \
+            file:///.backup/${container_short}/${vol} \
+    && true
+}
+function status_op() {
+    collection-status_op $@
+}
+#
+# Show files of a docker container's backup
+#
+# deps:
+# - ${backup_host}
+# - ${PASSPHRASE} if sym enc
+# - ${backup_dir}
+# - ${container}
+# - ${vol}
+#
+function list-current-files_vol() {
+    local args=$@
+    [ -d "$backup_dir" ] || mkdir -p $backup_dir
+    {
+        echo
+        echo "#"
+        echo "# List the files contained in the most current backup of volume \"${vol}\" at container \"${container_short}\""
+        echo "#"
+    } | log_lines debug
+
+    local -a docker_args=(
+    )
+    _duplicity_docker_run docker_args[@] duplicity \
+        list-current-files \
             --allow-source-mismatch \
             $args \
             file:///.backup/${container_short}/${vol} \
@@ -312,10 +344,17 @@ function _vol_op() {
     test ${fail_cnt} -eq 0
 }
 function ls() { _vol_op ${FUNCNAME[0]} $@; }
-function backup() { _vol_op ${FUNCNAME[0]} $@; }
-function status() { _vol_op ${FUNCNAME[0]} $@; }
+function full() { _vol_op ${FUNCNAME[0]} $@; }
+function incr() { _vol_op ${FUNCNAME[0]} $@; }
+function collection-status() { _vol_op ${FUNCNAME[0]} $@; }
 function verify() { _vol_op ${FUNCNAME[0]} $@; }
 function restore() { _vol_op ${FUNCNAME[0]} $@; }
+function list-current-files() { _vol_op ${FUNCNAME[0]} $@; }
+
+# alias cmds
+function backup() { _vol_op incr $@; }
+function status() { _vol_op collection-status $@; }
+function ls-tree() { _vol_op list-current-files $@; }
 
 
 # issue real cmd
