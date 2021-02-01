@@ -148,13 +148,13 @@ function backup_vol() {
     && status_vol \
     && true
 }
-function incr_op() {
+function incr_vol() {
     local backup_method="incr"
-    backup_op $@
+    backup_vol $@
 }
-function full_op() {
+function full_vol() {
     local backup_method="full"
-    backup_op $@
+    backup_vol $@
 }
 #
 # Show status of a docker container's backup
@@ -189,8 +189,8 @@ function collection-status_vol() {
             file:///.backup/${container_short}/${vol} \
     && true
 }
-function status_op() {
-    collection-status_op $@
+function status_vol() {
+    collection-status_vol $@
 }
 #
 # Show files of a docker container's backup
