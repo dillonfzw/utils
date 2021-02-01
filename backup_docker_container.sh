@@ -28,6 +28,7 @@ function usage() {
     echo "    gpg_passphrase=tho..............u9N    :备份用的对称秘钥"
     echo "    include_bind=true|*false               :是否操作\"bind\"类型的挂载点"
     echo "    container_name_translate=*true|false   :是否翻译swarm容器名字"
+    echo "    container_in_dsk=<container_name>      :备份目录的容器名字，如果被操作容器和备份名字不一样，这里指定"
     echo "    volsize=*500                           :备份卷的大小"
 }
 #
@@ -136,7 +137,7 @@ function backup_vol() {
             --full-if-older-than=6M \
             $args \
             /volume \
-            file:///.backup/${container_short}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol} \
     && {
         # log for debug
         echo
@@ -186,7 +187,7 @@ function collection-status_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_short}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol} \
     && true
 }
 function status_vol() {
@@ -218,7 +219,7 @@ function list-current-files_vol() {
         list-current-files \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_short}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol} \
     && true
 }
 #
@@ -253,7 +254,7 @@ function verify_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_short}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol} \
             /volume \
     && true
 }
@@ -289,7 +290,7 @@ function restore_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_short}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol} \
             /volume \
     && true
 }
@@ -373,6 +374,7 @@ if declare -F $cmd >/dev/null 2>&1; then
         container_long=${container}
         container_short=${container}
     fi && \
+    container_in_dsk=${container_in_dsk:-${container_short}} && \
     $cmd $@ && \
     true
 else
