@@ -25,6 +25,7 @@ function usage() {
     echo "    exclude_vols=<vol1>,<vol2>             :排除掉不要操作的卷,逗号分割,缺省是没有要排除的卷,注意:排除操作优先!"
     echo "    LOG_LEVEL=*debug|info|warning|error    :日志等级"
     echo "    backup_dir=~/.backup/usb1/backup       :备份的目标本地目录"
+    echo "    target_folder=foo/bar                  :操作的目标目录，缺省是卷的所有，注意：必须是相对路径"
     echo "    gpg_passphrase=tho..............u9N    :备份用的对称秘钥"
     echo "    include_bind=true|*false               :是否操作\"bind\"类型的挂载点"
     echo "    container_name_translate=*true|false   :是否翻译swarm容器名字"
@@ -82,6 +83,7 @@ function _duplicity_docker_run() {
     fi
     #    -e PASSPHRASE=${gpg_passphrase:-shie4Phoh4iMae3eiceegaij7fohtham} \
     #    -v $vol:/volume:ro \
+    set -x
     docker run --rm \
         --hostname ${backup_host} \
         -e TZ=`date +"%Z%:::z" | tr '+-' '-+'` \
@@ -93,6 +95,7 @@ function _duplicity_docker_run() {
         ${_docker_args[@]} \
         wernight/duplicity \
         $@
+    set +x
 }
 #
 # List volume name of a docker container
@@ -116,12 +119,13 @@ function ls_vol() {
 #
 function backup_vol() {
     local backup_method=${backup_method:-"incr"}
+    local _target_folder=${target_folder:+/}${target_folder}
     local args=$@
     [ -d "$backup_dir" ] || mkdir -p $backup_dir
     {
         echo
         echo "#"
-        echo "# Backup(${backup_method}) volume \"${vol}\" at container \"${container}\""
+        echo "# Backup(${backup_method}) volume \"${vol}\"'s dir \"${target_folder}\" at container \"${container}\""
         echo "#"
     } | log_lines debug
 
@@ -135,16 +139,18 @@ function backup_vol() {
             --allow-source-mismatch \
             --volsize=${volsize} \
             --full-if-older-than=6M \
+            ${target_folder:+"--include=/volume${_target_folder}"} \
+            ${target_folder:+"--exclude=**"} \
             $args \
             /volume \
-            file:///.backup/${container_in_dsk}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
     && {
         # log for debug
         echo
         echo "#"
-        echo "# content in backup dir for volume \"${vol}\" at container \"${container_short}\""
+        echo "# content in backup dir for volume \"${vol}\"'s dir \"${target_folder}\" at container \"${container_short}\""
         echo "#"
-        ls -lat ${backup_dir}/${container_short}/${vol}/ | sed -e 's/^/>> /g'
+        ls -lat ${backup_dir}/${container_short}/${vol}${_target_folder} | sed -e 's/^/>> /g'
     } | log_lines debug \
     && status_vol \
     && true
@@ -169,6 +175,7 @@ function full_vol() {
 #
 function collection-status_vol() {
     local args=$@
+    local _target_folder=${target_folder:+/}${target_folder}
     [ -d "$backup_dir" ] || mkdir -p $backup_dir
     {
         echo
@@ -187,7 +194,7 @@ function collection-status_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_in_dsk}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
     && true
 }
 function status_vol() {
@@ -205,6 +212,7 @@ function status_vol() {
 #
 function list-current-files_vol() {
     local args=$@
+    local _target_folder=${target_folder:+/}${target_folder}
     [ -d "$backup_dir" ] || mkdir -p $backup_dir
     {
         echo
@@ -220,7 +228,7 @@ function list-current-files_vol() {
         list-current-files \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_in_dsk}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
     && true
 }
 #
@@ -235,6 +243,7 @@ function list-current-files_vol() {
 #
 function verify_vol() {
     local args=$@
+    local _target_folder=${target_folder:+/}${target_folder}
     [ -d "$backup_dir" ] || mkdir -p $backup_dir
     {
         echo
@@ -255,7 +264,7 @@ function verify_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_in_dsk}/${vol} \
+            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
             /volume \
     && true
 }
@@ -271,6 +280,7 @@ function verify_vol() {
 #
 function restore_vol() {
     local args=$@
+    local _target_folder=${target_folder:+/}${target_folder}
     [ -d "$backup_dir" ] || mkdir -p $backup_dir
     {
         echo
@@ -291,8 +301,8 @@ function restore_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_in_dsk}/${vol} \
-            /volume \
+            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
+            /volume${_target_folder} \
     && true
 }
 function _vol_op() {
