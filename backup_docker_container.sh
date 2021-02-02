@@ -30,6 +30,7 @@ function usage() {
     echo "    include_bind=true|*false               :是否操作\"bind\"类型的挂载点"
     echo "    container_name_translate=*true|false   :是否翻译swarm容器名字"
     echo "    container_in_dsk=<container_name>      :备份目录的容器名字，如果被操作容器和备份名字不一样，这里指定"
+    echo "    nobackup=.nobackup                     :备份是否忽略存在有指定文件的目录"
     echo "    volsize=*500                           :备份卷的大小"
 }
 #
@@ -133,12 +134,15 @@ function backup_vol() {
         "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
         "-v $vol:/volume:ro"
     )
+    # nobackup对应的--exclude-if-present需要在任何其他include和exclude参数之前被指定
+    # 所以，需要显式的在这里书写
     _duplicity_docker_run docker_args[@] duplicity \
         $backup_method \
             -vnotice \
             --allow-source-mismatch \
             --volsize=${volsize} \
             --full-if-older-than=6M \
+            ${nobackup:+"--exclude-if-present=${nobackup}"} \
             ${target_folder:+"--include=/volume${_target_folder}"} \
             ${target_folder:+"--exclude=**"} \
             $args \
