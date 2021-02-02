@@ -62,6 +62,12 @@ if [ -z "${container}" ]; then
     log_error "Target \${container} should not be empty. Abort"
     exit 1
 fi
+if echo "${target_folder}" | grep -sq "^@"; then
+    target_folder_implicit=true
+    target_folder=`echo "${target_folder}" | cut -d\@ -f2`
+else
+    target_folder_implicit=false
+fi
 
 
 #
@@ -132,6 +138,10 @@ function backup_vol() {
         "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
         "-v $vol:/volume:ro"
     )
+    # 对于隐含模式的target_folder备份方式，备份文件写回到顶层目录，而不是以target_folder为子目录
+    local _vol=${vol}${_target_folder}
+    if ${target_folder_implicit}; then _vol=${vol}; fi
+
     # nobackup对应的--exclude-if-present需要在任何其他include和exclude参数之前被指定
     # 所以，需要显式的在这里书写
     _duplicity_docker_run docker_args[@] duplicity \
@@ -145,7 +155,7 @@ function backup_vol() {
             ${target_folder:+"--exclude=**"} \
             $args \
             /volume \
-            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
+            file:///.backup/${container_in_dsk}/${_vol} \
     && {
         # log for debug
         echo
@@ -186,9 +196,10 @@ function collection-status_vol() {
         echo "#"
     } | log_lines debug
 
-    #
-    # method 2
-    #
+    # 对于隐含模式的target_folder备份方式，备份文件写回到顶层目录，而不是以target_folder为子目录
+    local _vol=${vol}${_target_folder}
+    if ${target_folder_implicit}; then _vol=${vol}; fi
+
     local -a docker_args=(
     )
     _duplicity_docker_run docker_args[@] duplicity \
@@ -196,7 +207,7 @@ function collection-status_vol() {
             -vnotice \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
+            file:///.backup/${container_in_dsk}/${_vol} \
     && true
 }
 function status_vol() {
@@ -223,6 +234,10 @@ function list-current-files_vol() {
         echo "#"
     } | log_lines debug
 
+    # 对于隐含模式的target_folder备份方式，备份文件写回到顶层目录，而不是以target_folder为子目录
+    local _vol=${vol}${_target_folder}
+    if ${target_folder_implicit}; then _vol=${vol}; fi
+
     local -a docker_args=(
         "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
     )
@@ -230,7 +245,7 @@ function list-current-files_vol() {
         list-current-files \
             --allow-source-mismatch \
             $args \
-            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
+            file:///.backup/${container_in_dsk}/${_vol} \
     && true
 }
 #
@@ -254,6 +269,10 @@ function verify_vol() {
         echo "#"
     } | log_lines debug
 
+    # 对于隐含模式的target_folder备份方式，备份文件写回到顶层目录，而不是以target_folder为子目录
+    local _vol=${vol}${_target_folder}
+    if ${target_folder_implicit}; then _vol=${vol}; fi
+
     local -a docker_args=(
         "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
         "-v $vol:/volume:ro"
@@ -270,7 +289,7 @@ function verify_vol() {
             --allow-source-mismatch \
             ${target_folder:+"--file-to-restore=${target_folder}"} \
             $args \
-            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
+            file:///.backup/${container_in_dsk}/${_vol} \
             /volume${_target_folder} \
     && true
 }
@@ -295,9 +314,10 @@ function restore_vol() {
         echo "#"
     } | log_lines debug
 
-    #
-    # method 2
-    #
+    # 对于隐含模式的target_folder备份方式，备份文件写回到顶层目录，而不是以target_folder为子目录
+    local _vol=${vol}${_target_folder}
+    if ${target_folder_implicit}; then _vol=${vol}; fi
+
     local -a docker_args=(
         "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
         "-v $vol:/volume:rw"
@@ -314,7 +334,7 @@ function restore_vol() {
             --allow-source-mismatch \
             ${target_folder:+"--file-to-restore=${target_folder}"} \
             $args \
-            file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
+            file:///.backup/${container_in_dsk}/${_vol} \
             /volume${_target_folder} \
     && true
 }
