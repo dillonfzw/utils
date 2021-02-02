@@ -298,16 +298,20 @@ function restore_vol() {
         "-e PASSPHRASE=${gpg_passphrase:-ieniechei7Aihic4oojourie3vaev9ei}"
         "-v $vol:/volume:rw"
     )
-    # 注意：我们没有采用--file-to-restore的方法，因为：
+    # 注意：我们采用--file-to-restore的方法，因为：
+    # 1) 有可能需要从一个大的备份集里面恢复部分内容
+    #
+    # 这个方法的可能的问题如下：
     # 1) ${vol}${_target_folder}下面按理只应该有目标目录的备份，不会有别的
     # 2) --file-to-restore需要目标目录先建好，动作只回复内容，可能丢失一些目录的设定。
     _duplicity_docker_run docker_args[@] duplicity \
         restore \
             -vnotice \
             --allow-source-mismatch \
+            ${target_folder:+"--file-to-restore=${target_folder}"} \
             $args \
             file:///.backup/${container_in_dsk}/${vol}${_target_folder} \
-            /volume \
+            /volume${_target_folder} \
     && true
 }
 function _vol_op() {
