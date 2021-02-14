@@ -26,7 +26,7 @@ function usage() {
     echo "    LOG_LEVEL=*debug|info|warning|error    :日志等级"
     echo "    backup_dir=~/.backup/usb1/backup       :备份的目标本地目录"
     echo "    target_folder=foo/bar                  :操作的目标目录，缺省是卷的所有，注意：必须是相对路径"
-    echo "    gpg_passphrase=tho..............u9N    :备份用的对称秘钥"
+    echo "    gpg_passphrase=tho..............u9N    :备份用的秘钥（使用$HOME/.gnupg/的钥匙环）"
     echo "    include_bind=true|*false               :是否操作\"bind\"类型的挂载点"
     echo "    container_name_translate=*true|false   :是否翻译swarm容器名字"
     echo "    container_in_dsk=<container_name>      :备份目录的容器名字，如果被操作容器和备份名字不一样，这里指定"
@@ -370,7 +370,7 @@ function _vol_op() {
         declare -a vols=`set_intersection vols[@] _include_vols[@]`
     fi
 
-    # 如果显式的exclude_vols集合，和过滤玩的vols取补
+    # 如果显式的exclude_vols集合，和过滤完的vols取补
     declare -a _exclude_vols=(`echo "${exclude_vols}" | tr ',' ' '`)
     declare -p _exclude_vols | sed -e 's/^/>> [__exc_vols]: /g' | log_lines debug
     declare -a vols=`set_difference vols[@] _exclude_vols[@]`
