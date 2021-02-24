@@ -15,7 +15,7 @@ source getopt.sh
 
 
 if [ -n "$SOCKS_PROXY" ]; then
-    export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"connect -S ${SOCKS_PROXY}%h %p\""
+    export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"connect -S ${SOCKS_PROXY} %h %p\""
 fi
 
 
