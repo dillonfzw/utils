@@ -15,18 +15,38 @@ source getopt.sh
 
 
 if [ -n "$SOCKS_PROXY" ]; then
-    export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"connect -S ${SOCKS_PROXY} %h %p\""
+    #export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"connect -S ${SOCKS_PROXY} %h %p\""
+    export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"nc -x ${SOCKS_PROXY} %h %p\""
 fi
 
 
-declare -a repos=(
-    "darwin-dev/darwin-core.git"
-    "darwin-dev/darwin-platform.git"
-    "darwin-dev/darwin-dashboard.git"
-    "darwin-dev/darwin-inference.git"
-    "darwin-dev/data_extractor.git"
-    "darwin-gui/data_extractor_gui.git"
-)
+declare -a repos=(`echo "$repos" | tr ',' ' '`)
+# 显式要求包含的repo
+if [ -f "${target_rel_home}/.include_repos" ]; then
+    declare -a _include_repos=($(<${target_rel_home}/.include_repos))
+    declare -a repos=`set_union repos[@] _include_repos[@]`
+    unset _include_repos
+fi
+# 显式要求去除的repo
+if [ -f "${target_rel_home}/.exclude_repos" ]; then
+    declare -a _exclude_repos=($(<${target_rel_home}/.exclude_repos))
+    declare -a repos=`set_difference repos[@] _exclude_repos[@]`
+    unset _exclude_repos
+fi
+# 如果啥也没说，使用默认的
+if [ ${#repos[@]} -eq 0 ]; then
+    declare -a _include_repos=(
+        "darwin-dev/darwin-core.git"
+        "darwin-dev/darwin-platform.git"
+        #"darwin-dev/darwin-dashboard.git"
+        #"darwin-dev/darwin-inference.git"
+        #"darwin-dev/data_extractor.git"
+        #"darwin-gui/data_extractor_gui.git"
+        #"darwin-dev/darwin-aiocr.git"
+        #"darwin-admin/darwin-license.git"
+    )
+    declare -a repos=`set_union repos[@] _include_repos[@]`
+fi
 for repo in ${repos[@]}
 do
     repo_name=`basename $repo .git` && \
