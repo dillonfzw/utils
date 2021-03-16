@@ -53,7 +53,15 @@ do
     if [ ! -d "${target_rel_home}" ]; then mkdir -p ${target_rel_home}; fi && \
     if [ ! -d ${target_rel_home}/${repo_name} ]; then
         print_title "Create repo ${repo_name}"
-        git clone --reference ${reference_rel_home}/${repo_name} --dissociate ${shared_repo_home}/${repo_name}.git ${target_rel_home}/${repo_name} && \
+        if [ -d "${reference_rel_home}/${repo_name}" ]; then
+            declare -a ref_args=(
+                "--reference ${reference_rel_home}/${repo_name}"
+                "--dissociate"
+            )
+        else
+            declare -a ref_args=()
+        fi && \
+        git clone ${ref_args[@]} ${shared_repo_home}/${repo_name}.git ${target_rel_home}/${repo_name} && \
         git -C ${target_rel_home}/${repo_name} remote rename origin shared && \
         true
     fi && \
@@ -63,13 +71,14 @@ do
     if ! git -C ${target_rel_home}/${repo_name} remote | grep -sqx origin; then
         git -C ${target_rel_home}/${repo_name} remote add origin git@gitlab.com:dillonfzw/${repo_name}.git
     fi && \
-    if ! git -C ${target_rel_home}/${repo_name} remote | grep -sqx ref_rel; then
+    if ! git -C ${target_rel_home}/${repo_name} remote | grep -sqx ref_rel && [ -d "${reference_rel_home}/${repo_name}" ]; then
         git -C ${target_rel_home}/${repo_name} remote add ref_rel ${reference_rel_home}/${repo_name}
     fi && \
     lines=`git -C ${target_rel_home}/${repo_name} remote -v 2>&1` && \
     echo "$lines" | log_lines info && \
     for upstream in ref_rel upstream origin
     do
+        if ! git -C ${target_rel_home}/${repo_name} remote | grep -sqx ref_rel; then continue; fi
         _info=`echo "$lines" | tr '\t' ' ' | tr -s ' ' | grep "${upstream} .*fetch"`
         print_title "Fetch ${_info}"
         git -C ${target_rel_home}/${repo_name} fetch $upstream
