@@ -6,9 +6,9 @@ source log.sh
 source utils.sh
 
 
-DEFAULT_reference_rel_home=~/workspace/darwin_r2.2_cmcc
-DEFAULT_target_rel_home=`pwd`
-DEFAULT_shared_repo_home=~/workspace
+DEFAULT_reference_rel_home=${reference_rel_home:-"~/workspace/darwin_r2.2"}
+DEFAULT_target_rel_home=${target_rel_home:-`pwd`}
+DEFAULT_shared_repo_home=${shared_repo_home:-"~/workspace"}
 
 
 source getopt.sh
@@ -76,11 +76,16 @@ do
     fi && \
     lines=`git -C ${target_rel_home}/${repo_name} remote -v 2>&1` && \
     echo "$lines" | log_lines info && \
-    for upstream in ref_rel upstream origin
+    for upstream in shared ref_rel upstream origin
     do
-        if ! git -C ${target_rel_home}/${repo_name} remote | grep -sqx ref_rel; then continue; fi
-        _info=`echo "$lines" | tr '\t' ' ' | tr -s ' ' | grep "${upstream} .*fetch"`
-        print_title "Fetch ${_info}"
-        git -C ${target_rel_home}/${repo_name} fetch $upstream
+        if ! git -C ${target_rel_home}/${repo_name} remote | grep -sqx ${upstream}; then continue; fi && \
+        _info=`echo "$lines" | tr '\t' ' ' | tr -s ' ' | grep "${upstream} .*fetch"` && \
+        print_title "Fetch ${_info}" && \
+        git -C ${target_rel_home}/${repo_name} fetch $upstream && \
+        if [ "$upstream" = "upstream" ]; then true \
+         && print_title "Share ${_info}" \
+         && git -C ${target_rel_home}/${repo_name} push shared refs/remotes/$upstream/master:refs/remotes/$upstream/master \
+         && true; \
+        fi; \
     done
 done
