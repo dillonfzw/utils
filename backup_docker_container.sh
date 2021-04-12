@@ -25,7 +25,7 @@ function usage() {
     echo "    exclude_vols=<vol1>,<vol2>             :排除掉不要操作的卷,逗号分割,缺省是没有要排除的卷,注意:排除操作优先!"
     echo "    LOG_LEVEL=*debug|info|warning|error    :日志等级"
     echo "    backup_dir=~/.backup/usb1/backup       :备份的目标本地目录"
-    echo "    target_folder=foo/bar                  :操作的目标目录，缺省是卷的所有，注意：必须是相对路径"
+    echo "    target_folder=foo/bar                  :操作的目标目录，缺省是卷的所有，注意：1)必须是相对路径;2)可以有^@的隐含模式"
     echo "    gpg_passphrase=tho..............u9N    :备份用的秘钥（使用$HOME/.gnupg/的钥匙环）"
     echo "    include_bind=true|*false               :是否操作\"bind\"类型的挂载点"
     echo "    container_name_translate=*true|false   :是否翻译swarm容器名字"
