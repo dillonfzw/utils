@@ -795,6 +795,10 @@ function setup_gnu_utils() {
     if command -v gsed >/dev/null; then
         sed=gsed
     fi
+    declare -g awk=awk
+    if command -v gawk >/dev/null; then
+        awk=gawk
+    fi
 }
 function print_title() {
     echo -e "\n"
@@ -1111,6 +1115,11 @@ function gen_lib_source_cmd() {
 }
 function filter_pkgs_groupby() {
     local default_grp=${1:-"10"}
+    if awk --version 2>/dev/null | grep -sq "GNU Awk"; then
+        true;
+    else
+        log_warn "AWK is not GNU version, filter_pkgs_groupby will not function correctly!"
+    fi
 
     # put to default group, "10", if entry has no group specified
     awk -v default_grp=$default_grp '!/^[0-9]+:/ { print default_grp":"$0; next; } { print; }' | \
@@ -1565,11 +1574,13 @@ function pkg_verify_pip() {
         # for pkg_version, remove pip pkg's +xxx version suffix, such as torch==1.7.1+cu101
         local pkg_line=`echo "$pkg" | sed -e 's/\([<=>!]\)/|\1/'`
         local pkg_name=`echo "$pkg_line" | cut -d'|' -f1 | sed -e 's/\[.*\]//g'`
+        declare -p pkg_line | sed -e 's/^/>> [fzw]: /g' | log_lines debug
         declare -a pkg_op_pairs=(`echo "$pkg_line" | cut -d'|' -f2- | tr ',' '\n' | sed \
             -e 's/^\([<=>!]=\)\([^<=>].*\)$/\1|\2/g' \
             -e 's/^\([<>]\)\([^<=>].*\)$/\1|\2/g' \
             -e 's/\+.*$//g' \
         `)
+        declare -p pkg_op_pairs | sed -e 's/^/>> [fzw]: /g' | log_lines debug
 
         # we'd better to compare pip package name case insensitive.
         # for pkg_version, remove pip pkg's +xxx version suffix, such as torch==1.7.1+cu101
