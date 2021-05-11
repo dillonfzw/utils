@@ -6,9 +6,9 @@ source log.sh
 source utils.sh
 
 
-DEFAULT_reference_rel_home=${reference_rel_home:-"~/workspace/darwin_r2.2"}
+DEFAULT_reference_rel_home=${reference_rel_home:-"$HOME/workspace/darwin_r2.2"}
 DEFAULT_target_rel_home=${target_rel_home:-`pwd`}
-DEFAULT_shared_repo_home=${shared_repo_home:-"~/workspace"}
+DEFAULT_shared_repo_home=${shared_repo_home:-"$HOME/workspace"}
 
 
 source getopt.sh
