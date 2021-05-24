@@ -47,6 +47,10 @@ if echo "$PROG_CLI" | grep -sq "^\/"; then
 fi
 PROG_NAME=${PROG_NAME:-${PROG_CLI##*/}}
 PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
+if [ "${PROG_DIR}" == "${PROG_NAME}" ]; then
+    PROG_DIR=.
+fi
+
 
 
 # ------------------ cut here beg Aeth4Aechoo7ca7aez4eesh3eigeitho -------------
@@ -1930,6 +1934,40 @@ function usage() {
     echo "Usage $PROG_NAME"
     listFunctions | grep -v "^_" | sed -e 's/^/[cmd] >> /g' | log_lines info
     exit 0
+}
+function get_cpu_quota_from_cg_cpu_cfs_quota_us() {
+    local G_expr_bin=${G_expr_bin:-expr}
+    local ref_pid=$1
+    if [ -z "$ref_pid" ]; then ref_pid=$$; fi
+
+    local cpu_subsys_hierarchy=`awk '$1 == "cpu" { print $2; }' /proc/cgroups`
+    if [ -z "$cpu_subsys_hierarchy" ]; then return 1; fi
+
+    local cpu_subsys_hierarchy_mnt=`mount -v -t cgroup | grep -w cpu | cut -d' ' -f3 | head -n1`
+    if [ -z "$cpu_subsys_hierarchy_mnt" ]; then return 1; fi
+
+    local cpu_cg=`grep "^${cpu_subsys_hierarchy}:" /proc/${ref_pid}/cgroup | cut -d: -f3 | head -n1`
+    if [ -z "$cpu_cg" ]; then return 1; fi
+
+    local cpu_cfs_quota_us=$(<$cpu_subsys_hierarchy_mnt${cpu_cg}/cpu.cfs_quota_us)
+    if [ "$cpu_cfs_quota_us" == "-1" ]; then return 2; fi
+
+    local cpu_cfs_period_us=$(<$cpu_subsys_hierarchy_mnt${cpu_cg}/cpu.cfs_period_us)
+    #echo "scale=0; ${cpu_cfs_quota_us} / ${cpu_cfs_period_us}" | bc -l
+    $G_expr_bin ${cpu_cfs_quota_us} \/ ${cpu_cfs_period_us}
+}
+function get_cpu_quota_from_lscpu() {
+    ls -1d /sys/devices/system/cpu/cpu[0-9]* | wc -l
+}
+function get_cpu_quota() {
+    local cpu_quota=`get_cpu_quota_from_cg_cpu_cfs_quota_us $@ </dev/null 2>/dev/null`
+    if [ -n "$cpu_quota" ]; then echo "$cpu_quota"; return 0; fi
+
+    cpu_quota=`get_cpu_quota_from_lscpu`
+    if [ -n "$cpu_quota" ]; then echo "$cpu_quota"; return 0; fi
+
+    # default to 1 if cannot get from env
+    echo 1
 }
 function run_initialize_ops() {
     for_each_op eval ${G_registered_initialize_op[@]}
