@@ -23,13 +23,13 @@ fi
 declare -a repos=(`echo "$repos" | tr ',' ' '`)
 # 显式要求包含的repo
 if [ -f "${target_rel_home}/.include_repos" ]; then
-    declare -a _include_repos=($(grep -v "^#" ${target_rel_home}/.include_repos))
+    declare -a _include_repos=(`grep -v "^#" ${target_rel_home}/.include_repos`)
     declare -a repos=`set_union repos[@] _include_repos[@]`
     unset _include_repos
 fi
 # 显式要求去除的repo
 if [ -f "${target_rel_home}/.exclude_repos" ]; then
-    declare -a _exclude_repos=($(<${target_rel_home}/.exclude_repos))
+    declare -a _exclude_repos=(`grep -v "^#" ${target_rel_home}/.exclude_repos`)
     declare -a repos=`set_difference repos[@] _exclude_repos[@]`
     unset _exclude_repos
 fi
