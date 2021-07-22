@@ -3467,6 +3467,85 @@ function generate_self_signed_ssl_certificate() {
         -batch \
     && ls -ld "${SSL_KEY_OUT_FILE}" "${SSL_CRT_OUT_FILE}"
 }
+function separate_python_code() {
+    local py_file=$1
+    local module_name=$2
+    if [ -z "$module_name" ]; then
+        module_name=`basename $py_file .py`
+    fi
+
+    local last_lnum=0
+    local last_name=""
+    local prolog=""
+    local module_file=""
+    local func_file=""
+    local func_file_shadow=""
+
+    {
+        grep -n -E "^def|^class" $py_file | cut -d\( -f1 | sed -e 's/:def */ /g' -e 's/:class */ /g';
+        echo "99999999 _THE_END_";
+    } | \
+    while read lnum name;
+    do true \
+     && if [ ${last_lnum} -eq 0 ]; then
+            prolog=`sed -n "1,$((lnum-1))p" $py_file`
+            last_lnum=$lnum
+            last_name=$name
+            continue
+        fi \
+     && if [ ! -d "${module_name}" ]; then mkdir -p ${module_name}; fi \
+     && module_file=${module_name}/__init__.py \
+     && if [ ! -f "${module_file}" ]; then true \
+         && {
+                echo "#! /usr/bin/env python"
+                echo "# -*- coding: utf-8 -*-"
+                echo ""
+                echo ""
+                echo "# _beg_of_import_sub_modules_"
+                echo "# _end_of_import_sub_modules_"
+                echo ""
+                echo ""
+                echo "__all__ = ["
+                echo "]"
+            } > ${module_file} \
+         && true; \
+        fi \
+     && func_file=${module_name}/${last_name}.py \
+     && func_file_shadow=${module_name}/.${last_name}.py \
+     && {
+            echo "$prolog"
+            echo ""
+            echo ""
+            echo "__all__ = ["
+            echo "    \"${last_name}\","
+            echo "]"
+            echo ""
+            echo ""
+            sed -n "${last_lnum},$((lnum-1))p" $py_file
+        } > ${func_file_shadow} \
+     && if ! grep -sq "^from .${last_name} import" ${module_file}; then true \
+         && sed -i -e "s/^\(# _end_of.*\)$/from .${last_name} import *\n\1/g" ${module_file} \
+         && true; \
+        fi \
+     && if ! grep -sq "^ *\"${last_name}\",$" ${module_file}; then true \
+         && sed -i -e "s/^]$/    \"${last_name}\",\n]/g" ${module_file} \
+         && true; \
+        fi \
+     && if [ -s ${func_file} ]; then true \
+         && if ! cmp ${func_file} ${func_file_shadow}; then true \
+             && true; \
+            fi \
+         && true; \
+        else true \
+         && mv ${func_file_shadow} ${func_file} \
+         && true; \
+        fi \
+     && wc -l ${func_file} | sed -e 's/^/>> /g' >&2 \
+     && last_lnum=$lnum \
+     && last_name=$name \
+     && true; \
+    done
+}
 
 # end of feature functions
 #-------------------------------------------------------------------------------
