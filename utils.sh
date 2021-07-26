@@ -2875,7 +2875,7 @@ function setup_users() {
          && _GPS=`echo "${_GPS}" | sed -e 's/sudo/wheel/g'` \
          && true; \
         elif $is_ubuntu; then true \
-         && true "translate \"wheel\" as \"sudo\" in rh" \
+         && true "translate \"wheel\" as \"sudo\" in ub" \
          && _GPS=`echo "${_GPS}" | sed -e 's/wheel/sudo/g'` \
          && true; \
         fi \
@@ -2950,7 +2950,7 @@ function setup_users() {
          && log_info "" \
          && eval ${_sudo:+${_sudo} -u ${_USR}} mkdir -p ~${_USR}/.ssh \
          && _d_tmp=`mktemp -d /tmp/XXXXXXXX` \
-         && { eval ${_sudo:+${_sudo} -u ${_USR}} sort -u ~${_USR}/.ssh/authorized_keys | cat - >$_d_tmp/old 2>/dev/null || true; } \
+         && { eval ${_sudo:+${_sudo} -u ${_USR}} sort -u ~${_USR}/.ssh/authorized_keys 2>/dev/null | cat - >$_d_tmp/old 2>/dev/null || true; } \
          && { cat $_d_tmp/old; echo "${_SSH_KEYS}"; } | \
             sed -e 's/^"//g' -e 's/"$//g' -e 's/  *ssh-/\nssh-/g' | sort -u >$_d_tmp/new \
          && if ! _diff=`diff -u $_d_tmp/old $_d_tmp/new`; then true \
