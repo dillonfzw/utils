@@ -803,7 +803,8 @@ function setup_gnu_utils() {
     if command -v gawk >/dev/null; then
         awk=gawk
     fi
-    getopt -T >/dev/null 2>&1
+    declare -g getopt=${getopt:-getopt}
+    $getopt -T >/dev/null 2>&1
     if [ $? -ne 4 -a -x /usr/local/opt/gnu-getopt/bin/getopt ]; then
         getopt=/usr/local/opt/gnu-getopt/bin/getopt
     fi
