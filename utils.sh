@@ -3551,7 +3551,44 @@ function separate_python_code() {
      && true; \
     done
 }
-
+function wait_for_host_up() {
+    local host=$1
+    local timeout=${2:-2}
+    local test_port=${test_port:-22}
+    local succ=1
+    while [ ${timeout} -gt 0 ];
+    do
+        # 尝试联通服务端口，成功的话，当然就成了
+        # 否则，看arp请求是否回来了，这也代表主机网卡起来了
+        if arp -na $host 2>/dev/null | grep -sq " at [a-fA-F0-9:-]\+ .* on "; then
+            succ=0
+            break
+        else
+            echo "[D]: Host \"$host\" seems down. Wait 1s and try next time(${timeout})." >&2
+            nc -z -w 1 $host ${test_port} 2>/dev/null || true
+            ((timeout-=1))
+        fi
+    done
+    (exit $succ)
+}
+function wait_for_service_up() {
+    local host=$1
+    local port=$2
+    local timeout=${3:-2}
+    local succ=1
+    while [ ${timeout} -gt 0 ];
+    do
+        if nc -zv -w 1 ${host} ${port} 2>/dev/null; then
+            succ=0
+            break
+        else
+            echo "[D]: Service \"$host:${port}\" seems down. Wait 1s and try next time(${timeout})." >&2
+            sleep 1
+            ((timeout-=1))
+        fi
+    done
+    (exit $succ)
+}
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
