@@ -211,6 +211,15 @@ fi
 
 
 ############################################################
+#
+# WizNote app
+#
+if ! command -v wiznote >/dev/null 2>&1 && [ -x $HOME/bin/apps/wiznote/bin/wiznote ]; then
+    export PATH=$PATH:$HOME/bin/apps/wiznote/bin
+fi
+
+
+############################################################
 # Post process which MUST be in the last of this profile
 #
 # - unique PATH likely env vars
