@@ -3555,6 +3555,8 @@ function separate_python_code() {
 function wait_for_lanhost_up() {
     #
     # 等待同网段主机上线
+    # Usage: $0 HOST [TIMEOUT:-2] [TEST_PORT:-22]
+    # rc=0 if succ else 1
     #
     local host=$1
     local timeout=${2:-2}
@@ -3605,6 +3607,11 @@ function __test_wait_for_lanhost_up() {
     test $err_cnt -eq 0
 }
 function wait_for_service_up() {
+    #
+    # 等待目标服务上线
+    # Usage: $0 HOST PORT [TIMEOUT:-2]
+    # rc=0 if succ else 1
+    #
     local host=$1
     local port=$2
     local timeout=${3:-2}
@@ -3638,7 +3645,7 @@ function __test_wait_for_service_up() {
     beg=`date "+%s"`
     $func www.baidu.com 80 4 || { ((err_cnt+=1)); log_error "fail case 2.1"; }
     ((dur=`date "+%s"`-beg))
-    # 对于不可能探测的主机，一定超时才返回
+    # 对于公开的服务，合理时间内返回，绝对不应该接近超时
     log_debug "case 2.2 dur=${dur}"
     [ $dur -lt 4 ] || { ((err_cnt+=1)); log_error "fail case 2.2: dur, 4 vs. ${dur}"; }
 
