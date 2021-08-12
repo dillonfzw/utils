@@ -1938,6 +1938,7 @@ declare -F usage >/dev/null || \
 function usage() {
     echo "Usage $PROG_NAME"
     listFunctions | grep -v "^_" | sed -e 's/^/[cmd] >> /g' | log_lines info
+    log_info "cmd=run_unit_test -- test_<function_name> | @all"
     exit 0
 }
 function get_cpu_quota_from_cg_cpu_cfs_quota_us() {
@@ -3551,25 +3552,57 @@ function separate_python_code() {
      && true; \
     done
 }
-function wait_for_host_up() {
+function wait_for_lanhost_up() {
+    #
+    # 等待同网段主机上线
+    #
     local host=$1
     local timeout=${2:-2}
     local test_port=${test_port:-22}
     local succ=1
+    local rarp=false
     while [ ${timeout} -gt 0 ];
     do
         # 尝试联通服务端口，成功的话，当然就成了
         # 否则，看arp请求是否回来了，这也代表主机网卡起来了
-        if arp -na $host 2>/dev/null | grep -sq " at [a-fA-F0-9:-]\+ .* on "; then
+        _line=`arp -na $host 2>/dev/null`
+        if echo ${_line} | grep -sq " at [a-fA-F0-9:-]\+ .* on "; then
             succ=0
             break
-        else
+        elif ! $rarp || echo ${_line} | grep -sqF " at <incomplete> on "; then
             echo "[D]: Host \"$host\" seems down. Wait 1s and try next time(${timeout})." >&2
             nc -z -w 1 $host ${test_port} 2>/dev/null || true
             ((timeout-=1))
+            if ! $rarp; then rarp=true; fi
+        elif $rarp; then
+            echo "[W]: unexpected arp resp: \"${_line}\", assume fail." >&2
+            break
         fi
     done
     (exit $succ)
+}
+function __test_wait_for_lanhost_up() {
+    local err_cnt=0
+    local func=wait_for_lanhost_up
+
+    # 对于不可能探测的主机，返回失败
+    beg=`date "+%s"`
+    $func 8.8.8.8 10 && { ((err_cnt+=1)); log_error "fail case 1.1"; }
+    ((dur=`date "+%s"`-beg))
+    # 对于不可能探测的主机，快速返回，不要等到超时
+    log_debug "case 1.2 dur=${dur}"
+    [ $dur -le 2 ] || { ((err_cnt+=1)); log_error "fail case 1.2: dur, 2 vs. ${dur}"; }
+
+    # 本机网关，理应存在，期望成功
+    gw_ip=`ip route get 8.8.8.8 | grep via | awk '{print $3}'`
+    beg=`date "+%s"`
+    $func $gw_ip 10 || { ((err_cnt+=1)); log_error "fail case 2.1"; }
+    ((dur=`date "+%s"`-beg))
+    log_debug "case 2.2 dur=${dur}"
+    # 本机网关，理应存在，很快成功
+    [ $dur -le 3 ] || { ((err_cnt+=1)); log_error "fail case 2.2: dur, 3 vs. ${dur}"; }
+
+    test $err_cnt -eq 0
 }
 function wait_for_service_up() {
     local host=$1
@@ -3588,6 +3621,28 @@ function wait_for_service_up() {
         fi
     done
     (exit $succ)
+}
+function __test_wait_for_service_up() {
+    local err_cnt=0
+    local func=wait_for_service_up
+
+    # 对于不可能探测的服务，返回失败
+    beg=`date "+%s"`
+    $func 8.8.8.8 22 4 && { ((err_cnt+=1)); log_error "fail case 1.1"; }
+    ((dur=`date "+%s"`-beg))
+    # 对于不可能探测的主机，一定超时才返回
+    log_debug "case 1.2 dur=${dur}"
+    [ $dur -ge 4 ] || { ((err_cnt+=1)); log_error "fail case 1.2: dur, 4 vs. ${dur}"; }
+
+    # 对于公开的服务，期望成功
+    beg=`date "+%s"`
+    $func www.baidu.com 80 4 || { ((err_cnt+=1)); log_error "fail case 2.1"; }
+    ((dur=`date "+%s"`-beg))
+    # 对于不可能探测的主机，一定超时才返回
+    log_debug "case 2.2 dur=${dur}"
+    [ $dur -lt 4 ] || { ((err_cnt+=1)); log_error "fail case 2.2: dur, 4 vs. ${dur}"; }
+
+    test $err_cnt -eq 0
 }
 # end of feature functions
 #-------------------------------------------------------------------------------
