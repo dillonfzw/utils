@@ -93,7 +93,7 @@ function _duplicity_docker_run() {
     fi
     #    -e PASSPHRASE=${gpg_passphrase:-shie4Phoh4iMae3eiceegaij7fohtham} \
     #    -v $vol:/volume:ro \
-    docker run --rm \
+    local cmd="docker run --rm \
         --hostname ${backup_host} \
         -e TZ=`date +"%Z%:::z" | tr '+-' '-+'` \
         -v $backup_dir:/.backup \
@@ -103,7 +103,9 @@ function _duplicity_docker_run() {
         --user root \
         ${_docker_args[@]} \
         wernight/duplicity \
-        $@
+        $@"
+    echo "$cmd" | sed -e 's/ \+/ /g' -e 's/ \+-/ \\\\\n  -/g' | sed -e 's/^/>> /g' | log_lines info
+    eval $cmd
 }
 #
 # List volume name of a docker container
