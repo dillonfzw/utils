@@ -3563,6 +3563,7 @@ function wait_for_lanhost_up() {
     local test_port=${test_port:-22}
     local succ=1
     local rarp=false
+    local nc=nc
     while [ ${timeout} -gt 0 ];
     do
         # 尝试联通服务端口，成功的话，当然就成了
@@ -3616,6 +3617,10 @@ function wait_for_service_up() {
     local port=$2
     local timeout=${3:-2}
     local succ=1
+    local nc=nc
+    if ! command -v $nc >/dev/null 2>&1; then
+        nc=ncat
+    fi
     while [ ${timeout} -gt 0 ];
     do
         if nc -zv -w 1 ${host} ${port} 2>/dev/null; then
