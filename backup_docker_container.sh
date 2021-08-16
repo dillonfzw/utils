@@ -6,6 +6,9 @@ PROG_NAME=${PROG_NAME:-${PROG_CLI##*/}}
 PROG_DIR=${PROG_DIR:-${PROG_CLI%/*}}
 
 
+if [ "$DEBUG" == "true" ]; then set -x; fi
+
+
 DEFAULT_backup_host=${backup_host:-`hostname -s`}
 DEFAULT_backup_dir=${backup_dir:-~/.backup/usb1/pub/backup/docker_containers_at_${DEFAULT_backup_host}}
 DEFAULT_volsize=${volsize:-500}
@@ -108,7 +111,7 @@ function _duplicity_docker_run() {
 # deps:
 # - ${vol}
 #
-function ls_vol() {
+function _ls_vol() {
     echo "${vol}"
 }
 #
@@ -338,6 +341,71 @@ function restore_vol() {
             /volume${_target_folder} \
     && true
 }
+function _split_vol() {
+    local vol_dir=${backup_dir}${container_in_dsk}/${vol}
+    local signatures=(`find ${vol_dir}/ \
+        -maxdepth 1 \
+        \( -type f -o -type l \) \
+        -name "duplicity-*-signatures.*.sigtar.gpg" | \
+        sed -e 's/^.*-signatures\.\(.*\)\.sigtar.gpg$/\1/g' | \
+        sort -u | xargs`)
+    local signature
+    local FILE
+    local fname
+    local err_cnt=0
+    for signature in ${signatures[@]}
+    do true \
+     && if [ -f ${vol_dir}/duplicity-full-signatures.${signature}.sigtar.gpg ]; then
+            vol_sig_dir=${vol_dir}/full-${signature}
+        else
+            vol_sig_dir=${vol_dir}/incr-${signature}
+        fi \
+     && if [ ! -d ${vol_sig_dir} ]; then true \
+         && mkdir -p ${vol_sig_dir}.tmp \
+         && local exp_cnt=0 \
+         && local rel_cnt=0 \
+         && for FILE in ${vol_dir}/duplicity-*.${signature}.{sigtar,vol*.difftar,manifest}.gpg
+            do true \
+             && fname=`basename $FILE` \
+             && ((exp_cnt+=1)) \
+             && if [ -f "${vol_sig_dir}.tmp/${fname}" ]; then ((rel_cnt+=1)); continue; fi \
+             && if [ -L "${FILE}" ]; then continue; fi \
+             && true "hard link" \
+             && if ! ln $FILE ${vol_sig_dir}.tmp/${fname}; then ((err_cnt+=1)); break; fi \
+             && ((rel_cnt+=1)) \
+             && true; \
+            done \
+         && if [ ${err_cnt} -gt 0 ]; then break; fi \
+         && if [ $exp_cnt -eq ${rel_cnt} -a $exp_cnt -gt 0 ]; then true \
+             && mv ${vol_sig_dir}.tmp ${vol_sig_dir} \
+             && true; \
+            else true \
+             && log_error "Fail to split ${vol}/${signature} with exp(${exp_cnt}) .vs. rel(${rel_cnt})" \
+             && ((err_cnt+=1)) \
+             && rm -rf ${vol_sig_dir}.tmp \
+             && break; \
+            fi \
+         && for FILE in ${vol_sig_dir}/*.gpg; \
+            do true \
+             && fname=`basename $FILE` \
+             && true rm -f ${vol_dir}/$fname \
+             && if [ ! -d ${vol_dir}/.bak ]; then mkdir -p ${vol_dir}/.bak; fi \
+             && mv ${vol_dir}/$fname ${vol_dir}/.bak/$fname \
+             && ln -s `basename ${vol_sig_dir}`/$fname ${vol_dir}/$fname \
+             && true; \
+            done \
+         && true; \
+       fi \
+     && {
+            printf "%3d %3d %s\n" \
+                `ls -1 ${vol_sig_dir}/*.gpg | wc -l` \
+                `ls -1 ${vol_sig_dir}/*.vol*.difftar.gpg | wc -l` \
+                ${vol}/`basename ${vol_sig_dir}`;
+        } | sed -e 's/^/>> /g' | log_lines info \
+     && true; \
+    done && \
+    test ${err_cnt} -eq 0
+}
 function _vol_op() {
     local cmd=$1; shift
     local args=$@
@@ -379,7 +447,7 @@ function _vol_op() {
     local fail_cnt=0
     for vol in ${vols[@]}
     do
-        if eval "${cmd}_vol $args"; then
+        if eval ${cmd}_vol${args:+ ${args}}; then
             true
         else
             ((fail_cnt+=1))
@@ -388,13 +456,14 @@ function _vol_op() {
     done
     test ${fail_cnt} -eq 0
 }
-function ls() { _vol_op ${FUNCNAME[0]} $@; }
+function _ls() { _vol_op ${FUNCNAME[0]} $@; }
 function full() { _vol_op ${FUNCNAME[0]} $@; }
 function incr() { _vol_op ${FUNCNAME[0]} $@; }
 function collection-status() { _vol_op ${FUNCNAME[0]} $@; }
 function verify() { _vol_op ${FUNCNAME[0]} $@; }
 function restore() { _vol_op ${FUNCNAME[0]} $@; }
 function list-current-files() { _vol_op ${FUNCNAME[0]} $@; }
+function _split() { _vol_op ${FUNCNAME[0]} $@; }
 
 # alias cmds
 function backup() { _vol_op incr $@; }
@@ -403,6 +472,7 @@ function ls-tree() { _vol_op list-current-files $@; }
 
 
 # issue real cmd
+if [ "$cmd" == "ls" -o "$cmd" == "split" ]; then cmd="_${cmd}"; fi && \
 if declare -F $cmd >/dev/null 2>&1; then
     if [ "${container_name_translate}" = "true" ]; then
         container_long=`get_container_long_name ${container}` && \
