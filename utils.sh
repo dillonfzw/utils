@@ -1975,6 +1975,100 @@ function get_cpu_quota() {
     # default to 1 if cannot get from env
     echo 1
 }
+function envsubst_enh() {
+    local IN_FILE=$1
+    local OUT_FILE=$2
+    local TMP_DIR=${TMP_DIR:-/tmp}
+    #set -x
+    local TMP_FILE=`mktemp ${TMP_DIR}/XXXXXXXX` && \
+    if [ -z "$IN_FILE" -o "${IN_FILE}" = "-" ]; then
+        IN_FILE=$TMP_FILE.stdin
+        cat - >$IN_FILE
+    fi && \
+    if [ -z "$OUT_FILE" ]; then
+        OUT_FILE=.stdout
+    fi && \
+    # generate updated file
+    eval "echo \"$(<${IN_FILE})\"" >$TMP_FILE && \
+    # replace IN_FILE with the updated one, if any diff
+    if ! cmp -s $IN_FILE $TMP_FILE; then
+        # log for debug
+        {
+            grep -v "^ *#" $IN_FILE  > $TMP_FILE.s.orig
+            grep -v "^ *#" $TMP_FILE > $TMP_FILE.s
+            cat $TMP_FILE.s | sed -e 's/^/[envsubst updated '"$(basename $OUT_FILE)"'] >> /g' | log_lines debug
+            diff -u $TMP_FILE.s.orig $TMP_FILE.s | sed -e 's/^/[envsubst diff '"$(basename $OUT_FILE)"'] >> /g' | log_lines debug
+            rm -f $TMP_FILE.s{,.orig} 2>/dev/null
+        }
+        if [ "$OUT_FILE" = ".stdout" ]; then
+            cat $TMP_FILE \
+         && rm $TMP_FILE \
+         && true; \
+        else
+            mv $TMP_FILE $OUT_FILE
+        fi
+    else
+        # 即便没有替换，也要原样输出一遍
+        if [ "$OUT_FILE" = ".stdout" ]; then
+            cat $TMP_FILE \
+         && true; \
+        fi
+        rm $TMP_FILE
+    fi
+    if [ -f $TMP_FILE.stdin ]; then rm $TMP_FILE.stdin; fi
+}
+function __test_envsubst_enh() {
+    local err_cnt=0
+    local AAA=bye
+    local TMP_DIR=${TMP_DIR:-/tmp}
+
+    # 输入从stdin，输出是stdout
+    local line=`echo 'hello $AAA' | envsubst_enh`
+    [ "$line" = "hello bye" ] || {
+        ((err_cnt+=1)); log_error "Fail sub-case 1.1: $line";
+    }
+
+    # 输入是stdin，输出是文件
+    local tmp_f=`mktemp ${TMP_DIR}/XXXXXX`
+    echo 'hello $AAA' | envsubst_enh - $tmp_f
+    line=$(<$tmp_f)
+    [ "$line" = "hello bye" ] || {
+        ((err_cnt+=1)); log_error "Fail sub-case 1.2: $line";
+    }
+    rm -f $tmp_f
+
+    # 输入是文件，输出是文件
+    local tmp_f=`mktemp ${TMP_DIR}/XXXXXX`
+    echo 'hello $AAA' >$tmp_f.in
+    envsubst_enh $tmp_f.in $tmp_f
+    rm -f $tmp_f.in
+    line=$(<$tmp_f)
+    [ "$line" = "hello bye" ] || {
+        ((err_cnt+=1)); log_error "Fail sub-case 1.3: $line";
+    }
+    rm -f $tmp_f
+
+    # 输入是文件，输出是stdout
+    local tmp_f=`mktemp ${TMP_DIR}/XXXXXX`
+    echo 'hello $AAA' >$tmp_f.in
+    line=`envsubst_enh $tmp_f.in`
+    rm -f $tmp_f.in
+    [ "$line" = "hello bye" ] || {
+        ((err_cnt+=1)); log_error "Fail sub-case 1.4: $line";
+    }
+    rm -f $tmp_f
+
+    # test pipe接力
+    echo 'hello $AAA' | envsubst_enh | grep -sqF "hello bye" || {
+        ((err_cnt+=1)); log_error "Fail sub-case 1.5";
+    }
+
+    # 没有替换的话，也是要有输出的
+    echo "hello world" | envsubst_enh | grep -sqF "hello world" || {
+        ((err_cnt+=1)); log_error "Fail sub-case 1.6";
+    }
+    test $err_cnt -eq 0
+}
 function run_initialize_ops() {
     for_each_op eval ${G_registered_initialize_op[@]}
 }
