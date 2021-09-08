@@ -1955,9 +1955,17 @@ function get_cpu_quota_from_cg_cpu_cfs_quota_us() {
     local cpu_cg=`grep "^${cpu_subsys_hierarchy}:" /proc/${ref_pid}/cgroup | cut -d: -f3 | head -n1`
     if [ -z "$cpu_cg" ]; then return 1; fi
 
+    # 在docker内，有时候看到的cg_cpu实际上不存在(?为啥)，这时候，转而用cg顶层的quota
+    if [ ! -e "${cpu_subsys_hierarchy_mnt}${cpu_cg}" ]; then true \
+     && echo "[W]: cpu cg \"${cpu_cg}\" does not exist. Use root cg in the hierarchy instead for quota!" >&2 \
+     && cpu_cg="" \
+     && true; \
+    fi
+    if [ ! -e "$cpu_subsys_hierarchy_mnt${cpu_cg}/cpu.cfs_quota_us" ]; then return 1; fi
     local cpu_cfs_quota_us=$(<$cpu_subsys_hierarchy_mnt${cpu_cg}/cpu.cfs_quota_us)
     if [ "$cpu_cfs_quota_us" == "-1" ]; then return 2; fi
 
+    if [ ! -e "$cpu_subsys_hierarchy_mnt${cpu_cg}/cpu.cfs_period_us" ]; then return 1; fi
     local cpu_cfs_period_us=$(<$cpu_subsys_hierarchy_mnt${cpu_cg}/cpu.cfs_period_us)
     #echo "scale=0; ${cpu_cfs_quota_us} / ${cpu_cfs_period_us}" | bc -l
     $G_expr_bin ${cpu_cfs_quota_us} \/ ${cpu_cfs_period_us}
@@ -1979,7 +1987,7 @@ function envsubst_enh() {
     local IN_FILE=$1
     local OUT_FILE=$2
     local TMP_DIR=${TMP_DIR:-/tmp}
-    #set -x
+    set -x
     local TMP_FILE=`mktemp ${TMP_DIR}/XXXXXXXX` && \
     if [ -z "$IN_FILE" -o "${IN_FILE}" = "-" ]; then
         IN_FILE=$TMP_FILE.stdin
