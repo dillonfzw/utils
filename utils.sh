@@ -3438,7 +3438,7 @@ function download_os_pkgs_rh() {
         fi | \
         sed -e "s/\.`arch` \+/ /" \
             -e "s/\.noarch \+/ /" \
-            -e "s/ \+[0-9]\+://g" \
+            -e "s/ \+[0-9]\+:/-/g" \
             -e "s/ \+/-/g"
     ))
     # log for debug only
@@ -3495,6 +3495,7 @@ function download_os_pkgs_ubuntu() {
     else
         # E: Can't find a source to download version '1:2.31.1-0.4ubuntu3.4' of 'bsdutils:amd64'
         log_debug "Try downloading ${#pkgs[@]} original pkgs"
+        declare -p pkgs | sed -e 's/^/>> /g' | log_lines debug
         local lines=`apt-get download ${_arg_stage[@]} ${pkgs[@]} 2>&1`
         local -a bad_pkgs=($(echo "$lines" | \
             grep "E: Can't find a source to download version" | \
@@ -3503,9 +3504,12 @@ function download_os_pkgs_ubuntu() {
             _filter_arch
         ))
 
-        log_warn "Exclude ${#bad_pkgs[@]} bad pkgs"
-        echo "$lines" | grep "E: Can't find a source to download version" | log_lines warn
-        local -a pkgs=`set_difference pkgs[@] bad_pkgs[@]`
+	if [ ${#bad_pkgs[@]} -gt 0 ]; then
+            log_warn "Exclude ${#bad_pkgs[@]} bad pkgs"
+            echo "$lines" | grep "E: Can't find a source to download version" | log_lines warn
+	    apt-cache madison `for _pkg in ${bad_pkgs[@]}; do echo "${_pkg}" | cut -d= -f1; done | xargs` 2>&1 | log_lines warn
+            local -a pkgs=`set_difference pkgs[@] bad_pkgs[@]`
+	fi
 
         log_debug "Downloading ${#pkgs[@]} good pkgs"
         apt-get download ${_arg_stage[@]} ${pkgs[@]}
