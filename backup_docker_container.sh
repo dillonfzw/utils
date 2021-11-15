@@ -149,9 +149,14 @@ function backup_vol() {
 
     # nobackup对应的--exclude-if-present需要在任何其他include和exclude参数之前被指定
     # 所以，需要显式的在这里书写
+    #--verbosity level, -vlevel
+    #   Specify output verbosity level (log level).  Named levels and corresponding values are 0 Error, 2 Warning, 4 Notice (default), 8 Info, 9 Debug (noisiest).
+    #   level may also be
+    #   a character: e, w, n, i, d
+    #   a word: error, warning, notice, info, debug
     _duplicity_docker_run docker_args[@] duplicity \
         $backup_method \
-            -vnotice \
+            --verbosity=${LOG_LEVEL:-notice} \
             --allow-source-mismatch \
             --volsize=${volsize} \
             --full-if-older-than=6M \
