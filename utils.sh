@@ -987,25 +987,25 @@ function do_and_verify() {
     local do_op="$2"
     local wait_op="$3"
 
-    local loop_cnt=0
-    while [ $loop_cnt -lt 2 ]; do
+    local _loop_cnt_3vJv=0
+    while [ $_loop_cnt_3vJv -lt 2 ]; do
         # silent in first round
-        if [ $loop_cnt -eq 0 ]; then
-            $verify_op >/dev/null 2>&1;
+        if [ $_loop_cnt_3vJv -eq 0 ]; then
+            $verify_op # >/dev/null 2>&1;
         else
             $verify_op;
         fi && break;
-        if [ $loop_cnt -eq 0 ]; then $do_op; fi
+        if [ $_loop_cnt_3vJv -eq 0 ]; then $do_op; fi
         $wait_op
-        ((loop_cnt+=1))
+        ((_loop_cnt_3vJv+=1))
     done
-    test $loop_cnt -lt 2
+    test $_loop_cnt_3vJv -lt 2
 }
 function __test_do_and_verify() {
     local err_cnt=0
-    # 测试loop_cnt的使用是可以的
-    # 注意，要加eval到verify_op上，否则，不会执行${loop_cnt}的展开
-    do_and_verify 'eval test ${loop_cnt} -gt 0' 'false' 'true' || {
+    # 测试_loop_cnt_3vJv的使用是可以的
+    # 注意，要加eval到verify_op上，否则，不会执行${_loop_cnt_3vJv}的展开
+    do_and_verify 'eval test ${_loop_cnt_3vJv} -gt 0' 'false' 'true' || {
         ((err_cnt+=1)); log_error "Fail sub-case 1"
     }
     test $err_cnt -eq 0
