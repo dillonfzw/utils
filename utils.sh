@@ -3661,6 +3661,9 @@ function separate_python_code() {
 function wait_for_lanhost_up() {
     #
     # 等待同网段主机上线
+    # 这个会探测目标主机的一个端口，默认是22，但不需要这个端口一定在目标主机开放
+    # 这只是发送一个探测，lanhost_up后续依赖本机是否检测到这个lanhost的arp条目来确定
+    # 这个lanhost已经起来了
     # Usage: $0 HOST [TIMEOUT:-2] [TEST_PORT:-22]
     # rc=0 if succ else 1
     #
