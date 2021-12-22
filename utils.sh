@@ -991,7 +991,7 @@ function do_and_verify() {
     while [ $_loop_cnt_3vJv -lt 2 ]; do
         # silent in first round
         if [ $_loop_cnt_3vJv -eq 0 ]; then
-            $verify_op # >/dev/null 2>&1;
+            $verify_op >/dev/null 2>&1;
         else
             $verify_op;
         fi && break;
@@ -3507,7 +3507,7 @@ function download_os_pkgs_ubuntu() {
 	if [ ${#bad_pkgs[@]} -gt 0 ]; then
             log_warn "Exclude ${#bad_pkgs[@]} bad pkgs"
             echo "$lines" | grep "E: Can't find a source to download version" | log_lines warn
-	    apt-cache madison `for _pkg in ${bad_pkgs[@]}; do echo "${_pkg}" | cut -d= -f1; done | xargs` 2>&1 | log_lines warn
+            apt-cache madison `for _pkg in ${bad_pkgs[@]}; do echo "${_pkg}" | cut -d= -f1; done | xargs` 2>&1 | log_lines warn
             local -a pkgs=`set_difference pkgs[@] bad_pkgs[@]`
 	fi
 
