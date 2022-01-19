@@ -2077,6 +2077,26 @@ function __test_envsubst_enh() {
     }
     test $err_cnt -eq 0
 }
+function get_addr_by_name() {
+    local _endpoint=${1:-`hostname -s`.} && \
+    local _ip_addr=`getent hosts ${_endpoint} | awk '{print $1}'` && \
+    if [ -z "${_ip_addr}" ]; then true \
+     && echo "[E]: Cannot resolve endpoint/\"${_endpoint}\" name to ip address. Abort!" >&2 \
+     && false; \
+    fi && \
+    local _ip_ifac=`ip addr show | grep -F "${_ip_addr}" | sed -e 's/^.* \+//g'` && \
+    if [ -z "${_ip_ifac}" ]; then true \
+     && echo "[E]: Cannot locate endpoint/\"${_endpoint}\" major ethernet interface. Abort!" >&2 \
+     && false; \
+    fi && \
+    local _l2_addr=`ip link show dev ${_ip_ifac} | grep "link\/ether" | awk '{print $2}'` && \
+    if [ -z "${_l2_addr}" ]; then true \
+     && echo "[E]: Cannot locate endpoint/\"${_endpoint}\" major ethernet address. Abort!" >&2 \
+     && false; \
+    fi && \
+    echo "${_endpoint%.*} ${_ip_addr} ${_l2_addr}" && \
+    true
+}
 function run_initialize_ops() {
     for_each_op eval ${G_registered_initialize_op[@]}
 }
