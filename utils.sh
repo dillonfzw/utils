@@ -2087,11 +2087,14 @@ function get_addr_by_name() {
     local _ip_ifac=`ip addr show | grep -F "${_ip_addr}" | sed -e 's/^.* \+//g'` && \
     if [ -z "${_ip_ifac}" ]; then true \
      && log_error "Cannot locate endpoint/\"${_endpoint}\" major ethernet interface. Abort!" \
+     && getent hosts | while read LINE; do log_info ">> [hosts]: ${LINE}"; done \
+     && ip addr show | while read LINE; do log_info ">> [ip_addr]: ${LINE}"; done \
      && false; \
     fi && \
     local _l2_addr=`ip link show dev ${_ip_ifac} | grep "link\/ether" | awk '{print $2}'` && \
     if [ -z "${_l2_addr}" ]; then true \
      && log_error "Cannot locate endpoint/\"${_endpoint}\" major ethernet address. Abort!" \
+     && ip link show | while read LINE; do log_info ">> [ip_link]: ${LINE}"; done \
      && false; \
     fi && \
     echo "${_endpoint} ${_ip_addr} ${_l2_addr}" && \
