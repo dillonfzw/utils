@@ -2078,7 +2078,8 @@ function __test_envsubst_enh() {
     test $err_cnt -eq 0
 }
 function get_addr_by_name() {
-    local _endpoint=${1:-`hostname -s`.} && \
+    local _endpoint=${1:-`hostname -s`} && \
+    if ! echo "${_endpoint}" | grep -sqF "."; then _endpoint=${_endpoint}.; fi && \
     local _ip_addr=`getent hosts ${_endpoint} | awk '{print $1}'` && \
     if [ -z "${_ip_addr}" ]; then true \
      && echo "[E]: Cannot resolve endpoint/\"${_endpoint}\" name to ip address. Abort!" >&2 \
@@ -2095,6 +2096,30 @@ function get_addr_by_name() {
      && false; \
     fi && \
     echo "${_endpoint%.*} ${_ip_addr} ${_l2_addr}" && \
+    true
+}
+function get_host_key() {
+    local _endpoint=${1:-${_endpoint:-`hostname -s`}} && \
+    local _host_key_use_ip_addr=${2:-${_host_key_use_ip_addr:-false}} && \
+    local -a _rec=(`get_addr_by_name ${_endpoint}`) && \
+    if [ ${#_rec[@]} -ne 3 ]; then true \
+     && echo "[E]: Fail to calculate host_key for endpoint \"${_endpoint}\". Abort!" \
+     && false; \
+    fi && \
+    _endpoint=${_rec[0]} && \
+    if [ "x$_host_key_use_ip_addr" == "xtrue" ]; then true \
+     && local _ip_addr=${_rec[1]} \
+     && true; \
+    else true \
+     && local _ip_addr="0.0.0.0" \
+     && true; \
+    fi && \
+    local _l2_addr=${_rec[2]} && \
+    local _host_key=`printf "%s" "['${_endpoint}', '${_ip_addr}', '${_l2_addr}']" | sha1sum -b | awk '{print $1}'` && \
+    if [ -z "${_host_key}" ]; then true \
+     && false; \
+    fi && \
+    echo "[\"${_host_key}\", \"${_endpoint}\"]" && \
     true
 }
 function run_initialize_ops() {
