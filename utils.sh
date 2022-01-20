@@ -2099,8 +2099,9 @@ function get_addr_by_name() {
     true
 }
 function get_host_key() {
-    local _endpoint=${1:-${_endpoint:-`hostname -s`}} && \
-    local _host_key_use_ip_addr=${2:-${_host_key_use_ip_addr:-false}} && \
+    local _endpoint=${1:-${_endpoint:-${endpoint:-`hostname -s`}}} && \
+    local _host_key_use_ip_addr=${2:-${_host_key_use_ip_addr:-${host_key_use_ip_addr:-false}}} && \
+    local _show_qrcode=${3:-${_show_qrcode:-${show_qrcode:-true}}} && \
     local -a _rec=(`get_addr_by_name ${_endpoint}`) && \
     if [ ${#_rec[@]} -ne 3 ]; then true \
      && echo "[E]: Fail to calculate host_key for endpoint \"${_endpoint}\". Abort!" \
@@ -2119,7 +2120,12 @@ function get_host_key() {
     if [ -z "${_host_key}" ]; then true \
      && false; \
     fi && \
-    echo "[\"${_host_key}\", \"${_endpoint}\"]" && \
+    local line="[\"${_host_key}\", \"${_endpoint}\"]" && \
+    echo "$line" && \
+    if [ "x${_show_qrcode}" == "xtrue" -a "x`command -v qrencode`" != "x" ]; then true \
+     && echo "${line}" | qrencode -t ANSIUTF8 \
+     && true; \
+    fi && \
     true
 }
 function run_initialize_ops() {
