@@ -2082,17 +2082,17 @@ function get_addr_by_name() {
     if ! echo "${_endpoint}" | grep -sqF "."; then _endpoint=${_endpoint}.; fi && \
     local _ip_addr=`getent hosts ${_endpoint} | awk '{print $1}'` && \
     if [ -z "${_ip_addr}" ]; then true \
-     && echo "[E]: Cannot resolve endpoint/\"${_endpoint}\" name to ip address. Abort!" >&2 \
+     && log_error "Cannot resolve endpoint/\"${_endpoint}\" name to ip address. Abort!" \
      && false; \
     fi && \
     local _ip_ifac=`ip addr show | grep -F "${_ip_addr}" | sed -e 's/^.* \+//g'` && \
     if [ -z "${_ip_ifac}" ]; then true \
-     && echo "[E]: Cannot locate endpoint/\"${_endpoint}\" major ethernet interface. Abort!" >&2 \
+     && log_error "Cannot locate endpoint/\"${_endpoint}\" major ethernet interface. Abort!" \
      && false; \
     fi && \
     local _l2_addr=`ip link show dev ${_ip_ifac} | grep "link\/ether" | awk '{print $2}'` && \
     if [ -z "${_l2_addr}" ]; then true \
-     && echo "[E]: Cannot locate endpoint/\"${_endpoint}\" major ethernet address. Abort!" >&2 \
+     && log_error "Cannot locate endpoint/\"${_endpoint}\" major ethernet address. Abort!" \
      && false; \
     fi && \
     echo "${_endpoint%.*} ${_ip_addr} ${_l2_addr}" && \
@@ -2104,7 +2104,7 @@ function get_host_key() {
     local _show_qrcode=${3:-${_show_qrcode:-${show_qrcode:-true}}} && \
     local -a _rec=(`get_addr_by_name ${_endpoint}`) && \
     if [ ${#_rec[@]} -ne 3 ]; then true \
-     && echo "[E]: Fail to calculate host_key for endpoint \"${_endpoint}\". Abort!" \
+     && log_error "Fail to calculate host_key for endpoint \"${_endpoint}\". Abort!" >&2 \
      && false; \
     fi && \
     _endpoint=${_rec[0]} && \
