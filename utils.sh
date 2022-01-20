@@ -2079,8 +2079,7 @@ function __test_envsubst_enh() {
 }
 function get_addr_by_name() {
     local _endpoint=${1:-`hostname -s`} && \
-    if ! echo "${_endpoint}" | grep -sqF "."; then _endpoint=${_endpoint}.; fi && \
-    local _ip_addr=`getent hosts ${_endpoint} | awk '{print $1}'` && \
+    local _ip_addr=`getent hosts ${_endpoint} ${_endpoint}. | grep "^[1-9]" | awk '{print $1}' | head -n1` && \
     if [ -z "${_ip_addr}" ]; then true \
      && log_error "Cannot resolve endpoint/\"${_endpoint}\" name to ip address. Abort!" \
      && false; \
@@ -2095,7 +2094,7 @@ function get_addr_by_name() {
      && log_error "Cannot locate endpoint/\"${_endpoint}\" major ethernet address. Abort!" \
      && false; \
     fi && \
-    echo "${_endpoint%.*} ${_ip_addr} ${_l2_addr}" && \
+    echo "${_endpoint} ${_ip_addr} ${_l2_addr}" && \
     true
 }
 function get_host_key() {
