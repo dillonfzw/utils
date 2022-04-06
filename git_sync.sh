@@ -26,7 +26,7 @@ DEFAULT_dry_run=false
 
 
 source getopt.sh
-OTHER_ARGS=$@
+OTHER_ARGS=("$@")
 
 
 #
@@ -87,7 +87,7 @@ function transfer() {
     if $dry_run; then
         rsync_args+=("--dry-run")
     fi
-    rsync_args+=(${OTHER_ARGS})
+    rsync_args+=("${OTHER_ARGS[@]}")
     if [ -n "${_r2host}" ]; then
         rsync_args+=($_phome/ ${_r2host}:${_rrhome}/$_phome/)
     else
@@ -96,7 +96,7 @@ function transfer() {
     
     # issue the sync cli
     if cd $_rlhome; then
-        rsync ${rsync_args[@]}
+        rsync "${rsync_args[@]}"
         rc=$?
         cd - >/dev/null
         (exit $rc)
