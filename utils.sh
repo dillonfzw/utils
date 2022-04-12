@@ -365,8 +365,8 @@ function array_equal() {
 }
 function __test_array_equal() {
     local err_cnt=0
-    local -a a=(1 2 3)
-    local -a b=(1 2 3)
+    local -a a=(1 "2 a" 3)
+    local -a b=(1 2 a 3)
     local -a empty=()
 
     array_equal a[@] b[@] || { ((err_cnt+=1)); log_error "fail normal positive sub-test 1"; }
