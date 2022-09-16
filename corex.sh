@@ -1,11 +1,7 @@
 #! /usr/bin/env bash
 
-VIRTUAL_ENV_NAME=${1} && \
-if [ "x${VIRTUAL_ENV_NAME}" = "x" -a "x${VIRTUAL_ENV}" != "x" -a -d "${VIRTUAL_ENV}" ]; then true \
- && VIRTUAL_ENV_NAME=`basename ${VIRTUAL_ENV}` \
- && true; \
-fi && \
-if echo "${VIRTUAL_ENV_NAME}" | grep -E -sq "^iluvatar|^corex|^mr|^bi"; then true \
+
+if true; then true \
  && COREX_HOME_uy7rohTh=${COREX_HOME:-/usr/local/corex} \
  && declare -a _extra_bin_path_uy7rohTh=() \
  && declare -a _extra_lib_path_uy7rohTh=() \
