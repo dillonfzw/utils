@@ -1,6 +1,9 @@
 #! /usr/bin/env bash
 
 
+function _sort_uniq_uy7rohTh() {
+    tr ':' '\n' | nl -nln -w1 -s'|' | sort -t'|' -k2,2 -u | sort -t'|' -k1 -n | cut -d'|' -f2 | tr '\n' ':' | sed -e 's/^:\(.*\):/\1/g'
+}
 if true; then true \
  && declare -a _extra_bin_path_uy7rohTh=() \
  && declare -a _extra_lib_path_uy7rohTh=() \
@@ -18,11 +21,11 @@ if true; then true \
      && break; \
     done \
  && PATH=`echo "${_extra_bin_path_uy7rohTh[@]}" | tr ' ' ':'`${PATH:+:${PATH}} \
- && PATH=`echo "${PATH}" | tr ':' '\n' | nl -nln -w1 -s'|' | sort -t'|' -k2,2 -u | sort -t'|' -k1 -n | cut -d'|' -f2 | tr '\n' ':' | sed -e 's/^:\(.*\):/\1/g'` \
+ && PATH=`echo "${PATH}" | _sort_uniq_uy7rohTh` \
  && LD_LIBRARY_PATH=`echo "${_extra_lib_path_uy7rohTh[@]}" | tr ' ' ':'`${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}} \
- && LD_LIBRARY_PATH=`echo "${LD_LIBRARY_PATH}" | tr ':' '\n' | nl -nln -w1 -s'|' | sort -t'|' -k2,2 -u | sort -t'|' -k1 -n | cut -d'|' -f2 | tr '\n' ':' | sed -e 's/^:\(.*\):/\1/g'` \
+ && LD_LIBRARY_PATH=`echo "${LD_LIBRARY_PATH}" | _sort_uniq_uy7rohTh` \
  && C_PATH=`echo "${_extra_inc_path_uy7rohTh[@]}" | tr ' ' ':'`${C_PATH:+:${C_PATH}} \
- && C_PATH=`echo "${C_PATH}" | tr ':' '\n' | nl -nln -w1 -s'|' | sort -t'|' -k2,2 -u | sort -t'|' -k1 -n | cut -d'|' -f2 | tr '\n' ':' | sed -e 's/^:\(.*\):/\1/g'` \
+ && C_PATH=`echo "${C_PATH}" | _sort_uniq_uy7rohTh` \
  && export PATH \
  && export LD_LIBRARY_PATH \
  && export C_PATH \
@@ -32,3 +35,4 @@ if true; then true \
  && unset CUDA_HOME_uy7rohTh \
  && true; \
 fi
+unset _sort_uniq_uy7rohTh
