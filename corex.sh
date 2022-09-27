@@ -17,7 +17,7 @@ if true; then true \
          && _extra_bin_path_uy7rohTh+=("${COREX_HOME_uy7rohTh}/local/cuda/bin") \
          && _extra_lib_path_uy7rohTh+=("${COREX_HOME_uy7rohTh}/local/lib64") \
          && _extra_lib_path_uy7rohTh+=("${COREX_HOME_uy7rohTh}/local/cuda/lib64") \
-         && _extra_inc_path_uy7rohTh+=("${COREX_HOME_uy7rohTh}/local/include") \
+         && _extra_inc_path_uy7rohTh+=("${COREX_HOME_uy7rohTh}/local/cuda/include") \
          && true; \
         else true \
          && _extra_bin_path_uy7rohTh+=("${COREX_HOME_uy7rohTh}/bin") \
