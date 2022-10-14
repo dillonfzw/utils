@@ -3921,6 +3921,49 @@ function setup_opencv() {
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
  && true;
 }
+function setup_tf_deps() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1604=( \
+    ) \
+ && pkgs_ub1804=( \
+    ) \
+ && pkgs_ub2004=( \
+    ) \
+ && pkgs=( \
+        "deb:hdf5-tools"         "rpm:hdf5" \
+        "deb:libhdf5-dev"        "rpm:hdf5-devel" \
+        "deb:libhdf5-serial-dev" \
+        "deb:libjpeg8-dev"       "rpm:libjpeg-turbo-devel" \
+        "deb:zlib1g-dev"         "rpm:zlib-devel" \
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1604[@]}); \
+    elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then \
+        pkgs+=(${pkgs_rh7[@]}); \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && true;
+}
 function download_os_pkgs() {
     if $is_rhel; then
         download_os_pkgs_rh $@
