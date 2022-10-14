@@ -1300,8 +1300,9 @@ function setup_pip_flags() {
     #        $env_activated || _shadow_cmd_conda deactivate
     #    fi
     #else
-        G_pip_bin=`command -v pip`
-        G_python_ver=`python --version 2>&1 | grep ^Python | awk '{print $2}'`
+        G_python_bin=`command -v python3`
+        G_python_ver=`${G_python_bin} --version 2>&1 | grep ^Python | awk '{print $2}'`
+        G_pip_bin="${G_python_bin} -m pip"
     #fi
     G_python_ver_major=`echo "$G_python_ver" | cut -d. -f1`
     G_python_ver_minor=`echo "$G_python_ver" | cut -d. -f2`
@@ -1316,7 +1317,7 @@ function setup_pip_flags() {
         G_pip_list_flags=()
     fi
     G_pip_install_flags+=(${pip_install_flags_extra[@]})
-    declare -a pip_flags=(`set | grep "^G_pip" | cut -d= -f1 | sort -u`)
+    declare -a pip_flags=(`set | grep -E "^G_pip|^G_python" | cut -d= -f1 | sort -u`)
     for_each_op --silent declare_p ${pip_flags[@]} | sed -e 's/^/['${FUNCNAME[0]}'] >> /g' | log_lines debug
 }
 function setup_apt_flags() {
@@ -1368,7 +1369,11 @@ function filter_pkgs_conda() {
 }
 function pkg_install_yum() {
     local pkgs="$@"
-    $sudo yum ${G_yum_flags[@]} install -y $pkgs
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    $_sudo yum ${G_yum_flags[@]} install -y $pkgs
     local rc=$?
 
     if echo "$pkgs" | grep -sq -Ew "python2-pip|python3-pip|python34-pip"; then
@@ -1378,10 +1383,14 @@ function pkg_install_yum() {
 }
 function pkg_install_deb() {
     local pkgs="$@"
-    $sudo ${G_apt_bin} install ${G_apt_install_flags[@]} $pkgs
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    $_sudo ${G_apt_bin} install ${G_apt_install_flags[@]} $pkgs
     local rc=$?
 
-    if echo "$pkgs" | grep -sq -Ew "python-pip"; then
+    if echo "$pkgs" | grep -sq -Ew "python-pip|python3-pip"; then
         setup_pip_flags
     fi
     return $rc
@@ -1519,7 +1528,11 @@ function pkg_verify_yum() {
     local rc=$?
     if [ $rc -ne 0 ] && is_running_in_docker; then
         log_info "Fall back to yum pkg list from real verification in docker container due to known problem."
-        pkg_list_installed_yum ${pkgs[@]}
+        if ! pkg_list_installed_yum ${pkgs[@]}; then
+            log_error "Fail to verify yum packages \"${pkgs[@]}\""
+            echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
+            false
+        fi
     fi
     (exit $rc)
 }
@@ -1630,10 +1643,24 @@ function filter_pkgs() {
     fi
 }
 function pkg_meta_clean_yum() {
-    yum clean all
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && $_sudo yum clean all \
+ && true;
 }
 function pkg_meta_clean_deb() {
-    apt-get clean
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && $_sudo apt-get clean \
+ && true;
 }
 function pkg_meta_clean_conda() {
     if command -v conda >/dev/null 2>&1 || declare -F conda >/dev/null 2>&1; then
@@ -2167,7 +2194,8 @@ function _initialize_op_ohth3foo3zaisi7Phohwieshi9cahzof() {
 
     #-------------------------------------------------------------------------------
     # Setup pip related global variables/envs
-    declare -g G_pip_bin=${G_pip_bin:-`command -v pip`} && \
+    declare -g G_python_bin=${G_python_bin:-`command -v python3`} && \
+    declare -g G_pip_bin=${G_pip_bin:-""} && \
     declare -ag G_pip_install_flags=${G_pip_install_flags:-()} && \
     declare -ag G_pip_list_flags=${G_pip_list_flags:-()} && \
     declare -g G_python_ver=${G_python_ver:-""} && \
@@ -2844,7 +2872,7 @@ function install_epel() {
 
     # install epel repo
     # but disable it by default
-    if $is_rhel && ! yum list installed epel-release | grep -sq epel-release; then
+    if $is_rhel && ! $_sudo yum list installed epel-release | grep -sq epel-release; then
         $_sudo yum install -y $epel_url && \
         true
     fi
@@ -2855,7 +2883,7 @@ function _switch_epel() {
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    if $is_rhel && yum list installed epel-release | grep -sq epel-release; then
+    if $is_rhel && $_sudo yum list installed epel-release | grep -sq epel-release; then
         $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/epel.repo
     fi
 }
@@ -2871,7 +2899,7 @@ function install_remi() {
 
     # install epel repo
     # but disable it by default
-    if $is_rhel && ! yum list installed remi-release | grep -sq remi-release; then
+    if $is_rhel && ! $_sudo yum list installed remi-release | grep -sq remi-release; then
         $_sudo yum install -y $remi_url && \
         true
     fi
@@ -2882,7 +2910,7 @@ function _switch_remi() {
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    if $is_rhel && yum list installed remi-release | grep -sq remi-release; then
+    if $is_rhel && $_sudo yum list installed remi-release | grep -sq remi-release; then
         $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/remi.repo
     fi
 }
@@ -2897,7 +2925,7 @@ function install_rpmfusion_free() {
 
     # install rpmfusion-free repo
     # but disable it by default
-    if $is_rhel && ! yum list installed rpmfusion-free-release | grep -sq rpmfusion-free-release; then
+    if $is_rhel && ! $_sudo yum list installed rpmfusion-free-release | grep -sq rpmfusion-free-release; then
         $_sudo yum install -y $rpmfusion_free_url && \
         true
     fi
@@ -2908,7 +2936,7 @@ function _switch_rpmfusion_free() {
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    if $is_rhel && yum list installed rpmfusion-free-release | grep -sq rpmfusion-free-release; then
+    if $is_rhel && $_sudo yum list installed rpmfusion-free-release | grep -sq rpmfusion-free-release; then
         $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/rpmfusion-free.repo
     fi
 }
@@ -2923,7 +2951,7 @@ function install_rpmfusion_nonfree() {
 
     # install rpmfusion-nonfree repo
     # but disable it by default
-    if $is_rhel && ! yum list installed rpmfusion-nonfree-release | grep -sq rpmfusion-nonfree-release; then
+    if $is_rhel && ! $_sudo yum list installed rpmfusion-nonfree-release | grep -sq rpmfusion-nonfree-release; then
         $_sudo yum install -y $rpmfusion_nonfree_url && \
         true
     fi
@@ -2934,7 +2962,7 @@ function _switch_rpmfusion_nonfree() {
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    if $is_rhel && yum list installed rpmfusion-nonfree-release | grep -sq rpmfusion-nonfree-release; then
+    if $is_rhel && $_sudo yum list installed rpmfusion-nonfree-release | grep -sq rpmfusion-nonfree-release; then
         $_sudo sed -i -e 's/enabled=[01]/enabled='$on_off'/g' /etc/yum.repos.d/rpmfusion-nonfree.repo
     fi
 }
@@ -3202,8 +3230,12 @@ function install_slurm() {
     fi
 }
 function install_openresty_centos() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
     # https://openresty.org/cn/linux-packages.html
-    $sudo yum-config-manager --add-repo https://openresty.org/package/centos/openresty.repo && \
+    $_sudo yum-config-manager --add-repo https://openresty.org/package/centos/openresty.repo && \
     local -a _pkgs=(
         "openresty"
             "rpm:openresty-doc"
@@ -3436,6 +3468,459 @@ function install_rabbitmq() {
         false
     fi
 }
+function install_iluvatar_sdk_cmake() {
+    # TODO: not implemented
+    true
+}
+function install_iluvatar_sdk_corex_installer() {
+    # TODO: not implemented
+    true
+}
+function install_iluvatar_sdk_corex_samples() {
+    # TODO: not implemented
+    true
+}
+function install_virtualenvwrapper() {
+    true \
+ && setup_python3 \
+ && true;
+}
+function _mkvirtualenv() {
+    # TODO: not implemented
+    if [ "x`type -t lsvirtualenv`" == "xfunction" ]; then true; fi
+}
+function install_iluvatar_sdk_py_venv() {
+    # TODO: not implemented
+    true
+}
+function install_iluvatar_sdk_MRv230() {
+    function _filter_9Jxu() {
+        local _prefix_9Jxu=$1
+        cut -d\" -f1 | \
+        sed -e "s,^,${_prefix_9Jxu},g" | \
+        sed -e 's,/\+,/,g' | \
+        xargs
+    }
+    local DOWNLOAD_URL_ILUVATAR_SDK_V221=${DOWNLOAD_URL_ILUVATAR_SDK_V221:-http://10.150.9.95/corex/release_packages/MR_Beta1/x86/}
+    # base sdk pkgs
+    local -a _pkg_urls=($({ curl -k $DOWNLOAD_URL_ILUVATAR_SDK_V221; } | \
+        grep "a href=" | sed -e 's/a href="/\n/' | grep -E "^cmake-.*\.sh\"|^corex-installer.*_master_.*\.run\"|^corex-samples.*\.run\"" | \
+        _filter_9Jxu ${DOWNLOAD_URL_ILUVATAR_SDK_V221}
+    ))
+    # py3.6 base pkgs
+    local -a _py36_pkg_urls+=($({ curl -k ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/; } | \
+        grep "a href=" | sed -e 's/a href="/\n/' | grep -E "\.whl\"" | \
+        _filter_9Jxu ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/
+    ))
+    # py3.6 extra pkgs
+    _py36_pkg_urls+=($({ curl -k ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/paddle/; } | \
+        grep "a href=" | sed -e 's/a href="/\n/' | grep -E "\.whl\"" | \
+        _filter_9Jxu ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/paddle/
+    ))
+    _py36_pkg_urls+=($({ curl -k ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/tensorflow/; } | \
+        grep "a href=" | sed -e 's/a href="/\n/' | grep -E "\.whl\"" | \
+        _filter_9Jxu ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/tensorflow/
+    ))
+}
+function setup_repo_mirror_CN_ub() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && true "要先安装ca-certificates，否则有些https的源会fail" \
+ && $_sudo apt-get update \
+ && do_and_verify \
+      'eval pkg_verify "ca-certificates" "apt-transport-https"' \
+      'eval pkg_install "ca-certificates" "apt-transport-https"' \
+      "true" \
+ && $_sudo sed -i \
+        -e 's,https\?://\(archive.ubuntu.com\),https://mirrors.aliyun.com,g' \
+        -e 's,//\(archive.ubuntu.com\),//cn.\1,g' \
+        -e 's,//\(ports.ubuntu.com\),//cn.\1,g' \
+        /etc/apt/sources.list \
+ && true;
+}
+function setup_os() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && echo "Asia/Shanghai" | $_sudo tee /etc/timezone \
+ && pkgs=( \
+        "rpm:5:deltarpm" \
+        "deb:5:apt-transport-https" \
+        "deb:5:apt-utils" \
+        "deb:5:ca-certificates" \
+        "deb:5:software-properties-common" \
+        \
+        "deb:8:build-essential" "rpm:8:rpm-build" \
+        "deb:8:dpkg-dev"        "rpm:8:createrepo" \
+        \
+        "deb:cgroup-tools"      "rpm:libcgroup-tools" \
+        "deb:dnsutils"          "rpm:bind-utils" \
+        "deb:exuberant-ctags"   "rpm:ctags" \
+        "deb:iproute2"          "rpm:iproute" \
+        "deb:iputils-ping"      "rpm:iputils" \
+        "deb:iputils-tracepath" \
+        "deb:locales"           "rpm:glibc-common" \
+        "deb:locales-all" \
+        "deb:lsb-base"          "#rpm:initscripts" \
+        "deb:netcat-openbsd"    "rpm:nmap-ncat" \
+        "deb:openjdk-8-jdk"     "rpm:java-1.8.0-openjdk" \
+        "deb:p7zip-full" \
+        "deb:uuid-runtime"      "rpm:uuid" \
+        "deb:collectd-utils" \
+                                "rpm:collectd-amqp" \
+                                "rpm:collectd-apache" \
+                                "rpm:collectd-mysql" \
+                                "rpm:collectd-nginx" \
+                                "rpm:collectd-ping" \
+                                "rpm:collectd-redis" \
+                                "rpm:collectd-write_kafka" \
+                                "rpm:collectd-write_redis" \
+                                "rpm:collectd-zookeeper" \
+                                "rpm:collectd-web" \
+                                "rpm:collectd-chrony" \
+                                "rpm:collectd-ping" \
+                                "rpm:collectd-smart" \
+                                "rpm:collectd-sensors" \
+        \
+        "bzip2" \
+        "ca-certificates" \
+        "ccache" \
+        "cmake" \
+        "collectd" \
+        "cscope" \
+        "curl" \
+        "duplicity" \
+        "file" \
+        "git" \
+        "gnupg2" \
+        "graphviz" \
+        "iotop" \
+        "lsof" \
+        "maven" \
+        "mosh" \
+        "net-tools" \
+        "nmap" \
+        "nmon" \
+        "openssh-server" \
+        "p7zip" \
+        "patchelf" \
+        "pdsh" \
+        "pwgen" \
+        "rsync" \
+        "screen" \
+        "socat" \
+        "strace" \
+        "stress" \
+        "sudo" \
+        "sysbench" \
+        "tcpdump" \
+        "tmux" \
+        "tzdata" \
+        "deb:vim" "rpm:vim-enhanced" \
+        "wget" \
+        "zip" \
+    ) \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1604=( \
+    ) \
+ && pkgs_ub1804=( \
+    ) \
+ && pkgs_ub2004=( \
+        # utils.sh里面filter_pkgs等要用
+        "gawk" \
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1604[@]}); \
+    elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then \
+        pkgs+=(${pkgs_rh7[@]}); \
+        # 这个包在rhel里面和系统包有冲突，暂时只在检测到centos时安装
+        pkgs+=("rpm:initscripts"); \
+    elif grep -sq "PRETTY_NAME=\"Red Hat Enterprise Linux Server 7" /etc/os-release; then \
+        pkgs+=(${pkgs_rh7[@]}); \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    elif grep -sq "ID=\"rhel\"" /etc/os-release; then true \
+     && install_centos7_repo \
+     && true; \
+    elif grep -sq "ID=\"centos\"" /etc/os-release; then true \
+     && install_epel \
+     && enable_epel \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && true;
+}
+function setup_python3() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && pkgs_rh7=( \
+        "rpm:python3-devel" \
+        "rpm:python36-Cython" \
+        "rpm:python36-lxml" \
+        "rpm:python36-numpy" \
+        "rpm:python36-virtualenv" \
+        "pip:ipython" \
+        "pip:virtualenvwrapper" \
+    ) \
+ && pkgs_ub1604=( \
+        "deb:cython3" \
+        "deb:ipython3" \
+        "deb:python3-dev" \
+        "deb:python3-lxml" \
+        "deb:python3-numpy" \
+        "deb:python3-virtualenv" \
+        "deb:virtualenv" \
+        "deb:virtualenvwrapper" \
+        "deb:virtualenv-clone" \
+    ) \
+ && pkgs_ub1804=( \
+        "deb:cython3" \
+        "deb:ipython3" \
+        "deb:python3-dev" \
+        "deb:python3-lxml" \
+        "deb:python3-numpy" \
+        "deb:python3-virtualenv" \
+        "deb:virtualenv" \
+        "deb:virtualenvwrapper" \
+        "deb:virtualenv-clone" \
+    ) \
+ && pkgs_ub2004=( \
+        "deb:cython3" \
+        "deb:ipython3" \
+        "deb:python3-dev" \
+        "deb:python3-lxml" \
+        "deb:python3-numpy" \
+        "deb:python3-virtualenv" \
+        "deb:virtualenv" \
+        "deb:virtualenvwrapper" \
+        "deb:python3-virtualenv-clone" \
+    ) \
+ && pkgs=( \
+        "python3" \
+        "python3-pip" \
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1604[@]}); \
+    elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && pkgs+=(${pkgs_rh7[@]}) \
+     && install_epel \
+     && true; \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && true;
+}
+function setup_darwin_deps() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1604=( \
+    ) \
+ && pkgs_ub1804=( \
+    ) \
+ && pkgs_ub2004=( \
+    ) \
+ && pkgs=( \
+        "deb:5:apt-transport-https" \
+        "ca-certificates" \
+        "curl" \
+        "deb:libffi-dev"      "rpm:libffi-devel" \
+        "deb:libgl1-mesa-glx" \
+        "deb:libssl-dev"      "rpm:openssl-devel" \
+        "deb:libxml2"         "rpm:libxml2" \
+        "deb:libxml2-dev"     "rpm:libxml2-devel" \
+        "deb:libxslt1.1"      "rpm:libxslt" \
+        "deb:libxslt1-dev"    "rpm:libxslt-devel" \
+        "deb:lsb-base"        "#rpm:initscripts" \
+        "deb:mongodb" \
+        "rabbitmq-server" \
+        "deb:redis-sentinel" \
+        "deb:redis-server"     "rpm:redis" \
+        "deb:redis-tools" \
+        "deb:zlib1g"           "rpm:zlib" \
+        "deb:zlib1g-dev"       "rpm:zlib-devel" \
+        "munge" \
+        "graphviz" \
+        "qrencode" \
+        \
+        "rpm:munge-devel" \
+        "rpm:readline-devel" \
+        "rpm:pam-devel" \
+        "rpm:mariadb" \
+        "rpm:mariadb-devel" \
+        "rpm:perl-ExtUtils-MakeMaker" \
+        \
+        "poppler-utils" \
+        "poppler-data" \
+        \
+        "rpm:wqy-microhei-fonts" "deb:fonts-wqy-microhei" \
+        "rpm:wqy-zenhei-fonts"   "deb:fonts-wqy-zenhei" \
+        \
+        "libreoffice" \
+        "deb:libreoffice-l10n-zh-cn" "rpm:libreoffice-langpack-zh-Hans" \
+        \
+        "deb:libsasl2-dev" "rpm:cyrus-sasl-devel" \
+        \
+        "gettext" \
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1604[@]}); \
+    elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && pkgs+=(${pkgs_rh7[@]}) \
+     && true "这个包在rhel里面和系统包有冲突，暂时只在检测到centos时安装" \
+     && pkgs+=("rpm:initscripts") \
+     && install_epel \
+     && true; \
+    elif grep -sq "PRETTY_NAME=\"Red Hat Enterprise Linux Server 7" /etc/os-release; then true \
+     && pkgs+=(${pkgs_rh7[@]}) \
+     && install_epel \
+     && true; \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' "true" \
+ \
+ && install_slurm \
+ && install_stable_nginx \
+ && install_openresty \
+ \
+ && log_info " " \
+ && log_info "Disable services by default" \
+ && log_info " " \
+ && if [ -f /.dockerenv ]; then true \
+     && _cmds="#disable" \
+     && true; \
+    else true \
+     && _cmds="stop mask" \
+     && true; \
+    fi \
+ && if command -v systemctl >/dev/null; then for _cmd in $_cmds; \
+    do true \
+     && if echo "$_cmd" | grep -sq "^#"; then continue; fi \
+     && $_sudo systemctl $_cmd \
+            mongodb.service \
+            munge.service \
+            nginx.service \
+            openresty.service \
+            rabbitmq-server.service \
+            redis-sentinel.service \
+            redis-server.service \
+            slurmctld.service \
+            slurmd.service \
+     && true; \
+    done; fi \
+ && true;
+}
+function setup_opencv() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1604=( \
+    ) \
+ && pkgs_ub1804=( \
+        "deb:python3-opencv" \
+        "deb:python3-willow" \
+    ) \
+ && pkgs_ub2004=( \
+        "deb:python3-opencv" \
+        "deb:python3-willow" \
+    ) \
+ && pkgs=( \
+            "rpm:opencv" \
+            "rpm:opencv-python" \
+            "rpm:opencv-devel" \
+        "deb:libavcodec-dev" \
+        "deb:libavformat-dev" \
+        "deb:libgstreamer-plugins-base1.0-dev" \
+                                  "rpm:gstreamer-plugins-base-devel" \
+                                  "rpm:gstreamer-plugins-bad-free-devel" \
+        "deb:libgstreamer1.0-dev" "rpm:gstreamer-devel" \
+        "deb:libgtk-3-dev" \
+        "deb:libjpeg-dev"         "rpm:libjpeg-turbo-devel" \
+        "deb:libopenexr-dev"      "rpm:OpenEXR-devel" \
+        "deb:libpng-dev"          "rpm:libpng-devel" \
+        "deb:libswscale-dev" \
+        "deb:libtiff-dev"         "rpm:libtiff-devel" \
+        "deb:libwebp-dev"         "rpm:libwebp-devel" \
+        "deb:python3-pil"         "rpm:python36-pillow" \
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1604[@]}); \
+    elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then \
+        pkgs+=(${pkgs_rh7[@]}); \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && true;
+}
 function download_os_pkgs() {
     if $is_rhel; then
         download_os_pkgs_rh $@
@@ -3471,6 +3956,10 @@ function download_os_pkgs_rh() {
     local _arg
     local -a _arg_stage=()
     local _version=true
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
     for _arg in $@
     do
         if echo "$_arg" | grep -sq "^--version="; then
@@ -3482,7 +3971,7 @@ function download_os_pkgs_rh() {
     # * 带arch后缀的，就不要限定了，因为yum终将自己选择
     # * N:xxx-xxx-xx的，前面的N看起来不是我们想要的。# TODO: 那是啥？
     # * 连续的空格，用-接上，这样pkg名字和version就接上了 
-    local -a pkgs=($($sudo yum list installed | grep -A99999 "^Installed Packages" | tail -n+2 | \
+    local -a pkgs=($($_sudo yum list installed | grep -A99999 "^Installed Packages" | tail -n+2 | \
         _continue_lines_blank | \
         if $_version; then
             awk '{print $1,$2}'
@@ -3499,7 +3988,7 @@ function download_os_pkgs_rh() {
         log_info "#pkgs=${#pkgs[@]}"
         declare -p pkgs | log_lines info;
     fi
-    $sudo yumdownloader ${_arg_stage[@]} ${pkgs[@]}
+    $_sudo yumdownloader ${_arg_stage[@]} ${pkgs[@]}
 }
 function download_os_pkgs_ubuntu() {
     # 常用参数--verbose --version=false
