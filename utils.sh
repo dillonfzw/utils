@@ -420,6 +420,67 @@ function __test_array_concat() {
 
     test $err_cnt -eq 0
 }
+function array_filter() {
+    # filter array elements
+    #
+    # :param arr_a:
+    # :param filter op/functor per element
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _iYf3_arr_i=("${!1}")
+    local _iYf3_filter_op=${2:-true}
+    local -a _iYf3_arr_o=()
+
+    # log for debug
+    #declare -p _iYf3_arr_a | sed -e 's/^/[arr_filter]>> /g' | log_lines debug
+
+    local i
+    for i in ${!_iYf3_arr_i[@]}
+    do true \
+     && local e="${_iYf3_arr_i[$i]}" \
+     && if echo "${e}" | ${_iYf3_filter_op} >/dev/null 2>&1; then true \
+         && _iYf3_arr_o+=("$e") \
+         && true;
+        fi \
+     && true;
+    done
+    declare_p_val _iYf3_arr_o
+}
+function __test_array_filter() {
+    local err_cnt=0
+    local -a a=(1 2 3)
+    local -a b=(11 2 33)
+    local -a empty=()
+    local -a r_truth=(1 2 3 11 2 33)
+
+    # default op is "pass all"
+    local -a r=`array_filter a[@]`
+    array_equal r[@] a[@] || { ((err_cnt+=1)); log_error "fail normal test 1"; }
+
+    # "deny all" scenario
+    local -a r=`array_filter a[@] false`
+    array_equal r[@] empty[@] || { ((err_cnt+=1)); log_error "fail normal test 2"; }
+
+    # normal oneline record
+    local -a txt1=()
+    txt1+=("who are you")
+    txt1+=("hello
+    world")
+    txt1+=("where are you")
+
+    function filter_op1() { grep -si "you"; }
+    local -a txt1_truth=("who are you" "where are you")
+    local -a r=`array_filter txt1[@] filter_op1`
+    array_equal r[@] txt1_truth[@] || { ((err_cnt+=1)); log_error "Fail case 3"; declare -p r; }
+
+    # multi line record
+    function filter_op2() { grep -si -E "hello|who"; }
+    local -a txt2_truth=("who are you" "hello
+    world")
+    local -a r=`array_filter txt1[@] filter_op2`
+    array_equal r[@] txt2_truth[@] || { ((err_cnt+=1)); log_error "Fail case 4"; declare -p r; }
+
+    test $err_cnt -eq 0
+}
 function set_rize() {
     # convert an array to set by remove its duplicate elements
     #
@@ -3469,11 +3530,105 @@ function install_rabbitmq() {
     fi
 }
 function install_iluvatar_sdk_cmake() {
-    # TODO: not implemented
-    true
+    local _release=${1:-latest}
+    local _install_dir=${2:-/opt}
+    local _sudo=${sudo:-sudo}
+    if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi
+    local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
+    function _filter_op() { grep -si "cmake.*sh"; }
+    local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
+    if [ ${#_pkgs[@]} -ne 1 ]; then
+        log_error "No unique cmake pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`"
+        return 1
+    fi
+    local _pkg_f=`download_by_cache ${_pkgs[0]}`
+    if bash ${_pkg_f} --version | grep -sqF "3.21.5-corex.2.3.0" >/dev/null 2>&1; then true \
+     && ${_sudo} bash ${_pkg_f} \
+          --prefix=${_install_dir} \
+          --include-subdir \
+          --skip-license \
+     && true; \
+    else true \
+     && ${_sudo} bash ${_pkg_f} \
+          --prefix=${_install_dir} \
+          --include-subdir \
+          --skip-license \
+     && true; \
+    fi
 }
-function install_iluvatar_sdk_corex_installer() {
-    # TODO: not implemented
+function install_iluvatar_sdk_corex() {
+    local _release=${1:-latest}
+    if [ "x${_release}" = "x${1}" ]; then shift; fi
+    # drop unused arguments
+    while echo "$@" | grep -sqw "[-]-";
+    do
+        shift
+    done
+
+    local _sudo=${sudo:-sudo}
+    if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi
+
+    local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
+    function _filter_op() { grep -si "corex-installer.*run"; }
+    local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
+    if [ ${#_pkgs[@]} -ne 1 ]; then
+        log_error "No unique corex pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`"
+        return 1
+    fi
+    local _pkg_f=`download_by_cache ${_pkgs[0]}`
+    local _info=`bash ${_pkg_f} --info`
+
+    if echo "$_info" | grep -sqF "2.3.0-iluvatar" >/dev/null 2>&1; then true \
+     && {
+        # $ bash /home/fuzhiwen/.cache/download/26/47/corex-installer-linux64-2.3.0_x86_64_10.2.run --help
+        # Corex Toolkit Installer.
+        # Usage: [COMMAND] [OPTIONS] ...
+        #
+        # Options:
+        #   --silent
+        #     Performs an installation with no further user-input and minimal command-line output based on the options provided below. Silent installations are useful for scripting the installation of CUDA. Using this option implies acceptance of the EULA. The following flags can be used to customize the actions taken during installation. At least one of --driver and --toolkit must be passed if running with non-root permissions.
+        #
+        #   --driver
+        #     Install the Corex Driver.
+        #
+        #   --toolkit
+        #     Install the Corex Toolkit.
+        #
+        #   --toolkit-path=<PATH>
+        #     Install the Corex Toolkit to the <path> directory. If this flag is not provided, the default path of <default_toolkitpath> is used.
+        #
+        #   --kernel-source-path=<PATH>
+        #     Tells the driver installation to use <path> as the kernel source directory when building the Corex kernel module. Required for systems where the kernel source is installed to a non-standard location.
+        #
+        #   --cuda-path=<PATH>
+        #     Tells the toolkit installation to use <cuda-path> as the cuda source directory.
+        #
+        #   --no-symlink
+        #     Prevents the /usr/local/corex symbolic link from being created.
+        #
+        # Extras:
+        #   --tmpdir=<path>
+        #     Performs any temporary actions within <path> instead of /tmp. Useful in cases where /tmp cannot be used (doesn't exist, is full, is mounted with 'noexec', etc.).
+        #
+        #   --help
+        #     Prints this help message.
+            true;
+        } \
+     && ${_sudo} bash ${_pkg_f} \
+          --cuda-path=${CUDA_PATH:-/usr/local/cuda-10.2} \
+          $@ \
+     && true; \
+    else true \
+     && ${_sudo} bash ${_pkg_f} \
+          --cuda-path=${CUDA_PATH:-/usr/local/cuda-10.2} \
+     && true; \
+    fi
     true
 }
 function install_iluvatar_sdk_corex_samples() {
@@ -3493,35 +3648,78 @@ function install_iluvatar_sdk_py_venv() {
     # TODO: not implemented
     true
 }
-function install_iluvatar_sdk_MRv230() {
-    function _filter_9Jxu() {
-        local _prefix_9Jxu=$1
+function scrape_iluvatar_sdk_pkgs() {
+    if ! declare -p G_iluvatar_sdk_pkgs_cache >/dev/null 2>&1; then
+        declare -gA G_iluvatar_sdk_pkgs_cache=()
+    fi
+    local -A DEFAULT_download_url_prefix_map=(
+        ["latest"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
+        ["r230"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
+        ["r221"]="http://10.150.9.95/corex/release_packages/2.2.1/x86/"
+        ["MRr230"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
+    )
+    local -A DEFAULT_pkg_patterns_map=(
+        ["latest"]="\.sh\"|\.run\"|\.whl\""
+        ["r230"]="\.sh\"|\.run\"|\.whl\""
+        ["r221"]="\.sh\"|\.run\"|\.whl\""
+        #["MRr230"]="\.sh\"|\.run\"|\.whl\""
+        ["MRr230"]="^cmake-.*\.sh\"|^corex-installer.*_master_.*\.run\"|^corex-samples.*\.run\""
+    )
+    function _filter_87tY() {
+        local _prefix_87tY=$1
         cut -d\" -f1 | \
-        sed -e "s,^,${_prefix_9Jxu},g" | \
+        sed -e "s,^,${_prefix_87tY},g" | \
         sed -e 's,/\+,/,g' | \
         xargs
     }
-    local DOWNLOAD_URL_ILUVATAR_SDK_V221=${DOWNLOAD_URL_ILUVATAR_SDK_V221:-http://10.150.9.95/corex/release_packages/MR_Beta1/x86/}
-    # base sdk pkgs
-    local -a _pkg_urls=($({ curl -k $DOWNLOAD_URL_ILUVATAR_SDK_V221; } | \
-        grep "a href=" | sed -e 's/a href="/\n/' | grep -E "^cmake-.*\.sh\"|^corex-installer.*_master_.*\.run\"|^corex-samples.*\.run\"" | \
-        _filter_9Jxu ${DOWNLOAD_URL_ILUVATAR_SDK_V221}
-    ))
-    # py3.6 base pkgs
-    local -a _py36_pkg_urls+=($({ curl -k ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/; } | \
-        grep "a href=" | sed -e 's/a href="/\n/' | grep -E "\.whl\"" | \
-        _filter_9Jxu ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/
-    ))
-    # py3.6 extra pkgs
-    _py36_pkg_urls+=($({ curl -k ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/paddle/; } | \
-        grep "a href=" | sed -e 's/a href="/\n/' | grep -E "\.whl\"" | \
-        _filter_9Jxu ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/paddle/
-    ))
-    _py36_pkg_urls+=($({ curl -k ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/tensorflow/; } | \
-        grep "a href=" | sed -e 's/a href="/\n/' | grep -E "\.whl\"" | \
-        _filter_9Jxu ${DOWNLOAD_URL_ILUVATAR_SDK_V221}/3.6/tensorflow/
-    ))
+    local site_prefix="${1:-latest}"
+    local pkg_patterns="${2:-true}"
+    # try expanding the site_prefix
+    local _val=${DEFAULT_download_url_prefix_map[${site_prefix}]}
+    if [ -n "${_val}" ]; then true \
+     && pkg_patterns="${DEFAULT_pkg_patterns_map[${site_prefix}]}" \
+     && site_prefix="${_val}" \
+     && true;
+    fi
+    # prepare output variable
+    local -a _target_urls=()
+    # try picking from cache first
+    _val="${G_iluvatar_sdk_pkgs_cache[@{site_prefix}]}"
+    if [ -n "${_val}" ]; then true \
+     && _target_urls+=${_val} \
+     && declare -p _target_urls \
+     && return 0 \
+     && true; \
+    fi
+    # prepare sub-trees to be scrapped
+    local -a urls=(
+        "${site_prefix}"
+        `true && for _pyver_87tY in 3.{6,7,8,9};
+         do
+            echo "${site_prefix}/${_pyver_87tY}/"
+            echo "${site_prefix}/${_pyver_87tY}/paddle/"
+            echo "${site_prefix}/${_pyver_87tY}/tensorflow/"
+            echo "${site_prefix}/${_pyver_87tY}/mindspore/"
+         done`
+    )
+    # scrape pkgs
+    local _url
+    for _url in ${urls[@]}
+    do true \
+     && _target_urls+=($({ curl -k ${_url}; } | grep "a href=" | sed -e 's/a href="/\n/' | \
+            grep -E "${pkg_patterns}" | \
+            _filter_87tY ${_url}
+        )) \
+     && true;
+    done
+    # cache and output scrape result
+    _val=`declare_p_val _target_urls`
+    G_iluvatar_sdk_pkgs_cache[${site_prefix}]="${_val}"
+    echo "${_val}"
 }
+function scrape_iluvatar_sdk_MRr230_pkgs() { scrape_iluvatar_sdk_pkgs MRr230; }
+function scrape_iluvatar_sdk_r230_pkgs() { scrape_iluvatar_sdk_pkgs r230; }
+function scrape_iluvatar_sdk_r221_pkgs() { scrape_iluvatar_sdk_pkgs r221; }
 function setup_repo_mirror_CN_ub() {
     true \
  && local _sudo=${sudo:-sudo} \
@@ -4013,7 +4211,7 @@ function download_os_pkgs_rh() {
     done
     # * 带arch后缀的，就不要限定了，因为yum终将自己选择
     # * N:xxx-xxx-xx的，前面的N看起来不是我们想要的。# TODO: 那是啥？
-    # * 连续的空格，用-接上，这样pkg名字和version就接上了 
+    # * 连续的空格，用-接上，这样pkg名字和version就接上了
     local -a pkgs=($($_sudo yum list installed | grep -A99999 "^Installed Packages" | tail -n+2 | \
         _continue_lines_blank | \
         if $_version; then
