@@ -3621,18 +3621,68 @@ function install_iluvatar_sdk_corex() {
             true;
         } \
      && ${_sudo} bash ${_pkg_f} \
+          --silent \
+          --no-symlink \
+          --toolkit \
           --cuda-path=${CUDA_PATH:-/usr/local/cuda-10.2} \
           $@ \
      && true; \
     else true \
      && ${_sudo} bash ${_pkg_f} \
+          --silent \
+          --no-symlink \
+          --toolkit \
           --cuda-path=${CUDA_PATH:-/usr/local/cuda-10.2} \
      && true; \
     fi
     true
 }
 function install_iluvatar_sdk_corex_samples() {
-    # TODO: not implemented
+    local _release=${1:-latest}
+    local _install_dir=${2:-$HOME/workspace}
+    local _sudo=${sudo:-sudo}
+    if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi
+    local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
+    function _filter_op() { echo "$@" | grep -si "corex-samples"; }
+    local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
+    if [ ${#_pkgs[@]} -ne 1 ]; then
+        log_error "No unique corex-samples pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`"
+        return 1
+    fi
+    local _pkg_f=`download_by_cache ${_pkgs[0]}`
+    local _info=`bash ${_pkg_f} --info`
+
+    if echo "$_info" | grep -sqF "2.3.0-iluvatar" >/dev/null 2>&1; then true \
+     && {
+        # $ bash /home/fuzhiwen/.cache/download/26/28/co
+        # rex-samples-2.3.0_x86_64.run --help
+        # Corex Samples Installer.
+        # Usage: [COMMAND] [OPTIONS] ...
+        #
+        # Options:
+        #   -p,--prefix
+        #     Specify installation path. (default: $HOME)
+        #
+        # Extras:
+        #   --tmpdir=<path>
+        #     Performs any temporary actions within <path> instead of /tmp. Useful in cases where /tmp cannot be used (doesn't exist, is full, is mounted with 'noexec', etc.).
+        #
+        #   --help
+        #     Prints this help message.
+            true;
+        } \
+     && if [ ! -d ${_install_dir} ]; then mkdir -p ${_install_dir}; fi \
+     && ${_sudo} bash ${_pkg_f} \
+          --prefix=${_install_dir} \
+     && true; \
+    else true \
+     && ${_sudo} bash ${_pkg_f} \
+          --prefix=${_install_dir} \
+     && true; \
+    fi
     true
 }
 function _mkvirtualenv() {
