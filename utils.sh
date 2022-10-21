@@ -437,7 +437,7 @@ function array_filter() {
     for i in ${!_iYf3_arr_i[@]}
     do true \
      && local e="${_iYf3_arr_i[$i]}" \
-     && if echo "${e}" | ${_iYf3_filter_op} >/dev/null 2>&1; then true \
+     && if ${_iYf3_filter_op} "${e}" >/dev/null; then true \
          && _iYf3_arr_o+=("$e") \
          && true;
         fi \
@@ -467,13 +467,13 @@ function __test_array_filter() {
     world")
     txt1+=("where are you")
 
-    function filter_op1() { grep -si "you"; }
+    function filter_op1() { echo "$@" | grep -si "you"; }
     local -a txt1_truth=("who are you" "where are you")
     local -a r=`array_filter txt1[@] filter_op1`
     array_equal r[@] txt1_truth[@] || { ((err_cnt+=1)); log_error "Fail case 3"; declare -p r; }
 
     # multi line record
-    function filter_op2() { grep -si -E "hello|who"; }
+    function filter_op2() { echo "$@" | grep -si -E "hello|who"; }
     local -a txt2_truth=("who are you" "hello
     world")
     local -a r=`array_filter txt1[@] filter_op2`
@@ -3538,7 +3538,7 @@ function install_iluvatar_sdk_cmake() {
      && true; \
     fi
     local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
-    function _filter_op() { grep -si "cmake.*sh"; }
+    function _filter_op() { echo "$@" | grep -si "cmake.*sh"; }
     local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
     if [ ${#_pkgs[@]} -ne 1 ]; then
         log_error "No unique cmake pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`"
@@ -3575,7 +3575,7 @@ function install_iluvatar_sdk_corex() {
     fi
 
     local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
-    function _filter_op() { grep -si "corex-installer.*run"; }
+    function _filter_op() { echo "$@" | grep -si "corex-installer.*run"; }
     local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
     if [ ${#_pkgs[@]} -ne 1 ]; then
         log_error "No unique corex pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`"
@@ -3635,18 +3635,33 @@ function install_iluvatar_sdk_corex_samples() {
     # TODO: not implemented
     true
 }
-function install_virtualenvwrapper() {
-    true \
- && setup_python3 \
- && true;
-}
 function _mkvirtualenv() {
     # TODO: not implemented
     if [ "x`type -t lsvirtualenv`" == "xfunction" ]; then true; fi
 }
-function install_iluvatar_sdk_py_venv() {
-    # TODO: not implemented
-    true
+function install_iluvatar_sdk_apps() {
+    local _release=${1:-latest}
+    local _tf_ver=${_tv_ver:-1}
+    local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
+    function _filter_op() {
+        local _line
+        local _succ=0
+        if echo "$@" | grep -sq -v "[-]cp${G_python_ver_major}${G_python_ver_minor}.*\.whl"; then true \
+         && false; \
+        elif echo "$@" | grep -sq "tensorflow-${_tf_ver}"; then true \
+         && true; \
+        elif echo "$@" | grep -sq "tensorflow-"; then true \
+         && false; \
+        fi
+    }
+    local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
+    #declare -p _pkgs
+    if [ ${#_pkgs[@]} -eq 0 ]; then
+        log_error "No sufficient pypi pkgs were scrapped for release \"${_release}\": `declare_p_val _pkgs`"
+        return 1
+    fi
+
+    pkg_install_pip ${_pkgs[@]}
 }
 function scrape_iluvatar_sdk_pkgs() {
     if ! declare -p G_iluvatar_sdk_pkgs_cache >/dev/null 2>&1; then
@@ -3668,8 +3683,8 @@ function scrape_iluvatar_sdk_pkgs() {
     function _filter_87tY() {
         local _prefix_87tY=$1
         cut -d\" -f1 | \
-        sed -e "s,^,${_prefix_87tY},g" | \
         sed -e 's,/\+,/,g' | \
+        sed -e "s,^,${_prefix_87tY},g" | \
         xargs
     }
     local site_prefix="${1:-latest}"
@@ -3903,6 +3918,7 @@ function setup_python3() {
         "deb:python3-virtualenv" \
         "deb:virtualenv" \
         "deb:virtualenvwrapper" \
+        "pip:virtualenvwrapper" \
         "deb:virtualenv-clone" \
     ) \
  && pkgs_ub2004=( \
