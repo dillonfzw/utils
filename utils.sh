@@ -1104,7 +1104,12 @@ function download_by_cache() {
     if [ "${url:0:1}" = "/" ]; then url="file://$url"; fi && \
 
     local f=`echo "$url" | awk -F/ '{print $NF}'` && \
-    if [ -z "$f" ]; then log_error "URL \"$url\" does not point to a file"; false; fi && \
+    if [ -z "$f" ]; then true \
+     && f=`echo "$url" | sha1sum | awk '{print $1}'` \
+     && f=${f:0:8} \
+     && log_warn "URL \"$url\" does not point to a file. Use hash(${f}) instead." \
+     && true; \
+    fi && \
 
     local d=${url%/${f}} && \
     local fsum=`echo "$f" | sum` && fsum=${fsum:0:2} && \
