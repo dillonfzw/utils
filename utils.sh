@@ -3869,6 +3869,8 @@ function setup_os() {
         "git" \
         "gnupg2" \
         "graphviz" \
+        # utils.sh里面filter_pkgs等要用
+        "gawk" \
         "iotop" \
         "lsof" \
         "maven" \
@@ -3902,8 +3904,6 @@ function setup_os() {
  && pkgs_ub1804=( \
     ) \
  && pkgs_ub2004=( \
-        # utils.sh里面filter_pkgs等要用
-        "gawk" \
     ) \
  && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
  && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
