@@ -3954,42 +3954,29 @@ function setup_python3() {
         "pip:virtualenvwrapper" \
     ) \
  && pkgs_ub1604=( \
-        "deb:cython3" \
-        "deb:ipython3" \
-        "deb:python3-dev" \
-        "deb:python3-lxml" \
-        "deb:python3-numpy" \
-        "deb:python3-virtualenv" \
-        "deb:virtualenv" \
-        "deb:virtualenvwrapper" \
         "deb:virtualenv-clone" \
     ) \
  && pkgs_ub1804=( \
-        "deb:cython3" \
-        "deb:ipython3" \
-        "deb:python3-dev" \
-        "deb:python3-lxml" \
-        "deb:python3-numpy" \
-        "deb:python3-virtualenv" \
-        "deb:virtualenv" \
-        "deb:virtualenvwrapper" \
         "pip:virtualenvwrapper" \
         "deb:virtualenv-clone" \
     ) \
  && pkgs_ub2004=( \
-        "deb:cython3" \
-        "deb:ipython3" \
-        "deb:python3-dev" \
-        "deb:python3-lxml" \
-        "deb:python3-numpy" \
-        "deb:python3-virtualenv" \
-        "deb:virtualenv" \
-        "deb:virtualenvwrapper" \
+        "deb:python3-virtualenvwrapper" \
         "deb:python3-virtualenv-clone" \
     ) \
  && pkgs=( \
         "python3" \
         "python3-pip" \
+        "deb:cython3" \
+        "deb:ipython3" \
+        "deb:python3-dev" \
+        "deb:python3-lxml" \
+        "deb:python3-numpy" \
+        "deb:python3-setuptools" \
+        "deb:python3-virtualenv" \
+        "deb:python3-wheel" \
+        "deb:virtualenv" \
+        "deb:virtualenvwrapper" \
     ) \
  && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
  && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
