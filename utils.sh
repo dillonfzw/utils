@@ -4606,6 +4606,43 @@ function __test_wait_for_service_up() {
 
     test $err_cnt -eq 0
 }
+function fix_pyvirtualenv() {
+    true \
+ && local VIRTUAL_ENV=${VIRTUAL_ENV:-$1} \
+ && if [ ! -d "${VIRTUAL_ENV}" ]; then true \
+     && log_error "Target VIRTUAL_ENV(${VIRTUAL_ENV}) does not exists. Abort!" \
+     && false;
+    fi \
+ && true "------------------------------------------------------------" \
+ && true "Restore previous modifications" \
+ && local _err_cnt=0 \
+ && local _FILE \
+ && for _FILE in `find ${VIRTUAL_ENV}/bin -name "*.bak" | xargs`; do mv -vf ${_FILE} ${_FILE%*.bak} || { ((_err_cnt+=1)); break; }; done \
+ && test ${_err_cnt} -eq 0 \
+ && true "Fix VIRTUAL_ENV dir in pip virtualenv" \
+ && local _CUR_DIR=`grep "^VIRTUAL_ENV=" ${VIRTUAL_ENV}/bin/activate | cut -d= -f2 | sed -e 's/"//g'` \
+ && for _FILE in `grep -rF "$_CUR_DIR" ${VIRTUAL_ENV}/bin 2>/dev/null | cut -d: -f1 | sort -u | grep -vE "\.bak$|Binary file"`; do true \
+     && if ! sed -i.bak -e "s,${_CUR_DIR},${VIRTUAL_ENV},g" ${_FILE}; then ((_err_cnt+=1)); break; fi \
+     && if cmp -s ${_FILE}.bak ${_FILE}; then rm -f ${_FILE}.bak; fi \
+     && true; \
+    done \
+ && test ${_err_cnt} -eq 0 \
+ && true "------------------------------------------------------------" \
+ && true "Fix broken python* symbol links" \
+ && local _py_bin=`ls -1d ${VIRTUAL_ENV}/bin/python3.[0-9]*` \
+ && test -n "${_py_bin}" -a -e "${_py_bin}" \
+ && _py_bin=${_py_bin##*/} \
+ && for _FILE in `find ${VIRTUAL_ENV}/bin -type l ! -readable`; do true \
+     && if rm -f ${_FILE} && ln -vs ${_py_bin} ${_FILE}; then true; else true \
+         && log_error "Fail to fix broken symbol link: ${_FILE}. Do it manually. Abort!" \
+         && ((_err_cnt+=1)) \
+         && break; \
+        fi \
+     && true; \
+    done \
+ && test ${_err_cnt} -eq 0 \
+ && true;
+}
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
