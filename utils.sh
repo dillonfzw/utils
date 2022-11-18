@@ -1598,6 +1598,9 @@ function pkg_verify_yum() {
             log_error "Fail to verify yum packages \"${pkgs[@]}\""
             echo "$out_lines" | sed -e 's/^/>> /g' | log_lines error
             false
+        else
+            # reset rc as if it was succ
+            rc=0
         fi
     fi
     (exit $rc)
