@@ -1,10 +1,24 @@
 #! /usr/bin/env bash
 
+
+declare PRECISION=${PRECISION:-""}
+if [ "x${1}" = "xint8" -o "x${1}" = "xfp16" -o "x${1}" = "xfp32" ]; then true \
+ && if [ "${1}" != "fp32" ]; then PRECISION="${1}"; fi \
+ && shift \
+ && true; \
+fi
+
+declare MODEL_IDX=${MODEL_IDX:-"0"}
+if echo "${1}" | grep -sq "^[0-9]*$"; then true \
+ && MODEL_IDX="${1}" \
+ && shift \
+ && true; \
+fi
+
 #
 # Build TensorRT engine from ONNX models and run inference benchmark
 #
-MODEL_IDX=${MODEL_IDX:-0}
-declare -a ONNX_MODELS_MATRIX=(
+declare -a MODELS_MATRIX=(
     # Number of matrix/table's columns
     4
     # ------------------------------------------------------------
@@ -66,31 +80,32 @@ declare -a ONNX_MODELS_MATRIX=(
         "3x9238x1600"
         "1"
 )
-N_COLS=${ONNX_MODELS_MATRIX[0]}
-ONNX_FILE=${ONNX_MODELS_MATRIX[$((MODEL_IDX*N_COLS+1))]}
-INPUT_NAME=${ONNX_MODELS_MATRIX[$((MODEL_IDX*N_COLS+2))]}
-INPUT_SHAPE=${ONNX_MODELS_MATRIX[$((MODEL_IDX*N_COLS+3))]}
-declare -a bss=(${ONNX_MODELS_MATRIX[$((MODEL_IDX*N_COLS+4))]})
-DTYPE=${DTYPE:-""}
-N_BSS=${#bss[@]}
+if echo "${1}" | grep -sq "^declare "; then true \
+ && declare -a MODELS_MATRIX=`echo "${1}" | cut -d= -f2-` \
+ && shift \
+ && true; \
+fi
+#declare -p MODELS_MATRIX MODEL_IDX PRECISION
+#exit 1
+N_COLS=${MODELS_MATRIX[0]}
+ONNX_FILE=${MODELS_MATRIX[$((MODEL_IDX*N_COLS+1))]}
+INPUT_NAME=${MODELS_MATRIX[$((MODEL_IDX*N_COLS+2))]}
+INPUT_SHAPE=${MODELS_MATRIX[$((MODEL_IDX*N_COLS+3))]}
+declare -a BSS=(${MODELS_MATRIX[$((MODEL_IDX*N_COLS+4))]})
+N_BSS=${#BSS[@]}
 if [ "${N_BSS}" -gt 0 ]; then
-    MIN_BS=${bss[0]}
-    OPT_BS=${bss[$((N_BSS>>1))]}
-    MAX_BS=${bss[$((N_BSS-1))]}
+    MIN_BS=${BSS[0]}
+    OPT_BS=${BSS[$((N_BSS>>1))]}
+    MAX_BS=${BSS[$((N_BSS-1))]}
     _minShapes="${INPUT_NAME}:${MIN_BS}x${INPUT_SHAPE}"
     _optShapes="${INPUT_NAME}:${OPT_BS}x${INPUT_SHAPE}"
     _maxShapes="${INPUT_NAME}:${MAX_BS}x${INPUT_SHAPE}"
 fi
-ENGINE_FILE=`basename ${ONNX_FILE} .onnx`-${DTYPE:+${DTYPE}-}${INPUT_SHAPE}.trt
+ENGINE_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${INPUT_SHAPE}.trt
 PROFILE=profile-`basename ${ENGINE_FILE} .trt`.json
 LAYER_FILE=layer-`basename ${ENGINE_FILE} .trt`.json
 LOG_FILE=log.`basename ${ENGINE_FILE} .trt`
 
-
-#  --minShapes=${INPUT_NAME}:${MIN_BS}x${INPUT_SHAPE} \
-#  --optShapes=${INPUT_NAME}:${OPT_BS}x${INPUT_SHAPE} \
-#  --maxShapes=${INPUT_NAME}:${MAX_BS}x${INPUT_SHAPE} \
-#  --shapes=${INPUT_NAME}:${MIN_BS}x${INPUT_SHAPE} \
 
 [ ! -f ${ENGINE_FILE} ] && trtexec \
   --onnx=${ONNX_FILE} \
@@ -101,17 +116,17 @@ LOG_FILE=log.`basename ${ENGINE_FILE} .trt`
   ${_optShapes:+"--optShapes=${_optShapes}"} \
   ${_maxShapes:+"--maxShapes=${_maxShapes}"} \
   --profilingVerbosity=detailed \
-  ${DTYPE:+"--${DTYPE}"} \
+  ${PRECISION:+"--${PRECISION}"} \
   --dumpProfile \
   --exportProfile=${PROFILE} \
   --dumpLayerInfo \
   --exportLayerInfo=${LAYER_FILE} \
   --verbose 2>&1 | tee ${LOG_FILE}
 
-[ -f ${ENGINE_FILE} ] && for bs in ${bss[@]}; do trtexec \
+[ -f ${ENGINE_FILE} ] && for BS in ${BSS[@]}; do trtexec \
   --loadEngine=${ENGINE_FILE} \
-  ${DTYPE:+"--${DTYPE}"} \
-  ${_optShapes:+"--shapes=${INPUT_NAME}:${bs}x${INPUT_SHAPE}"} \
+  ${PRECISION:+"--${PRECISION}"} \
+  ${_optShapes:+"--shapes=${INPUT_NAME}:${BS}x${INPUT_SHAPE}"} \
   --iterations=20 \
   --verbose 2>&1 | tee -a ${LOG_FILE}
 done
