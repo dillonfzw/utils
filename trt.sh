@@ -102,32 +102,54 @@ if [ "${N_BSS}" -gt 0 ]; then
     _maxShapes="${INPUT_NAME}:${MAX_BS}x${INPUT_SHAPE}"
 fi
 ENGINE_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${INPUT_SHAPE}.engine
-PROFILE=profile-`basename ${ENGINE_FILE} .engine`.json
-LAYER_FILE=layer-`basename ${ENGINE_FILE} .engine`.json
-LOG_FILE=log.`basename ${ENGINE_FILE} .engine`
 
 
-[ ! -f ${ENGINE_FILE} ] && trtexec \
-  --onnx=${ONNX_FILE} \
-  --saveEngine=${ENGINE_FILE} \
-  --buildOnly \
-  --workspace=8g \
-  ${_minShapes:+"--minShapes=${_minShapes}"} \
-  ${_optShapes:+"--optShapes=${_optShapes}"} \
-  ${_maxShapes:+"--maxShapes=${_maxShapes}"} \
-  --profilingVerbosity=detailed \
-  ${PRECISION:+"--${PRECISION}"} \
-  --dumpProfile \
-  --exportProfile=${PROFILE} \
-  --dumpLayerInfo \
-  --exportLayerInfo=${LAYER_FILE} \
-  --verbose 2>&1 | tee ${LOG_FILE}
+#
+# build engine
+#
+if [ ! -f ${ENGINE_FILE} ]; then true \
+ && true "Build tensorrt engine..." \
+ && declare LAYER_FILE=`basename ${ENGINE_FILE} .engine`-layer.json \
+ && declare LOG_FILE=`basename ${ENGINE_FILE} .engine`-build.log \
+ && trtexec \
+      --onnx=${ONNX_FILE} \
+      --saveEngine=${ENGINE_FILE} \
+      --buildOnly \
+      --workspace=8g \
+      ${_minShapes:+"--minShapes=${_minShapes}"} \
+      ${_optShapes:+"--optShapes=${_optShapes}"} \
+      ${_maxShapes:+"--maxShapes=${_maxShapes}"} \
+      ${PRECISION:+"--${PRECISION}"} \
+      --dumpLayerInfo \
+      --exportLayerInfo=${LAYER_FILE} \
+      --verbose 2>&1 | tee ${LOG_FILE} \
+ && true; \
+fi
 
-[ -f ${ENGINE_FILE} ] && for BS in ${BSS[@]}; do trtexec \
-  --loadEngine=${ENGINE_FILE} \
-  ${PRECISION:+"--${PRECISION}"} \
-  ${_optShapes:+"--shapes=${INPUT_NAME}:${BS}x${INPUT_SHAPE}"} \
-  --iterations=20 \
-  --verbose 2>&1 | tee -a ${LOG_FILE}
+
+#
+# run inference
+#
+[ -f ${ENGINE_FILE} ] && for BS in ${BSS[@]}; do true \
+ && true "Run throughput benchmark..." \
+ && declare LOG_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${BS}x${INPUT_SHAPE}-infer.log \
+ && trtexec \
+      --loadEngine=${ENGINE_FILE} \
+      ${PRECISION:+"--${PRECISION}"} \
+      ${_optShapes:+"--shapes=${INPUT_NAME}:${BS}x${INPUT_SHAPE}"} \
+      --iterations=20 \
+      --verbose 2>&1 | tee -a ${LOG_FILE} \
+ && true "Run profiling..." \
+ && declare LOG_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${BS}x${INPUT_SHAPE}-profile.log \
+ && declare PROFILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${BS}x${INPUT_SHAPE}-profile.json \
+ && trtexec \
+      --loadEngine=${ENGINE_FILE} \
+      ${PRECISION:+"--${PRECISION}"} \
+      ${_optShapes:+"--shapes=${INPUT_NAME}:${BS}x${INPUT_SHAPE}"} \
+      --profilingVerbosity=detailed \
+      --dumpProfile \
+      --exportProfile=${PROFILE} \
+      --iterations=20 \
+      --verbose 2>&1 | tee -a ${LOG_FILE} \
+ && true; \
 done
-
