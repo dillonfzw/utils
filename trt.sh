@@ -101,10 +101,10 @@ if [ "${N_BSS}" -gt 0 ]; then
     _optShapes="${INPUT_NAME}:${OPT_BS}x${INPUT_SHAPE}"
     _maxShapes="${INPUT_NAME}:${MAX_BS}x${INPUT_SHAPE}"
 fi
-ENGINE_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${INPUT_SHAPE}.trt
-PROFILE=profile-`basename ${ENGINE_FILE} .trt`.json
-LAYER_FILE=layer-`basename ${ENGINE_FILE} .trt`.json
-LOG_FILE=log.`basename ${ENGINE_FILE} .trt`
+ENGINE_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${INPUT_SHAPE}.engine
+PROFILE=profile-`basename ${ENGINE_FILE} .engine`.json
+LAYER_FILE=layer-`basename ${ENGINE_FILE} .engine`.json
+LOG_FILE=log.`basename ${ENGINE_FILE} .engine`
 
 
 [ ! -f ${ENGINE_FILE} ] && trtexec \
