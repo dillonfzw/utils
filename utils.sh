@@ -4273,7 +4273,8 @@ function setup_xfce_xrdp() {
      && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
- && $_sudo ${G_apt_bin} remove -y light-lock xscreensaver \
+ && pkgs=(`dpkg -l light-lock xscreensaver | grep "^ii" | awk '{print $2}' | xargs`) \
+ && if [ ${#pkgs[@]} -gt 0 ]; then $_sudo ${G_apt_bin} remove -y ${pkgs[@]}; fi \
  && $_sudo ${G_apt_bin} autoremove -y \
  && local run_sh=`download_by_cache "https://github.com/danchitnis/container-xrdp/raw/master/build/ubuntu-run.sh"` \
  && $_sudo cp -p ${run_sh} /usr/bin/run.sh \
