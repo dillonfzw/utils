@@ -3820,7 +3820,7 @@ function setup_os() {
      && _sudo="" \
      && true; \
     fi \
- && echo "Asia/Shanghai" | $_sudo tee /etc/timezone \
+ && $_sudo bash -c 'echo "Asia/Shanghai" >/etc/timezone' \
  && pkgs=( \
         "rpm:5:deltarpm" \
         "deb:5:apt-transport-https" \
@@ -3927,7 +3927,7 @@ function setup_os() {
          && setup_repo_mirror_CN_ub \
          && true; \
         fi \
-     && true "The repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64  InRelease' is not signed" \
+     && log_info "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
      && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && $_sudo apt-get update \
      && true; \
