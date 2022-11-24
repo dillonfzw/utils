@@ -3927,6 +3927,8 @@ function setup_os() {
          && setup_repo_mirror_CN_ub \
          && true; \
         fi \
+     && true "The repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64  InRelease' is not signed" \
+     && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && $_sudo apt-get update \
      && true; \
     elif grep -sq "ID=\"rhel\"" /etc/os-release; then true \
