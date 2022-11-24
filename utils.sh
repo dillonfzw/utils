@@ -4223,6 +4223,66 @@ function setup_tf_deps() {
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
  && true;
 }
+function setup_xfce_xrdp() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1604=( \
+    ) \
+ && pkgs_ub1804=( \
+    ) \
+ && pkgs_ub2004=( \
+    ) \
+ && pkgs=( \
+        "deb:10:xfce4"
+        "deb:10:xfce4-clipman-plugin"
+        "deb:10:xfce4-cpugraph-plugin"
+        "deb:10:xfce4-netload-plugin"
+        "deb:10:xfce4-screenshooter"
+        "deb:10:xfce4-taskmanager"
+        "deb:10:xfce4-terminal"
+        "deb:10:xfce4-xkb-plugin"
+        "deb:20:sudo"
+        "deb:20:wget"
+        "deb:20:xorgxrdp"
+        "deb:20:xrdp"
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1604[@]}); \
+    elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then \
+        pkgs+=(${pkgs_rh7[@]}); \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && $_sudo ${G_apt_bin} remove -y light-lock xscreensaver \
+ && $_sudo ${G_apt_bin} autoremove -y \
+ && local run_sh=`download_by_cache "https://github.com/danchitnis/container-xrdp/raw/master/build/ubuntu-run.sh"` \
+ && $_sudo cp -p ${run_sh} /usr/bin/run.sh \
+ && $_sudo chmod a+x /usr/bin/run.sh \
+ && $_sudo mkdir /var/run/dbus \
+ && $_sudo cp /etc/X11/xrdp/xorg.conf /etc/X11 \
+ && $_sudo sed -i "s/console/anybody/g" /etc/X11/Xwrapper.config \
+ && $_sudo sed -i "s/xrdp\/xorg/xorg/g" /etc/xrdp/sesman.ini \
+ && $_sudo bash -c "echo xfce4-session >> /etc/skel/.Xsession" \
+ && true;
+}
 function download_os_pkgs() {
     if $is_rhel; then
         download_os_pkgs_rh $@
