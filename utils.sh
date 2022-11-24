@@ -1453,7 +1453,8 @@ function pkg_install_deb() {
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    $_sudo ${G_apt_bin} install ${G_apt_install_flags[@]} $pkgs
+    local _apt_install_flags=${apt_install_flags:-${G_apt_install_flags[@]}}
+    $_sudo ${G_apt_bin} install ${_apt_install_flags} $pkgs
     local rc=$?
 
     if echo "$pkgs" | grep -sq -Ew "python-pip|python3-pip"; then
@@ -4270,6 +4271,8 @@ function setup_xfce_xrdp() {
          && true; \
         fi \
      && $_sudo apt-get update \
+     && true "TODO: danchitnis/container-xrdp原来的Dockerfile隐含依赖--install-recommends，现在还没搞清楚，暂时也用" \
+     && local apt_install_flags="-y" \
      && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
