@@ -3923,12 +3923,12 @@ function setup_os() {
         pkgs+=(${pkgs_rh7[@]}); \
     fi \
  && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && true "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
+     && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && if [ "${_BLD_REGION}" = "CN" ]; then true \
          && setup_repo_mirror_CN_ub \
          && true; \
         fi \
-     && log_info "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
-     && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && $_sudo apt-get update \
      && true; \
     elif grep -sq "ID=\"rhel\"" /etc/os-release; then true \
