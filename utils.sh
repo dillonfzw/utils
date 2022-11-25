@@ -3889,14 +3889,38 @@ function install_iluvatar_sdk() {
     fi \
  && local _install_dir=${_install_dir:-${DEFAULT_install_dir}} \
  && local _pyvers=`python3 -c "import sys; print('{}{}'.format(sys.version_info.major, sys.version_info.minor))"` \
- && install_iluvatar_sdk_cmake $_release /opt \
- && install_iluvatar_sdk_corex $_release \
- && install_iluvatar_sdk_corex_samples $_release \
+ && if ! do_and_verify \
+        'eval ls -1d /opt/cmake*corex*' \
+        "install_iluvatar_sdk_cmake $_release /opt" \
+        'true'; then true \
+     && log_error "Fail to install iluvatar corex's CMake" \
+     && false; \
+    fi \
+ && if ! do_and_verify \
+        'eval ls -1d /usr/local/corex-*' \
+        "install_iluvatar_sdk_corex $_release" \
+        'true'; then true \
+     && log_error "Fail to install iluvatar corex's SDK" \
+     && false; \
+    fi \
+ && if ! do_and_verify \
+        'eval ls -1d $HOME/workspace/corex-samples-*' \
+        "install_iluvatar_sdk_corex_samples $_release" \
+        'true'; then true \
+     && log_error "Fail to install iluvatar corex's samples" \
+     && false; \
+    fi \
  && { true \
  && local pyvepath=${_install_dir}/corex${_release}py${_pyvers}tf${_tf_ver} \
  && true "Create Iluvatar Corex apps' virtualenv at ${pyvepath}" \
  && mkdir -p `dirname ${pyvepath}` \
- && env PYTHONPATH= python3 -m virtualenv ${pyvepath} \
+ && if ! do_and_verify \
+        "test -f ${pyvepath}/bin/activate" \
+        "env PYTHONPATH= python3 -m virtualenv -p `command -v python3` ${pyvepath}" \
+        'true'; then true \
+     && log_error "Fail to create iluvatar corex's app virtualenv: ${pyvepath}" \
+     && false; \
+    fi \
  && source ${pyvepath}/bin/activate \
  && setup_pip_flags \
  && install_iluvatar_sdk_apps $_release ${_tf_ver} \
