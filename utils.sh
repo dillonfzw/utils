@@ -1814,6 +1814,11 @@ function pkg_meta_clean_conda() {
         conda clean --all -y
     fi
 }
+function pkg_meta_clean_download_cache() {
+    local tmpd=`mktemp -d /tmp/XXXXXXXX`
+    rsync -rv --delete $tmpd/ ~/.cache/download/ || true
+    rmdir $tmpd
+}
 function pkg_meta_clean() {
     if $is_rhel; then
         pkg_meta_clean_yum $@
@@ -1823,6 +1828,7 @@ function pkg_meta_clean() {
     if $use_conda; then
         pkg_meta_clean_conda $@
     fi
+    pkg_meta_clean_download_cache $@
 }
 # meta functions
 for item in pkg_install pkg_list_installed pkg_verify
