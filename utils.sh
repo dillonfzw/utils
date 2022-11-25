@@ -420,6 +420,83 @@ function __test_array_concat() {
 
     test $err_cnt -eq 0
 }
+function array_map() {
+    # map array elements
+    #
+    # :param arr_a:
+    # :param map op/functor per element
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _iYf3_arr_i=("${!1}")
+    local _iYf3_map_op=${2:-true}
+    local -a _iYf3_arr_o=()
+
+    # log for debug
+    #declare -p _iYf3_arr_a | sed -e 's/^/[arr_map]>> /g' | log_lines debug
+
+    local i
+    for i in ${!_iYf3_arr_i[@]}
+    do true \
+     && local e="${_iYf3_arr_i[$i]}" \
+     && local _e \
+     && { _e=$(${_iYf3_map_op} "${e}") || break; } \
+     && _iYf3_arr_o+=("$_e") \
+     && true;
+    done
+
+    declare_p_val _iYf3_arr_o
+    test ${#_iYf3_arr_i[@]} -eq ${#_iYf3_arr_o[@]}
+}
+function __test_array_map() {
+    local err_cnt=0
+    local -a a=(1 2 3)
+    local -a b=(11 2 33)
+    local -a empty=()
+    local -a r_truth=(1 2 3 11 2 33)
+
+    #
+    # echo
+    local -a r=`array_map a[@] echo`
+    array_equal r[@] a[@] || { ((err_cnt+=1)); log_error "fail normal test 1"; }
+    unset r
+
+    #
+    # normal oneline record
+    local -a txt1=()
+    txt1+=("who are you")
+    txt1+=("hello
+    world")
+    txt1+=("where are you")
+
+    local -a txt1_truth=("WHO ARE YOU" "HELLO
+    WORLD"
+    "WHERE ARE YOU")
+    function map_op1() { echo "$@" | upper; }
+    local -a r=`array_map txt1[@] map_op1`
+    #declare -p r
+    array_equal r[@] txt1_truth[@] || { ((err_cnt+=1)); log_error "Fail case 2"; declare -p r; }
+    unset r
+
+    #
+    # empty output
+    function map_op2() { true; }
+    local -a txt2_truth=("" "" "")
+    local -a r=`array_map txt1[@] map_op2`
+    #declare -p r
+    array_equal r[@] txt2_truth[@] || { ((err_cnt+=1)); log_error "Fail case 3"; declare -p r; }
+    unset r
+
+    #
+    # map has failure
+    function map_op2() { if echo "$@" | grep -sq hello; then false; else echo "$@"; fi }
+    local -a txt2_truth=("who are you")
+    _c=$(array_map txt1[@] map_op2) && { ((err_cnt+=1)); log_error "Fail case 4"; declare -p r; }
+    local -a r=$_c
+    #declare -p r _c
+    array_equal r[@] txt2_truth[@] || { ((err_cnt+=1)); log_error "Fail case 4"; declare -p r; }
+    unset r
+
+    test $err_cnt -eq 0
+}
 function array_filter() {
     # filter array elements
     #
@@ -3694,10 +3771,6 @@ function install_iluvatar_sdk_corex_samples() {
     fi
     true
 }
-function _mkvirtualenv() {
-    # TODO: not implemented
-    if [ "x`type -t lsvirtualenv`" == "xfunction" ]; then true; fi
-}
 function install_iluvatar_sdk_apps() {
     local _release=${1:-latest}
     local _tf_ver=${_tv_ver:-1}
@@ -3719,6 +3792,9 @@ function install_iluvatar_sdk_apps() {
         log_error "No sufficient pypi pkgs were scrapped for release \"${_release}\": `declare_p_val _pkgs`"
         return 1
     fi
+    local _c
+    _c=$(array_map _pkgs[@] download_by_cache) || { log_error "Fail to download pkgs, Abort!"; return 1; }
+    local -a _pkgs=${_c}
 
     pkg_install_pip ${_pkgs[@]}
 }
@@ -3794,6 +3870,36 @@ function scrape_iluvatar_sdk_pkgs() {
 function scrape_iluvatar_sdk_MRr230_pkgs() { scrape_iluvatar_sdk_pkgs MRr230; }
 function scrape_iluvatar_sdk_r230_pkgs() { scrape_iluvatar_sdk_pkgs r230; }
 function scrape_iluvatar_sdk_r221_pkgs() { scrape_iluvatar_sdk_pkgs r221; }
+function install_iluvatar_sdk() {
+    true \
+ && local _release=${1:-latest} \
+ && local _tf_ver=${_tv_ver:-1} \
+ && if [ `whoami` = 'root' ]; then true \
+     && local DEFAULT_install_dir=/opt \
+     && true; \
+    else true \
+     && local DEFAULT_install_dir=$HOME/workspace \
+     && true; \
+    fi \
+ && local _install_dir=${_install_dir:-${DEFAULT_install_dir}} \
+ && local _pyvers=`python3 -c "import sys; print('{}{}'.format(sys.version_info.major, sys.version_info.minor))"` \
+ && install_iluvatar_sdk_cmake $_release /opt \
+ && install_iluvatar_sdk_corex $_release \
+ && install_iluvatar_sdk_corex_samples $_release \
+ && { true \
+ && local pyvepath=${_install_dir}/corex${_release}py${_pyvers}tf${_tf_ver} \
+ && true "Create Iluvatar Corex apps' virtualenv at ${pyvepath}" \
+ && mkdir -p `dirname ${pyvepath}` \
+ && env PYTHONPATH= python3 -m virtualenv ${pyvepath} \
+ && source ${pyvepath}/bin/activate \
+ && setup_pip_flags \
+ && install_iluvatar_sdk_apps $_release ${_tf_ver} \
+ && deactivate \
+ && setup_pip_flags \
+ && true; \
+ } \
+ && true;
+}
 function setup_repo_mirror_CN_ub() {
     true \
  && local _sudo=${sudo:-sudo} \
