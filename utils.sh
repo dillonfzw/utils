@@ -2290,6 +2290,15 @@ function get_addr_by_name() {
     echo "${_endpoint} ${_ip_addr} ${_l2_addr}" && \
     true
 }
+function git_token_wrapped() {
+    true \
+ && local -a _git_args=() \
+ && if [ -n "${BITBUCKET_ACCESS_TOKEN}" ] && echo "$@" | grep -sq "bitbucket\."; then true \
+     && _git_args+=("-c" "http.extraHeader=Authorization: Bearer $BITBUCKET_ACCESS_TOKEN") \
+     && true; \
+    fi \
+ && exec git ${_git_args[@]} $@
+}
 function get_host_key() {
     local _endpoint=${1:-${_endpoint:-${endpoint:-`hostname -s`}}} && \
     local _host_key_use_ip_addr=${2:-${_host_key_use_ip_addr:-${host_key_use_ip_addr:-false}}} && \
