@@ -2292,12 +2292,11 @@ function get_addr_by_name() {
 }
 function git_token_wrapped() {
     true \
- && local -a _git_args=() \
  && if [ -n "${BITBUCKET_ACCESS_TOKEN}" ] && echo "$@" | grep -sq "bitbucket\."; then true \
-     && _git_args+=("-c" "http.extraHeader=Authorization: Bearer $BITBUCKET_ACCESS_TOKEN") \
+     && exec git -c "http.extraHeader=Authorization: Bearer $BITBUCKET_ACCESS_TOKEN" $@ \
      && true; \
     fi \
- && exec git ${_git_args[@]} $@
+ && true; \
 }
 function get_host_key() {
     local _endpoint=${1:-${_endpoint:-${endpoint:-`hostname -s`}}} && \
