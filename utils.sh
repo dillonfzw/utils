@@ -209,6 +209,16 @@ function __test_lower() {
     [ `echo "AaBbCc.2#4%" | lower` = "aabbcc.2#4%" ] || { ((err_cnt+=1)); log_error "fail sub-test 1"; }
     test $err_cnt -eq 0
 }
+function dedup() {
+    # deduplication: sort and unique while keeping order
+    tr ':' '\n' | nl -nln -w1 -s'|' | sort -t'|' -k2,2 -u | sort -t'|' -k1 -n | cut -d'|' -f2 | tr '\n' ':' | tr -s ':' | sed -e 's/^ *:*\(.*\):/\1/g'
+}
+function __test_dedup() {
+    local err_cnt=0
+    local r=`echo ":b:a:c:b:a:d:" | dedup`
+    [ "x$r" = "xb:a:c:d" ] || { ((err_cnt+=1)); log_error "fail sub-test 1: \"${r}\""; }
+    test $err_cnt -eq 0
+}
 function run_unit_test() {
     local -a _NC3v_all_unit_test_cases=(`declare -F | awk '{print $3}' | grep "^__test" | sed -e 's/^__//' | xargs`)
 
