@@ -3647,13 +3647,15 @@ function install_iluvatar_sdk_cmake() {
         return 1
     fi
     local _pkg_f=`download_by_cache ${_pkgs[0]}`
-    if bash ${_pkg_f} --version | grep -sqF "3.21.5-corex.2.3.0" >/dev/null 2>&1; then true \
+    local _info=`bash ${_pkg_f} --version`
+    if echo "${_info}" | grep -sqF "3.21.5-corex.2.3.0" >/dev/null 2>&1; then true \
      && ${_sudo} bash ${_pkg_f} \
           --prefix=${_install_dir} \
           --include-subdir \
           --skip-license \
      && true; \
     else true \
+     && log_warn "Unknown version of corex-cmake, use default install flags: ${_info}" \
      && ${_sudo} bash ${_pkg_f} \
           --prefix=${_install_dir} \
           --include-subdir \
@@ -3730,6 +3732,7 @@ function install_iluvatar_sdk_corex() {
           $@ \
      && true; \
     else true \
+     && log_warn "Unknown version of corex-installer, use default install flags: ${_info}" \
      && ${_sudo} bash ${_pkg_f} \
           --silent \
           --no-symlink \
@@ -3781,6 +3784,7 @@ function install_iluvatar_sdk_corex_samples() {
           --prefix=${_install_dir} \
      && true; \
     else true \
+     && log_warn "Unknown version of corex-samples, use default install flags: ${_info}" \
      && ${_sudo} bash ${_pkg_f} \
           --prefix=${_install_dir} \
      && true; \
