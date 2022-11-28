@@ -133,7 +133,7 @@ if [ ! -f ${ENGINE_FILE} ]; then true \
       --onnx=${ONNX_FILE} \
       --saveEngine=${ENGINE_FILE} \
       --buildOnly \
-      --workspace=8g \
+      --memPoolSize=workspace:$((8<<10)) \
       ${_minShapes:+"--minShapes=${_minShapes}"} \
       ${_optShapes:+"--optShapes=${_optShapes}"} \
       ${_maxShapes:+"--maxShapes=${_maxShapes}"} \
@@ -148,7 +148,7 @@ fi
 #
 # run inference
 #
-[ -f ${ENGINE_FILE} ] && for BS in ${BSS[@]}; do true \
+[ -f ${ENGINE_FILE} ] && for BS in ${_optShapes:-""} ${BSS[@]}; do true \
  && true "Run throughput benchmark..." \
  && declare LOG_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${BS}x${INPUT_SHAPE}-infer.log \
  && trtexec \
