@@ -209,6 +209,16 @@ function __test_lower() {
     [ `echo "AaBbCc.2#4%" | lower` = "aabbcc.2#4%" ] || { ((err_cnt+=1)); log_error "fail sub-test 1"; }
     test $err_cnt -eq 0
 }
+function dedup() {
+    # deduplication: sort and unique while keeping order
+    tr ':' '\n' | nl -nln -w1 -s'|' | sort -t'|' -k2,2 -u | sort -t'|' -k1 -n | cut -d'|' -f2 | tr '\n' ':' | tr -s ':' | sed -e 's/^ *:*\(.*\):/\1/g'
+}
+function __test_dedup() {
+    local err_cnt=0
+    local r=`echo ":b:a:c:b:a:d:" | dedup`
+    [ "x$r" = "xb:a:c:d" ] || { ((err_cnt+=1)); log_error "fail sub-test 1: \"${r}\""; }
+    test $err_cnt -eq 0
+}
 function run_unit_test() {
     local -a _NC3v_all_unit_test_cases=(`declare -F | awk '{print $3}' | grep "^__test" | sed -e 's/^__//' | xargs`)
 
@@ -417,6 +427,83 @@ function __test_array_concat() {
 
     local -a r=`array_concat empty[@] a[@]`
     array_equal a[@] r[@] || { ((err_cnt+=1)); log_error "fail empty + valid test 1"; }
+
+    test $err_cnt -eq 0
+}
+function array_map() {
+    # map array elements
+    #
+    # :param arr_a:
+    # :param map op/functor per element
+    # :return: an array with the format of "local -p"'s value syntax
+    local -a _iYf3_arr_i=("${!1}")
+    local _iYf3_map_op=${2:-true}
+    local -a _iYf3_arr_o=()
+
+    # log for debug
+    #declare -p _iYf3_arr_a | sed -e 's/^/[arr_map]>> /g' | log_lines debug
+
+    local i
+    for i in ${!_iYf3_arr_i[@]}
+    do true \
+     && local e="${_iYf3_arr_i[$i]}" \
+     && local _e \
+     && { _e=$(${_iYf3_map_op} "${e}") || break; } \
+     && _iYf3_arr_o+=("$_e") \
+     && true;
+    done
+
+    declare_p_val _iYf3_arr_o
+    test ${#_iYf3_arr_i[@]} -eq ${#_iYf3_arr_o[@]}
+}
+function __test_array_map() {
+    local err_cnt=0
+    local -a a=(1 2 3)
+    local -a b=(11 2 33)
+    local -a empty=()
+    local -a r_truth=(1 2 3 11 2 33)
+
+    #
+    # echo
+    local -a r=`array_map a[@] echo`
+    array_equal r[@] a[@] || { ((err_cnt+=1)); log_error "fail normal test 1"; }
+    unset r
+
+    #
+    # normal oneline record
+    local -a txt1=()
+    txt1+=("who are you")
+    txt1+=("hello
+    world")
+    txt1+=("where are you")
+
+    local -a txt1_truth=("WHO ARE YOU" "HELLO
+    WORLD"
+    "WHERE ARE YOU")
+    function map_op1() { echo "$@" | upper; }
+    local -a r=`array_map txt1[@] map_op1`
+    #declare -p r
+    array_equal r[@] txt1_truth[@] || { ((err_cnt+=1)); log_error "Fail case 2"; declare -p r; }
+    unset r
+
+    #
+    # empty output
+    function map_op2() { true; }
+    local -a txt2_truth=("" "" "")
+    local -a r=`array_map txt1[@] map_op2`
+    #declare -p r
+    array_equal r[@] txt2_truth[@] || { ((err_cnt+=1)); log_error "Fail case 3"; declare -p r; }
+    unset r
+
+    #
+    # map has failure
+    function map_op2() { if echo "$@" | grep -sq hello; then false; else echo "$@"; fi }
+    local -a txt2_truth=("who are you")
+    _c=$(array_map txt1[@] map_op2) && { ((err_cnt+=1)); log_error "Fail case 4"; declare -p r; }
+    local -a r=$_c
+    #declare -p r _c
+    array_equal r[@] txt2_truth[@] || { ((err_cnt+=1)); log_error "Fail case 4"; declare -p r; }
+    unset r
 
     test $err_cnt -eq 0
 }
@@ -1453,7 +1540,8 @@ function pkg_install_deb() {
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
-    $_sudo ${G_apt_bin} install ${G_apt_install_flags[@]} $pkgs
+    local _apt_install_flags=${apt_install_flags:-${G_apt_install_flags[@]}}
+    $_sudo ${G_apt_bin} install ${_apt_install_flags} $pkgs
     local rc=$?
 
     if echo "$pkgs" | grep -sq -Ew "python-pip|python3-pip"; then
@@ -1736,6 +1824,11 @@ function pkg_meta_clean_conda() {
         conda clean --all -y
     fi
 }
+function pkg_meta_clean_download_cache() {
+    local tmpd=`mktemp -d /tmp/XXXXXXXX`
+    rsync -rv --delete $tmpd/ ~/.cache/download/ || true
+    rmdir $tmpd
+}
 function pkg_meta_clean() {
     if $is_rhel; then
         pkg_meta_clean_yum $@
@@ -1745,6 +1838,7 @@ function pkg_meta_clean() {
     if $use_conda; then
         pkg_meta_clean_conda $@
     fi
+    pkg_meta_clean_download_cache $@
 }
 # meta functions
 for item in pkg_install pkg_list_installed pkg_verify
@@ -2195,6 +2289,14 @@ function get_addr_by_name() {
     fi && \
     echo "${_endpoint} ${_ip_addr} ${_l2_addr}" && \
     true
+}
+function git_token_wrapped() {
+    true \
+ && if [ -n "${BITBUCKET_ACCESS_TOKEN}" ] && echo "$@" | grep -sq "bitbucket\."; then true \
+     && exec git -c "http.extraHeader=Authorization: Bearer $BITBUCKET_ACCESS_TOKEN" $@ \
+     && true; \
+    fi \
+ && true; \
 }
 function get_host_key() {
     local _endpoint=${1:-${_endpoint:-${endpoint:-`hostname -s`}}} && \
@@ -3553,13 +3655,15 @@ function install_iluvatar_sdk_cmake() {
         return 1
     fi
     local _pkg_f=`download_by_cache ${_pkgs[0]}`
-    if bash ${_pkg_f} --version | grep -sqF "3.21.5-corex.2.3.0" >/dev/null 2>&1; then true \
+    local _info=`bash ${_pkg_f} --version`
+    if echo "${_info}" | grep -sqF "3.21.5-corex.2.3.0" >/dev/null 2>&1; then true \
      && ${_sudo} bash ${_pkg_f} \
           --prefix=${_install_dir} \
           --include-subdir \
           --skip-license \
      && true; \
     else true \
+     && log_warn "Unknown version of corex-cmake, use default install flags: ${_info}" \
      && ${_sudo} bash ${_pkg_f} \
           --prefix=${_install_dir} \
           --include-subdir \
@@ -3636,6 +3740,7 @@ function install_iluvatar_sdk_corex() {
           $@ \
      && true; \
     else true \
+     && log_warn "Unknown version of corex-installer, use default install flags: ${_info}" \
      && ${_sudo} bash ${_pkg_f} \
           --silent \
           --no-symlink \
@@ -3687,15 +3792,12 @@ function install_iluvatar_sdk_corex_samples() {
           --prefix=${_install_dir} \
      && true; \
     else true \
+     && log_warn "Unknown version of corex-samples, use default install flags: ${_info}" \
      && ${_sudo} bash ${_pkg_f} \
           --prefix=${_install_dir} \
      && true; \
     fi
     true
-}
-function _mkvirtualenv() {
-    # TODO: not implemented
-    if [ "x`type -t lsvirtualenv`" == "xfunction" ]; then true; fi
 }
 function install_iluvatar_sdk_apps() {
     local _release=${1:-latest}
@@ -3718,6 +3820,9 @@ function install_iluvatar_sdk_apps() {
         log_error "No sufficient pypi pkgs were scrapped for release \"${_release}\": `declare_p_val _pkgs`"
         return 1
     fi
+    local _c
+    _c=$(array_map _pkgs[@] download_by_cache) || { log_error "Fail to download pkgs, Abort!"; return 1; }
+    local -a _pkgs=${_c}
 
     pkg_install_pip ${_pkgs[@]}
 }
@@ -3726,17 +3831,28 @@ function scrape_iluvatar_sdk_pkgs() {
         declare -gA G_iluvatar_sdk_pkgs_cache=()
     fi
     local -A DEFAULT_download_url_prefix_map=(
-        ["latest"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
+        ["latest"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
         ["r230"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
+        ["r231"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
         ["r221"]="http://10.150.9.95/corex/release_packages/2.2.1/x86/"
         ["MRr230"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
+        ["MRr230Beta1"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
+        ["MRr230Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
+        ["MRr230BetaIVA"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
+        ["MRr230Daily231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
+        ["MRr230Daily269"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221116/x86/269/"
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
         ["r230"]="\.sh\"|\.run\"|\.whl\""
+        ["r231"]="\.sh\"|\.run\"|\.whl\""
         ["r221"]="\.sh\"|\.run\"|\.whl\""
         #["MRr230"]="\.sh\"|\.run\"|\.whl\""
-        ["MRr230"]="^cmake-.*\.sh\"|^corex-installer.*_master_.*\.run\"|^corex-samples.*\.run\""
+        ["MRr230Beta1"]="^cmake-.*\.sh\"|^corex-installer.*_beta_1.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRr230Beta2"]="^cmake-.*\.sh\"|^corex-installer.*_beta_2.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRr230BetaIVA"]="^cmake-.*\.sh\"|^corex-installer.*_beta_iva.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRr230Daily231"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRr230Daily269"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
     )
     function _filter_87tY() {
         local _prefix_87tY=$1
@@ -3793,6 +3909,60 @@ function scrape_iluvatar_sdk_pkgs() {
 function scrape_iluvatar_sdk_MRr230_pkgs() { scrape_iluvatar_sdk_pkgs MRr230; }
 function scrape_iluvatar_sdk_r230_pkgs() { scrape_iluvatar_sdk_pkgs r230; }
 function scrape_iluvatar_sdk_r221_pkgs() { scrape_iluvatar_sdk_pkgs r221; }
+function install_iluvatar_sdk() {
+    true \
+ && local _release=${1:-latest} \
+ && local _tf_ver=${_tv_ver:-1} \
+ && if [ `whoami` = 'root' ]; then true \
+     && local DEFAULT_install_dir=/opt \
+     && true; \
+    else true \
+     && local DEFAULT_install_dir=$HOME/workspace \
+     && true; \
+    fi \
+ && local _install_dir=${_install_dir:-${DEFAULT_install_dir}} \
+ && local _pyvers=`python3 -c "import sys; print('{}{}'.format(sys.version_info.major, sys.version_info.minor))"` \
+ && if ! do_and_verify \
+        'eval ls -1d /opt/cmake*corex*' \
+        "install_iluvatar_sdk_cmake $_release /opt" \
+        'true'; then true \
+     && log_error "Fail to install iluvatar corex's CMake" \
+     && false; \
+    fi \
+ && if ! do_and_verify \
+        'eval ls -1d /usr/local/corex-*' \
+        "install_iluvatar_sdk_corex $_release" \
+        'true'; then true \
+     && log_error "Fail to install iluvatar corex's SDK" \
+     && false; \
+    fi \
+ && if ! do_and_verify \
+        'eval ls -1d $HOME/workspace/corex-samples-*' \
+        "install_iluvatar_sdk_corex_samples $_release" \
+        'true'; then true \
+     && log_error "Fail to install iluvatar corex's samples" \
+     && false; \
+    fi \
+ && { true \
+ && local pyvepath=${_install_dir}/corex${_release}py${_pyvers}tf${_tf_ver} \
+ && true "Create Iluvatar Corex apps' virtualenv at ${pyvepath}" \
+ && mkdir -p `dirname ${pyvepath}` \
+ && if ! do_and_verify \
+        "test -f ${pyvepath}/bin/activate" \
+        "env PYTHONPATH= python3 -m virtualenv -p `command -v python3` ${pyvepath}" \
+        'true'; then true \
+     && log_error "Fail to create iluvatar corex's app virtualenv: ${pyvepath}" \
+     && false; \
+    fi \
+ && source ${pyvepath}/bin/activate \
+ && setup_pip_flags \
+ && install_iluvatar_sdk_apps $_release ${_tf_ver} \
+ && deactivate \
+ && setup_pip_flags \
+ && true; \
+ } \
+ && true;
+}
 function setup_repo_mirror_CN_ub() {
     true \
  && local _sudo=${sudo:-sudo} \
@@ -3820,7 +3990,7 @@ function setup_os() {
      && _sudo="" \
      && true; \
     fi \
- && echo "Asia/Shanghai" | $_sudo tee /etc/timezone \
+ && $_sudo bash -c 'echo "Asia/Shanghai" >/etc/timezone' \
  && pkgs=( \
         "rpm:5:deltarpm" \
         "deb:5:apt-transport-https" \
@@ -3923,6 +4093,8 @@ function setup_os() {
         pkgs+=(${pkgs_rh7[@]}); \
     fi \
  && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && true "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
+     && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && if [ "${_BLD_REGION}" = "CN" ]; then true \
          && setup_repo_mirror_CN_ub \
          && true; \
@@ -4221,6 +4393,69 @@ function setup_tf_deps() {
      && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && true;
+}
+function setup_xfce_xrdp() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1604=( \
+    ) \
+ && pkgs_ub1804=( \
+    ) \
+ && pkgs_ub2004=( \
+    ) \
+ && pkgs=( \
+        "deb:10:xfce4"
+        "deb:10:xfce4-clipman-plugin"
+        "deb:10:xfce4-cpugraph-plugin"
+        "deb:10:xfce4-netload-plugin"
+        "deb:10:xfce4-screenshooter"
+        "deb:10:xfce4-taskmanager"
+        "deb:10:xfce4-terminal"
+        "deb:10:xfce4-xkb-plugin"
+        "deb:20:sudo"
+        "deb:20:wget"
+        "deb:20:xorgxrdp"
+        "deb:20:xrdp"
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1604[@]}); \
+    elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then \
+        pkgs+=(${pkgs_rh7[@]}); \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true "TODO: danchitnis/container-xrdp原来的Dockerfile隐含依赖--install-recommends，现在还没搞清楚，暂时也用" \
+     && local apt_install_flags="-y" \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && pkgs=(`dpkg -l light-lock xscreensaver | grep "^ii" | awk '{print $2}' | xargs`) \
+ && if [ ${#pkgs[@]} -gt 0 ]; then $_sudo ${G_apt_bin} remove -y ${pkgs[@]}; fi \
+ && $_sudo ${G_apt_bin} autoremove -y \
+ && local run_sh=`download_by_cache "https://github.com/danchitnis/container-xrdp/raw/master/build/ubuntu-run.sh"` \
+ && $_sudo cp -p ${run_sh} /usr/bin/run.sh \
+ && $_sudo chmod a+x /usr/bin/run.sh \
+ && $_sudo mkdir /var/run/dbus \
+ && $_sudo cp /etc/X11/xrdp/xorg.conf /etc/X11 \
+ && $_sudo sed -i "s/console/anybody/g" /etc/X11/Xwrapper.config \
+ && $_sudo sed -i "s/xrdp\/xorg/xorg/g" /etc/xrdp/sesman.ini \
+ && $_sudo bash -c "echo xfce4-session >> /etc/skel/.Xsession" \
  && true;
 }
 function download_os_pkgs() {
