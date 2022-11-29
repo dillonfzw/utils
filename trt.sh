@@ -79,6 +79,24 @@ declare -a MODELS_MATRIX=(
         "input"
         "3x9238x1600"
         "1"
+    # ------------------------------------------------------------
+    # 9
+    "resnet50_1080p_wo_gap_3d7a4c7e-dbs.onnx"
+        "input.1"
+        "3x1088x1920"
+        "1 4 8 16 32 64"
+    # ------------------------------------------------------------
+    # 10
+    "bevdet_bev_encoder_ca1b1548-dbs.onnx"
+        "1114"
+        "64x128x128"
+        "1 4 8 16 32 64"
+    # ------------------------------------------------------------
+    # 11
+    "bevdet_img_encoder_e06140a2-dbs.onnx"
+        "743"
+        "3x256x704"
+        "1 4 8 16 32 64"
 )
 if echo "${1}" | grep -sq "^declare "; then true \
  && declare -a MODELS_MATRIX=`echo "${1}" | cut -d= -f2-` \
@@ -115,7 +133,7 @@ if [ ! -f ${ENGINE_FILE} ]; then true \
       --onnx=${ONNX_FILE} \
       --saveEngine=${ENGINE_FILE} \
       --buildOnly \
-      --workspace=8g \
+      --memPoolSize=workspace:$((8<<10)) \
       ${_minShapes:+"--minShapes=${_minShapes}"} \
       ${_optShapes:+"--optShapes=${_optShapes}"} \
       ${_maxShapes:+"--maxShapes=${_maxShapes}"} \
@@ -130,7 +148,7 @@ fi
 #
 # run inference
 #
-[ -f ${ENGINE_FILE} ] && for BS in ${BSS[@]}; do true \
+[ -f ${ENGINE_FILE} ] && for BS in ${_optShapes:-""} ${BSS[@]}; do true \
  && true "Run throughput benchmark..." \
  && declare LOG_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${BS}x${INPUT_SHAPE}-infer.log \
  && trtexec \
