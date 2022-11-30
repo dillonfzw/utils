@@ -40,11 +40,11 @@ if true; then true \
      && true; \
     fi \
  && PATH=`echo "${_extra_bin_path_uy7rohTh[@]}" | tr ' ' ':'`${PATH:+:${PATH}} \
- && PATH=`echo "${PATH}" | dedup` \
+ && PATH=`echo "${PATH}" | dedup_uy7rohTh` \
  && LD_LIBRARY_PATH=`echo "${_extra_lib_path_uy7rohTh[@]}" | tr ' ' ':'`${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}} \
- && LD_LIBRARY_PATH=`echo "${LD_LIBRARY_PATH}" | dedup` \
+ && LD_LIBRARY_PATH=`echo "${LD_LIBRARY_PATH}" | dedup_uy7rohTh` \
  && C_PATH=`echo "${_extra_inc_path_uy7rohTh[@]}" | tr ' ' ':'`${C_PATH:+:${C_PATH}} \
- && C_PATH=`echo "${C_PATH}" | dedup` \
+ && C_PATH=`echo "${C_PATH}" | dedup_uy7rohTh` \
  && export PATH \
  && export LD_LIBRARY_PATH \
  && export C_PATH \
