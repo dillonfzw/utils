@@ -97,6 +97,12 @@ declare -a MODELS_MATRIX=(
         "743"
         "3x256x704"
         "1 4 8 16 32 64"
+    # ------------------------------------------------------------
+    # 12
+    "resnet50_opset11_wo_gap_14ad8421-dbs.onnx"
+        "input.1"
+        "3x224x224"
+        "1 4 8 16 32 64"
 )
 if echo "${1}" | grep -sq "^declare "; then true \
  && declare -a MODELS_MATRIX=`echo "${1}" | cut -d= -f2-` \
