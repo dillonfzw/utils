@@ -1,8 +1,13 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
 import onnx
 import os
 import struct
 
 from argparse import ArgumentParser
+
 
 def rebatch(infile, outfile, batch_size):
     model = onnx.load(infile)
@@ -10,10 +15,11 @@ def rebatch(infile, outfile, batch_size):
 
     # Change batch size in input, output and value_info
     for tensor in list(graph.input) + list(graph.value_info) + list(graph.output):
+        #print("FZW: {}/{}".format(type(tensor.type.tensor_type), tensor.type.tensor_type.shape))
         tensor.type.tensor_type.shape.dim[0].dim_param = batch_size
 
     # Set dynamic batch size in reshapes (-1)
-    for node in  graph.node:
+    for node in graph.node:
         if node.op_type != 'Reshape':
             continue
         for init in graph.initializer:
