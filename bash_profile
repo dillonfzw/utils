@@ -78,8 +78,10 @@ fi
 if [ "$ACTIVATE_PYTHON_VIRTUALENV" != "no" -a "`type -t lsvirtualenv`" != "function" ]; then
   if if command -v virtualenvwrapper.sh >/dev/null 2>&1; then
     source virtualenvwrapper.sh
-  else
+  elif [ -f /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]; then
     source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+  elif [ -f ~/.local/bin/virtualenvwrapper.sh ]; then
+    source ~/.local/bin/virtualenvwrapper.sh
   fi; then
     echo "[I]: Source virtualenvwrapper.sh with WORKON_HOME equals to $WORKON_HOME"
   else
