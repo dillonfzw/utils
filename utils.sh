@@ -1223,7 +1223,7 @@ function download_by_cache() {
         local tmpn=`mktemp -u XXXX`
         first_download=true
 
-        curl -SL $url -o $cache_dir/.$f.$tmpn
+        curl ${CURL_PROXY:+--proxy} ${CURL_PROXY} -SL $url -o $cache_dir/.$f.$tmpn
         local rc=$?
 
         if [ $rc -eq 0 ]; then
@@ -2957,7 +2957,7 @@ function install_docker() {
     if do_and_verify \
         'eval command -v docker >/dev/null && test "$_enforce" = "false"' \
         'eval true
-           && curl -fsSL https://get.docker.com -o $_get_docker_sh
+           && curl ${CURL_PROXY:+--proxy} ${CURL_PROXY} -fsSL https://get.docker.com -o $_get_docker_sh
            && test -s $_get_docker_sh
            && $sudo sh $_get_docker_sh' \
         'eval _enforce=false'; then
@@ -3429,7 +3429,7 @@ function install_openresty_ubuntu() {
     # 导入我们的 GPG 密钥：
     if do_and_verify \
         'eval apt-key fingerprint 97DB7443D5EDEB74 | grep -sqi "97DB 7443 D5ED EB74"' \
-        'eval curl -fsSL https://openresty.org/package/pubkey.gpg | $sudo apt-key add -' \
+        'eval curl ${CURL_PROXY:+--proxy} ${CURL_PROXY} -fsSL https://openresty.org/package/pubkey.gpg | $sudo apt-key add -' \
         'true'; then
         # pub   rsa2048 2017-05-21 [SC]
         #      E522 18E7 0878 97DC 6DEA  6D6D 97DB 7443 D5ED EB74
@@ -3545,7 +3545,7 @@ FfI07vQHGzzlrJi+064X5V6BdvKB25qBq67GbYw88+XcrM6R+Uk=
     # 安装apt的key
     if do_and_verify \
         'eval apt-key fingerprint 6026DFCA | grep -sqi "6026 DFCA"' \
-        'eval curl -fsSL https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc | $_sudo apt-key add -' \
+        'eval curl ${CURL_PROXY:+--proxy} ${CURL_PROXY} -fsSL https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc | $_sudo apt-key add -' \
         #'eval $_sudo apt-key adv --keyserver "hkps://keys.openpgp.org" --recv-keys "0x0A9AF2115F4687BD29803A206B73A36E6026DFCA"' \
         #'eval echo $signing_key | $_sudo apt-key add -' \
         'true'; then
@@ -3675,7 +3675,7 @@ function install_iluvatar_sdk_corex() {
     local _release=${1:-latest}
     if [ "x${_release}" = "x${1}" ]; then shift; fi
     # drop unused arguments
-    while echo "$@" | grep -sqw "[-]-";
+    while echo "$@" | grep -sq "^[-]-\? ";
     do
         shift
     done
@@ -3841,6 +3841,7 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRr230BetaIVA"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
         ["MRr230Daily231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
         ["MRr230Daily269"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221116/x86/269/"
+        ["MRr300Daily304"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/20221206/304/"
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
@@ -3853,6 +3854,7 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRr230BetaIVA"]="^cmake-.*\.sh\"|^corex-installer.*_beta_iva.*\.run\"|^corex-samples.*\.run\"|\.whl\""
         ["MRr230Daily231"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
         ["MRr230Daily269"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRr300Daily304"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
     )
     function _filter_87tY() {
         local _prefix_87tY=$1
@@ -3895,7 +3897,7 @@ function scrape_iluvatar_sdk_pkgs() {
     local _url
     for _url in ${urls[@]}
     do true \
-     && _target_urls+=($({ curl -k ${_url}; } | grep "a href=" | sed -e 's/a href="/\n/' | \
+     && _target_urls+=($({ curl ${CURL_PROXY:+--socks5} ${CURL_PROXY} -k ${_url}; } | grep "a href=" | sed -e 's/a href="/\n/' | \
             grep -E "${pkg_patterns}" | \
             _filter_87tY ${_url}
         )) \
