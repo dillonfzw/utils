@@ -15,7 +15,7 @@ if true; then true \
  && declare -a _extra_bin_path_uy7rohTh=() \
  && declare -a _extra_lib_path_uy7rohTh=() \
  && declare -a _extra_inc_path_uy7rohTh=() \
- && for COREX_HOME_uy7rohTh in ${COREX_HOME} $HOME/workspace/sw_home /usr/local/corex /opt/sw_home; \
+ && for COREX_HOME_uy7rohTh in ${COREX_HOME} $HOME/workspace/sw_home /usr/local/corex `ls -1d /usr/local/corex-* 2>/dev/null | sort -V | tail -n1` /opt/sw_home; \
     do true \
      && if [ -z "${COREX_HOME_uy7rohTh}" -o ! -d "${COREX_HOME_uy7rohTh}/" ]; then true \
          && continue; \
