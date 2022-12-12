@@ -8,7 +8,8 @@
 function get_ssh_agent_sockets() {
     # /tmp/ssh-*/agent.*              <== ssh-agent, native or forwarded
     # /run/user/`id -u`/keyring/ssh   <== gnome-keyring
-    ls -1 /tmp/ssh-*/agent.* /run/user/`id -u`/keyring/ssh 2>/dev/null | xargs
+    # if there would be multiple agent, newest the first.
+    ls -1t /tmp/ssh-*/agent.* /run/user/`id -u`/keyring/ssh 2>/dev/null | xargs
 }
 # get the agend pid from native agent socket
 # NOTE: only work for Linux procfs
