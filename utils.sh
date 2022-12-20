@@ -3842,6 +3842,8 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRr230Daily231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
         ["MRr230Daily269"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221116/x86/269/"
         ["MRr300Daily304"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/20221206/304/"
+        ["MRr300Daily336"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/20221219/336/"
+        ["MRDailyLatest"]="http://10.150.9.95/corex/daily_release_packages/x86/mr"
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
@@ -3855,6 +3857,8 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRr230Daily231"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
         ["MRr230Daily269"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
         ["MRr300Daily304"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRr300Daily336"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRDailyLatest"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
     )
     function _filter_87tY() {
         local _prefix_87tY=$1
@@ -3885,7 +3889,7 @@ function scrape_iluvatar_sdk_pkgs() {
     # prepare sub-trees to be scrapped
     local -a urls=(
         "${site_prefix}"
-        `true && for _pyver_87tY in 3.{6,7,8,9};
+        `true && for _pyver_87tY in 3.{6,7,8,9} latest-wheels-3.{6,7,8.9};
          do
             echo "${site_prefix}/${_pyver_87tY}/"
             echo "${site_prefix}/${_pyver_87tY}/paddle/"
