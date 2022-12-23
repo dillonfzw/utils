@@ -3843,7 +3843,7 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRr230Daily269"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221116/x86/269/"
         ["MRr300Daily304"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/20221206/304/"
         ["MRr300Daily336"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/20221219/336/"
-        ["MRDailyLatest"]="http://10.150.9.95/corex/daily_release_packages/x86/mr"
+        ["MRDailyLatest"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/"
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
@@ -3905,7 +3905,9 @@ function scrape_iluvatar_sdk_pkgs() {
             grep -E "${pkg_patterns}" | \
             _filter_87tY ${_url}
         )) \
-     && true;
+     && true declare -p _target_urls >&2 \
+     && true break \
+     && true; \
     done
     # cache and output scrape result
     _val=`declare_p_val _target_urls`
