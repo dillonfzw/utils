@@ -211,7 +211,7 @@ function __test_lower() {
 }
 function dedup() {
     # deduplication: sort and unique while keeping order
-    tr ':' '\n' | nl -nln -w1 -s'|' | sort -t'|' -k2,2 -u | sort -t'|' -k1 -n | cut -d'|' -f2 | tr '\n' ':' | tr -s ':' | sed -e 's/^ *:*\(.*\):/\1/g'
+    tr ':' '\n' | sed -e '/^ *$/d' | nl -nln -w1 -s'|' | sort -t'|' -k2,2 -u | sort -t'|' -k1 -n | cut -d'|' -f2 | tr '\n' ':' | tr -s ':' | sed -e 's/^:\(.*\):/\1/g' -e 's/:$//g'
 }
 function __test_dedup() {
     local err_cnt=0
