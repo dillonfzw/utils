@@ -4889,6 +4889,56 @@ function fix_pyvirtualenv() {
  && test ${_err_cnt} -eq 0 \
  && true;
 }
+function detach_pci_dev() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && local pci_addr=$1 \
+ && if [ -z "${pci_addr}" ]; then true \
+     && log_error "Empty target pci devices, Abort!" \
+     && false; \
+    fi \
+ && pci_addr=$(echo "$pci_addr" | tr 'A-Z' 'a-z') \
+ && true '$ lspci -nnk -s 0000:a0:00.0' \
+ && true 'a0:00.0 Processing accelerators [1200]: Device [1e3e:0002]' \
+ && true 'Kernel driver in use: vfio-pci' \
+ && true 'Kernel modules: bi_driver' \
+ && local dev_drv_cur=`lspci -nnk -s ${pci_addr} | grep "Kernel driver in use:" | sed -e 's/^.*in use: *//g'` \
+ && if [ -n "${dev_drv_cur}" -a "${dev_drv_cur}" != "vfio-pci" ]; then true \
+     && if ! $_sudo bash -c "echo ${pci_addr} >'/sys/bus/pci/drivers/${dev_drv_cur}/unbind'"; then true \
+         && log_error "Fail to unbind pci device(${pci_addr}) from its current kernel driver \"${dev_drv_cur}\". Abort!" \
+         && false; \
+        fi \
+     && if ! $_sudo bash -c "echo vfio-pci >'/sys/bus/pci/devices/${pci_addr}/driver_override'"; then true \
+         && log_error "Fail to override pci device(${pci_addr})'s driver to \"vfio-pci\". Abort!" \
+         && false; \
+        fi \
+     && if ! $_sudo bash -c "echo ${pci_addr} >/sys/bus/pci/drivers/vfio-pci/bind"; then true \
+         && log_error "Fail to bind pci device(${pci_addr}) to driver \"vfio-pci\". Abort!" \
+         && false; \
+        fi \
+     && true; \
+    elif [ -z "${dev_drv_cur}" ]; then true \
+     && log_error "Fail to find pci device(${pci_addr}) in \"lspci -nnk -s ${pci_addr}\" cmd. Abort!" \
+     && false; \
+    fi \
+ && lspci -nnk -s ${pci_addr} | sed -e 's/^/>> [lspci]: /g' | log_lines info \
+ && local nodedev_name=`$_sudo virsh nodedev-list --cap pci | grep pci_$(echo ${pci_addr} | tr ':.' '_')` \
+ && if [ -n "${nodedev_name}" ]; then true \
+     && if ! $_sudo virsh nodedev-detach ${nodedev_name}; then true \
+         && log_error "Fail to detach pci device(${pci_addr}) from virsh's nodedev-list. Abort!" \
+         && false; \
+        fi \
+     && true; \
+    else true \
+     && log_error "Fail to find pci device(${pci_addr}) in \"virsh nodedev-list\" cmd. Abort!" \
+     && false; \
+    fi \
+ && true;
+}
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
