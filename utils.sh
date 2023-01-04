@@ -3835,14 +3835,8 @@ function scrape_iluvatar_sdk_pkgs() {
         ["r230"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
         ["r231"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
         ["r221"]="http://10.150.9.95/corex/release_packages/2.2.1/x86/"
-        ["MRr230"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
         ["MRr230Beta1"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
-        ["MRr230Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
-        ["MRr230BetaIVA"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
-        ["MRr230Daily231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
-        ["MRr230Daily269"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221116/x86/269/"
-        ["MRr300Daily304"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/20221206/304/"
-        ["MRr300Daily336"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/20221219/336/"
+        ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/x86/mr/20221228/9/"
         ["MRDailyLatest"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/"
     )
     local -A DEFAULT_pkg_patterns_map=(
@@ -3850,14 +3844,8 @@ function scrape_iluvatar_sdk_pkgs() {
         ["r230"]="\.sh\"|\.run\"|\.whl\""
         ["r231"]="\.sh\"|\.run\"|\.whl\""
         ["r221"]="\.sh\"|\.run\"|\.whl\""
-        #["MRr230"]="\.sh\"|\.run\"|\.whl\""
         ["MRr230Beta1"]="^cmake-.*\.sh\"|^corex-installer.*_beta_1.*\.run\"|^corex-samples.*\.run\"|\.whl\""
-        ["MRr230Beta2"]="^cmake-.*\.sh\"|^corex-installer.*_beta_2.*\.run\"|^corex-samples.*\.run\"|\.whl\""
-        ["MRr230BetaIVA"]="^cmake-.*\.sh\"|^corex-installer.*_beta_iva.*\.run\"|^corex-samples.*\.run\"|\.whl\""
-        ["MRr230Daily231"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
-        ["MRr230Daily269"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
-        ["MRr300Daily304"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
-        ["MRr300Daily336"]="^cmake-.*\.sh\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
         ["MRDailyLatest"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
     )
     function _filter_87tY() {
