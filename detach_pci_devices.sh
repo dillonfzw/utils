@@ -37,7 +37,7 @@ function detach_pci_devices_4_ubuntu1804_10_209_16_17() {
  && true 'GPU 2: Iluvatar MR100 (UUID: GPU-b994251c-bf2b-4254-b1b8-9e3c4576bd52)' \
  && true 'GPU 3: Iluvatar MR100 (UUID: GPU-60ff0b9a-ce83-45d6-80c9-8b02bf71ee47)' \
  && true 'GPU 4: Iluvatar MR50 (UUID: GPU-d2e5e91d-83da-42f4-b668-fa0f89f24296)' \
- && true 'GPU 5: Iluvatar MR50 (UUID: GPU-?????)' \
+ && true 'GPU 5: Iluvatar MR50 (UUID: GPU-0453f8d5-ac26-4b3a-8d4a-54be38176798)' \
  && true 'GPU 6: Iluvatar MR50 (UUID: GPU-47432c7f-2aeb-4d26-8f1a-74d013ef4dc2)' \
  && true "------------------------ Nvidia devices ----------------------------" \
  && true 'fuzhiwen@ubuntu1804:~/bin$ nvidia-smi  | grep 00000' \
