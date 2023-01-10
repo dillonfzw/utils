@@ -3848,6 +3848,13 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
         ["MRDailyLatest"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
     )
+    if [ -n "${ILUVATAR_APPS_TAG}" ]; then true \
+     && local _ILUVATAR_APPS_site_prefix="MRr$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/\.//g')" \
+     && local _ILUVATAR_APPS_site_dir_suffix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/^.*\([0-9]\{8\}\)/\1/' -e 's,\.,/,g')" \
+     && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/${_ILUVATAR_APPS_site_dir_suffix}/" \
+     && DEFAULT_pkg_patterns_map["${_ILUVATAR_APPS_site_prefix}"]=${DEFAULT_pkg_patterns_map["MRDailyLatest"]} \
+     && true; \
+    fi
     function _filter_87tY() {
         local _prefix_87tY=$1
         cut -d\" -f1 | \
