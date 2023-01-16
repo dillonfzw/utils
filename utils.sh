@@ -3836,7 +3836,7 @@ function scrape_iluvatar_sdk_pkgs() {
         ["r231"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
         ["r221"]="http://10.150.9.95/corex/release_packages/2.2.1/x86/"
         ["MRr230Beta1"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
-        ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/x86/mr/20221228/9/"
+        ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
         ["MRDailyLatest"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/"
     )
     local -A DEFAULT_pkg_patterns_map=(
@@ -3845,8 +3845,8 @@ function scrape_iluvatar_sdk_pkgs() {
         ["r231"]="\.sh\"|\.run\"|\.whl\""
         ["r221"]="\.sh\"|\.run\"|\.whl\""
         ["MRr230Beta1"]="^cmake-.*\.sh\"|^corex-installer.*_beta_1.*\.run\"|^corex-samples.*\.run\"|\.whl\""
-        ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
-        ["MRDailyLatest"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\""
+        ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
+        ["MRDailyLatest"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
     )
     if [ -n "${ILUVATAR_APPS_TAG}" ]; then true \
      && local _ILUVATAR_APPS_site_prefix="MRr$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/\.//g')" \
