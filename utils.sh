@@ -3184,6 +3184,42 @@ gpgkey=http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
 EOF
     fi
 }
+function install_centos7_nvidia_repo() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    local releasever=7
+    local f_gpgkey=`download_by_cache https://developer.download.nvidia.com/compute/cuda/repos/rhel${releasever}/x86_64/D42D0685.pub`
+    local f_cuda_repo=/etc/yum.repos.d/cuda-rhel${releasever}.repo
+    if [ ! -f $f_cuda_repo ]; then true \
+     && f_cuda_repo_url="https://developer.download.nvidia.com/compute/cuda/repos/rhel${releasever}/x86_64/cuda-rhel${releasever}.repo" \
+     && f_cuda_repo_=`download_by_cache $f_cuda_repo_url` \
+     && cat $f_cuda_repo_ | $_sudo tee $f_cuda_repo \
+     && true; \
+    fi
+
+    if false; then cat << EOF
+[cuda]
+name=cuda
+baseurl=https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64
+enabled=1
+gpgcheck=1
+#gpgkey=https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/D42D0685.pub
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA
+
+
+
+[nvidia-ml]
+name=nvidia-ml
+baseurl=https://developer.download.nvidia.com/compute/machine-learning/repos/rhel7/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA
+EOF
+    fi
+}
 
 DEFAULT_PRE_USER_LIST="root fuzhiwen boya_market boya_sip"
 # PRE_USER_<user_name>=<uid>:<grp>:<gid>:<group1{,group2...}:<passwd>
