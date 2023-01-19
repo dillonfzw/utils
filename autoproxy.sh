@@ -49,8 +49,8 @@ function main() {
      && true; \
     fi \
  && if [ "$HOST_NAME_s" == "bladesk1" ]; then true \
-     && run_job fwd01_7077 "forward 7077 to bj-209-20-22" \
-     && run_job fwd02_7077 "forward 7077 to bj-209-20-22-fzw-mr1" \
+     && true run_job fwd01_7077 "forward 7077 to bj-209-20-22" \
+     && true run_job fwd02_7077 "forward 7077 to bj-209-20-22-fzw-mr1" \
      && true; \
     fi \
  && true; \
