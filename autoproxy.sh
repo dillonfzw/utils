@@ -8,17 +8,17 @@ source ~/bin/utils.sh
 HOST_NAME_s=`hostname -s`
 
 
-function  start_socks_7070() { autossh -M 20010 -f seulogin.2alice.site       -D7070 -gfCN -t -e none; }
+function  start_socks_7070() { autossh -M 20010 -f seulogin.2alice.site       -D7070 -gfCN -T -e none; }
 function verify_socks_7070() { test_port localhost 7070; }
-function  start_socks_7071() { autossh -M 20012 -f fuzwvps1.2alice.site       -D7071 -gfCN -t -e none -o 'ProxyCommand nc -x localhost:7070 %h %p'; }
+function  start_socks_7071() { autossh -M 20012 -f fuzwvps1.2alice.site       -D7071 -gfCN -T -e none -o 'ProxyCommand nc -x localhost:7070 %h %p'; }
 function verify_socks_7071() { test_port localhost 7071; }
-function  start_socks_7072() { autossh -M 20014 -f vpn2c-bladesk1.2alice.site -D7072 -gfCN -t -e none; }
+function  start_socks_7072() { autossh -M 20014 -f vpn2c-bladesk1.2alice.site -D7072 -gfCN -T -e none; }
 function verify_socks_7072() { test_port localhost 7072; }
-function  start_socks_7077() { autossh -M 20020 -f localhost                  -D7077 -gfCN -t -e none; }
+function  start_socks_7077() { autossh -M 20020 -f localhost                  -D7077 -gfCN -T -e none; }
 function verify_socks_7077() { test_port localhost 7077; }
-function  start_fwd01_7077() { autossh -M 20022 -f mr-n1-dmz                  -R7077:localhost:7077 -gfCN -t -e none; }
+function  start_fwd01_7077() { autossh -M 20022 -f mr-n1-dmz                  -R7077:localhost:7077 -gfCN -T -e none; }
 function verify_fwd01_7077() { test_port localhost 20022; }
-function  start_fwd02_7077() { autossh -M 20024 -f bj-209-20-22-fzw-mr1       -R7077:localhost:7077 -gfCN -t -e none; }
+function  start_fwd02_7077() { autossh -M 20024 -f bj-209-20-22-fzw-mr1       -R7077:localhost:7077 -gfCN -T -e none; }
 function verify_fwd02_7077() { test_port localhost 20024; }
 function test_port() { nc -zv $1 $2 2>&1 | grep -sq succeeded; }
 function run_job() {
