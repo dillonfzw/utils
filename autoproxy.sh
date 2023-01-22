@@ -39,7 +39,6 @@ function run_job() {
 function main() {
     true \
  && if true; then true \
-     && run_job socks_7077 "start self proxy at 7077" \
      && run_job socks_7070 "start tunnel to seu at 7070" \
      && run_job socks_7071 "start tunnel to gfw at 7071" \
      && true; \
@@ -49,8 +48,13 @@ function main() {
      && true; \
     fi \
  && if [ "$HOST_NAME_s" == "bladesk1" ]; then true \
+     && true run_job socks_7077 "start self proxy at 7077" \
      && true run_job fwd01_7077 "forward 7077 to bj-209-20-22" \
      && true run_job fwd02_7077 "forward 7077 to bj-209-20-22-fzw-mr1" \
+     && true; \
+    fi \
+ && if [ "$HOST_NAME_s" == "aliceworld2" ]; then true \
+     && run_job socks_7072 "start tunnel to bj office at 7072" \
      && true; \
     fi \
  && true; \
