@@ -3184,41 +3184,297 @@ gpgkey=http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
 EOF
     fi
 }
-function install_centos7_nvidia_repo() {
+function _install_ct7_nvidia_repo_legacy() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
     fi
 
-    local releasever=7
-    local f_gpgkey=`download_by_cache https://developer.download.nvidia.com/compute/cuda/repos/rhel${releasever}/x86_64/D42D0685.pub`
-    local f_cuda_repo=/etc/yum.repos.d/cuda-rhel${releasever}.repo
-    if [ ! -f $f_cuda_repo ]; then true \
-     && f_cuda_repo_url="https://developer.download.nvidia.com/compute/cuda/repos/rhel${releasever}/x86_64/cuda-rhel${releasever}.repo" \
-     && f_cuda_repo_=`download_by_cache $f_cuda_repo_url` \
-     && cat $f_cuda_repo_ | $_sudo tee $f_cuda_repo \
-     && true; \
-    fi
-
-    if false; then cat << EOF
+    local version_id=$(. /etc/os-release; echo $VERSION_ID)
+    local gpgkey_id=${gpgkey_id:-"D42D0685"}
+    local f_repo=/etc/yum.repos.d/cuda-rhel${version_id}.repo
+    if [ ! -f $f_repo ]; then true \
+     && f_repo_url="https://developer.download.nvidia.com/compute/cuda/repos/rhel${version_id}/x86_64/cuda-rhel${version_id}.repo" \
+     && f_repo_=`download_by_cache $f_repo_url` \
+     && cat $f_repo_ | $_sudo tee $f_repo \
+     && { cat <<EOF
 [cuda]
 name=cuda
-baseurl=https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64
+baseurl=https://developer.download.nvidia.com/compute/cuda/repos/rhel${version_id}/x86_64
 enabled=1
 gpgcheck=1
-#gpgkey=https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/D42D0685.pub
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA
-
-
-
-[nvidia-ml]
-name=nvidia-ml
-baseurl=https://developer.download.nvidia.com/compute/machine-learning/repos/rhel7/x86_64
-enabled=1
-gpgcheck=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA
+gpgkey=https://developer.download.nvidia.com/compute/cuda/repos/rhel${version_id}/x86_64/${gpgkey_id}.pub
 EOF
+     } | $_sudo tee ${f_repo} \
+     && $_sudo yum install -y cuda-repo-rhel${version_id} \
+     && true; \
     fi
+}
+function _install_ct7_nvidia_repo() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    local version_id=$(. /etc/os-release; echo $VERSION_ID)
+    # https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=CentOS&target_version=7&target_type=rpm_network
+    # https://developer.nvidia.com/cuda-11.0-download-archive?target_os=Linux&target_arch=x86_64&target_distro=CentOS&target_version=7&target_type=rpmnetwork
+    # https://developer.nvidia.com/cuda-10.2-download-archive?target_os=Linux&target_arch=x86_64&target_distro=CentOS&target_version=7&target_type=rpmnetwork
+    #
+    # sudo yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo
+    #
+    # sudo yum clean all
+    # sudo yum -y install nvidia-driver-latest-dkms cuda
+    # sudo yum -y install cuda-drivers
+    true \
+ && local f_repo_url="https://developer.download.nvidia.com/compute/cuda/repos/rhel${version_id}/x86_64/cuda-rhel${version_id}.repo" \
+ && local f_repo=/etc/yum.repos.d/cuda-rhel${version_id}.repo \
+ && function _install() {
+        true \
+     && local _f=`download_by_cache $f_repo_url` \
+     && $_sudo yum-config-manager --add-repo $_f \
+     && true;
+    } \
+ && if do_and_verify \
+        "test -f $f_repo" \
+        "_install" \
+        "true"; then true \
+     && true;
+    fi \
+ && log_info "Install \"cuda\" by running: yum clean all && yum install nvidia-driver-latest-dkms cuda && yum install cuda-drivers" \
+ && true;
+}
+function install_ct7_nvidia_repo_cu102() {
+    true \
+ && _install_ct7_nvidia_repo \
+ && true;
+}
+function install_ct7_nvidia_repo_cu110() {
+    true \
+ && _install_ct7_nvidia_repo \
+ && true;
+}
+function install_ct7_nvidia_repo_cu120() {
+    true \
+ && _install_ct7_nvidia_repo \
+ && true;
+}
+function install_ct7_nvidia_ml_repo() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    local version_id=$(. /etc/os-release; echo $VERSION_ID)
+    local gpgkey_id=${gpgkey_id:-"7fa2af80"}
+    local f_repo="/etc/yum.repos.d/nvidia-machine-learning.repo"
+    if [ ! -f $f_repo ]; then true \
+     && { cat <<EOF
+[nvidia-machine-learning]
+name=nvidia-machine-learning
+baseurl=http://developer.download.nvidia.com/compute/machine-learning/repos/rhel${version_id}/x86_64/
+enabled=1
+gpgcheck=1
+gpgkey=http://developer.download.nvidia.com/compute/machine-learning/repos/rhel${version_id}/x86_64/${gpgkey_id}.pub
+EOF
+     } | $_sudo tee ${f_repo} \
+     && $_sudo yum install -y nvidia-machine-learning-repo-rhel${version_id} \
+     && true; \
+    fi
+}
+function _install_ub_nvidia_repo() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    local distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
+
+    # https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/
+    # 导入我们的 GPG 密钥：
+    local aptkey_id=${aptkey_id:-"3bf863cc"}
+    local aptkey_id_fmt=`echo ${aptkey_id} | tr 'a-z' 'A-Z' | sed -e 's/\(.\{4\}\)\(.*\)/\1 \2/g'`
+    local aptkey_url="https://developer.download.nvidia.com/compute/cuda/repos/${distribution/./}/x86_64/${aptkey_id}.pub"
+    local f_aptkey=`download_by_cache ${aptkey_url}`
+    if do_and_verify \
+        'eval apt-key fingerprint ${aptkey_id} | grep -sqi "${aptkey_id_fmt}"' \
+        'eval curl ${CURL_PROXY:+--proxy} ${CURL_PROXY} -fsSL ${aptkey_url} | $_sudo apt-key add -' \
+        'true'; then
+        # 'eval $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0x3BF863CC"' \
+        # pub   rsa4096 2022-04-14 [SC]
+        #       EB69 3B30 35CD 5710 E231  E123 A4B4 6996 3BF8 63CC
+        # uid           [ unknown] cudatools <cudatools@nvidia.com>
+        apt-key fingerprint ${aptkey_id} | log_lines debug
+    else
+        log_error "Fail to setup nvidia apt key"
+        false
+    fi
+
+    local f_repo="/etc/apt/sources.list.d/cuda.list"
+    function _install() {
+        {
+            echo "deb https://developer.download.nvidia.com/compute/cuda/repos/${distribution/./}/x86_64 /"
+        } | $_sudo tee $f_repo >/dev/null
+    }
+    if do_and_verify \
+        "test -f $f_repo" \
+        '_install' \
+        'true'; then true \
+     && cat $f_repo | log_lines debug \
+     && true; \
+    else true \
+     && log_error "Fail to install nvidia apt source" \
+     && false; \
+    fi && \
+    true
+}
+function install_ub2004_nvidia_repo_cu120() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    local distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
+    # https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_network
+    #
+    # wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+    # sudo dpkg -i cuda-keyring_1.0-1_all.deb
+    #
+    # sudo apt-get update
+    # sudo apt-get -y install cuda
+    true \
+ && true  f_repo_pkg_url="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb" \
+ && local f_repo_pkg_url="https://developer.download.nvidia.com/compute/cuda/repos/${distribution/./}/x86_64/cuda-keyring_1.0-1_all.deb" \
+ && function _install() {
+        true \
+     && local _f=`download_by_cache $f_repo_pkg_url` \
+     && $_sudo dpkg -i $_f \
+     && true;
+    } \
+ && if do_and_verify \
+        "pkg_verify_deb cuda-keyring" \
+        "_install" \
+        "true"; then true \
+     && dpkg -L cuda-keyring | log_lines debug \
+     && true; \
+    else true \
+     && log_error "Fail to install cuda-keyring for nvidia repo" \
+     && false; \
+    fi \
+ && log_info "Install \"cuda\" by running: apt-get update && apt-get -y install cuda" \
+ && true;
+}
+function install_ub1804_nvidia_repo_cu120() {
+    true \
+ && install_ub2004_nvidia_repo_cu120 \
+ && true;
+}
+function install_ub2004_nvidia_repo_cu110() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+    local distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
+    local aptkey_id=${aptkey_id:-"7fa2af80"}
+    # https://developer.nvidia.com/cuda-11.0-download-archive?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=2004&target_type=debnetwork
+    #
+    # wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
+    # sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
+    #
+    # sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
+    # sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
+    #
+    # sudo apt-get update
+    # sudo apt-get -y install cuda
+    true \
+ && true \
+ && true "Pin the cuda repo" \
+ && true \
+ && true  f_pin_url="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin" \
+ && local f_pin_url="https://developer.download.nvidia.com/compute/cuda/repos/${distribution/./}/x86_64/cuda-${distribution/./}.pin" \
+ && local f_pin="/etc/apt/preferences.d/cuda-repository-pin-600" \
+ && function _install() {
+        true \
+     && local _f_pin=`download_by_cache $f_pin_url` \
+     && $_sudo mkdir -p `dirname $f_pin` \
+     && $_sudo cp $_f_pin $f_pin \
+     && true;
+    } \
+ && if do_and_verify \
+        "test -f $f_pin" \
+        "_install" \
+        "true"; then true \
+     && true; \
+    fi \
+ && true \
+ && true "Configure the cuda repo" \
+ && true \
+ && _install_ub_nvidia_repo \
+ && true \
+ && log_info "Install \"cuda\" by running: apt-get update && apt-get -y install cuda" \
+ && true;
+}
+function install_ub1804_nvidia_repo_cu110() {
+    true \
+ && install_ub2004_nvidia_repo_cu110 \
+ && true;
+}
+function install_ub2004_nvidia_repo_cu102() {
+    log_error "Nvidia does not support install CUDA 10.2 in Ubuntu 20.04"
+    false
+}
+function install_ub1804_nvidia_repo_cu102() {
+    # https://developer.nvidia.com/cuda-10.2-download-archive?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1804&target_type=debnetwork
+    #
+    # wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+    # sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+    #
+    # sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+    # sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
+    #
+    # sudo apt-get update
+    # sudo apt-get -y install cuda
+    true \
+ && install_ub2004_nvidia_repo_cu110 \
+ && true;
+}
+function install_ub2004_nvidia_docker_repo() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    # 导入我们的 GPG 密钥：
+    local gpgkey_url="https://nvidia.github.io/nvidia-docker/gpgkey"
+    if do_and_verify \
+        'eval apt-key fingerprint F796ECB0 | grep -sqi "F796 ECB0"' \
+        'eval curl ${CURL_PROXY:+--proxy} ${CURL_PROXY} -fsSL ${gpgkey_url} | $_sudo apt-key add -' \
+        'true'; then
+        # pub   rsa4096 2017-09-28 [SCE]
+        #       C95B 321B 61E8 8C18 09C4  F759 DDCA E044 F796 ECB0
+        #       uid           [ unknown] NVIDIA CORPORATION (Open Source Projects) <cudatools@nvidia.com>
+        apt-key fingerprint F796ECB0 | log_lines debug
+    else
+        log_error "Fail to setup nvidia docker apt key"
+        false
+    fi
+
+    local f_repo="/etc/apt/sources.list.d/nvidia-docker.list"
+    function _install() {
+        local distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
+        local f_repo_url="https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list"
+        local _f=`download_by_cache ${f_repo_url}`
+        cat $_f | $_sudo tee ${f_repo} >/dev/null
+    }
+    if do_and_verify \
+        "test -f $f_repo" \
+        '_install' \
+        'true'; then true \
+     && cat $f_repo | log_lines debug \
+     && true; \
+    else true \
+     && log_error "Fail to install nvidia-docker apt source" \
+     && false; \
+    fi && \
+    true
 }
 
 DEFAULT_PRE_USER_LIST="root fuzhiwen boya_market boya_sip"
