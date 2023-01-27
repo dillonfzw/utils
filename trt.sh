@@ -103,6 +103,24 @@ declare -a MODELS_MATRIX=(
         "input.1"
         "3x224x224"
         "1 4 8 16 32 64"
+    # ------------------------------------------------------------
+    # 13
+    "deit_tiny_patch16_224_qint8.onnx"
+        "x.1"
+        "3x224x224"
+        ""
+    # ------------------------------------------------------------
+    # 14
+    "deit_tiny_patch16_224_qint8-dbs.onnx"
+        "x.1"
+        "3x224x224"
+        "1 4 8 16 32 64"
+    # ------------------------------------------------------------
+    # 15
+    "unet2d.onnx"
+        "input"
+        "1x512x512"
+        "1 32 64 72"
 )
 if echo "${1}" | grep -sq "^declare "; then true \
  && declare -a MODELS_MATRIX=`echo "${1}" | cut -d= -f2-` \
@@ -155,6 +173,7 @@ fi
 # run inference
 #
 [ -f ${ENGINE_FILE} ] && for BS in ${_optShapes:-""} ${BSS[@]}; do true \
+ && if [ -n "${BS}" -a "${BS}" == "${_optShapes}" ]; then continue; fi \
  && true "Run throughput benchmark..." \
  && declare LOG_FILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${BS}x${INPUT_SHAPE}-infer.log \
  && trtexec \
