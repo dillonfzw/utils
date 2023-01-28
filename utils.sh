@@ -3184,7 +3184,47 @@ gpgkey=http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
 EOF
     fi
 }
-function _install_ct7_nvidia_repo_legacy() {
+function install_cu102() {
+    local _sudo=$sudo
+    if [ "$as_root" != "true" ]; then
+        _sudo=""
+    fi
+
+    function _install_cu102() {
+        true \
+     && if ! do_and_verify \
+            "pkg_verify cuda-10-2" \
+            "pkg_install cuda-10-2" \
+            "true"; then true \
+         && log_error "Fail to install cuda-10-2" \
+         && false; \
+        fi \
+     && true;
+    }
+
+    true \
+ && local distribution=$(. /etc/os-release; echo $ID$VERSION_ID) \
+ && if [ "x${distribution}" = "xcentos7" ]; then true \
+     && install_${distribution/./}_nvidia_repo_cu102 \
+     && $_sudo apt-get update \
+     && _install_cu102 \
+     && true;
+    elif [ "x${distribution}" = "xubuntu20.04" ]; then true \
+     && install_${distribution/./}_nvidia_repo_cu102 \
+     && install_${distribution/./}_nvidia_ml_repo \
+     && $_sudo apt-get update \
+     && _install_cu102 \
+     && true;
+    elif [ "x${distribution}" = "xubuntu18.04" ]; then true \
+     && install_${distribution/./}_nvidia_repo_cu102 \
+     && install_${distribution/./}_nvidia_ml_repo \
+     && $_sudo apt-get update \
+     && _install_cu102 \
+     && true;
+    fi \
+ && true;
+}
+function _install_centos7_nvidia_repo_legacy() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
@@ -3210,7 +3250,7 @@ EOF
      && true; \
     fi
 }
-function _install_ct7_nvidia_repo() {
+function _install_centos7_nvidia_repo() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
@@ -3243,22 +3283,22 @@ function _install_ct7_nvidia_repo() {
  && log_info "Install \"cuda\" by running: yum clean all && yum install nvidia-driver-latest-dkms cuda && yum install cuda-drivers" \
  && true;
 }
-function install_ct7_nvidia_repo_cu102() {
+function install_centos7_nvidia_repo_cu102() {
     true \
- && _install_ct7_nvidia_repo \
+ && _install_centos7_nvidia_repo \
  && true;
 }
-function install_ct7_nvidia_repo_cu110() {
+function install_centos7_nvidia_repo_cu110() {
     true \
- && _install_ct7_nvidia_repo \
+ && _install_centos7_nvidia_repo \
  && true;
 }
-function install_ct7_nvidia_repo_cu120() {
+function install_centos7_nvidia_repo_cu120() {
     true \
- && _install_ct7_nvidia_repo \
+ && _install_centos7_nvidia_repo \
  && true;
 }
-function install_ct7_nvidia_ml_repo() {
+function install_centos7_nvidia_ml_repo() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
@@ -3281,7 +3321,7 @@ EOF
      && true; \
     fi
 }
-function _install_ub_nvidia_repo() {
+function _install_ubuntu_nvidia_repo() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
@@ -3327,7 +3367,7 @@ function _install_ub_nvidia_repo() {
     fi && \
     true
 }
-function install_ub2004_nvidia_repo_cu120() {
+function install_ubuntu2004_nvidia_repo_cu120() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
@@ -3362,12 +3402,12 @@ function install_ub2004_nvidia_repo_cu120() {
  && log_info "Install \"cuda\" by running: apt-get update && apt-get -y install cuda" \
  && true;
 }
-function install_ub1804_nvidia_repo_cu120() {
+function install_ubuntu1804_nvidia_repo_cu120() {
     true \
- && install_ub2004_nvidia_repo_cu120 \
+ && install_ubuntu2004_nvidia_repo_cu120 \
  && true;
 }
-function install_ub2004_nvidia_repo_cu110() {
+function install_ubuntu2004_nvidia_repo_cu110() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
@@ -3407,21 +3447,21 @@ function install_ub2004_nvidia_repo_cu110() {
  && true \
  && true "Configure the cuda repo" \
  && true \
- && _install_ub_nvidia_repo \
+ && _install_ubuntu_nvidia_repo \
  && true \
  && log_info "Install \"cuda\" by running: apt-get update && apt-get -y install cuda" \
  && true;
 }
-function install_ub1804_nvidia_repo_cu110() {
+function install_ubuntu1804_nvidia_repo_cu110() {
     true \
- && install_ub2004_nvidia_repo_cu110 \
+ && install_ubuntu2004_nvidia_repo_cu110 \
  && true;
 }
-function install_ub2004_nvidia_repo_cu102() {
+function install_ubuntu2004_nvidia_repo_cu102() {
     log_error "Nvidia does not support install CUDA 10.2 in Ubuntu 20.04"
     false
 }
-function install_ub1804_nvidia_repo_cu102() {
+function install_ubuntu1804_nvidia_repo_cu102() {
     # https://developer.nvidia.com/cuda-10.2-download-archive?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1804&target_type=debnetwork
     #
     # wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
@@ -3433,10 +3473,10 @@ function install_ub1804_nvidia_repo_cu102() {
     # sudo apt-get update
     # sudo apt-get -y install cuda
     true \
- && install_ub2004_nvidia_repo_cu110 \
+ && install_ubuntu2004_nvidia_repo_cu110 \
  && true;
 }
-function install_ub2004_nvidia_docker_repo() {
+function install_ubuntu2004_nvidia_docker_repo() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
@@ -4093,7 +4133,7 @@ function install_iluvatar_sdk_corex_samples() {
 }
 function install_iluvatar_sdk_apps() {
     local _release=${1:-latest}
-    local _tf_ver=${_tv_ver:-1}
+    local _tf_ver=${_tf_ver:-1}
     local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
     function _filter_op() {
         local _line
@@ -4207,7 +4247,7 @@ function scrape_iluvatar_sdk_r221_pkgs() { scrape_iluvatar_sdk_pkgs r221; }
 function install_iluvatar_sdk() {
     true \
  && local _release=${1:-latest} \
- && local _tf_ver=${_tv_ver:-1} \
+ && local _tf_ver=${_tf_ver:-1} \
  && if [ `whoami` = 'root' ]; then true \
      && local DEFAULT_install_dir=/opt \
      && true; \
