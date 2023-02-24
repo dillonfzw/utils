@@ -4793,6 +4793,129 @@ function setup_xfce_xrdp() {
  && $_sudo bash -c "echo xfce4-session >> /etc/skel/.Xsession" \
  && true;
 }
+function setup_deepstream() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && local CUDNN_VERSION=${CUDNN_VERSION:-8.7.0.84-1+cuda11.8} \
+ && local TENSORRT_VERSION=${TENSORRT_VERSION:-8.5.2-1+cuda11.8} \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1604=( \
+    ) \
+ && pkgs_ub1804=( \
+    ) \
+ && pkgs_ub2004=( \
+        # from https://docs.nvidia.com/metropolis/deepstream/dev-guide/text/DS_docker_containers.html
+        "deb:10:pkg-config"
+        "deb:10:libglvnd-dev"
+        "deb:10:libgl1-mesa-dev"
+        "deb:10:libegl1-mesa-dev"
+        "deb:10:libgles2-mesa-dev"
+        "deb:10:wget"
+        "deb:10:libyaml-cpp-dev"
+        "deb:10:gnutls-bin"
+        "deb:10:linux-libc-dev"
+        "deb:10:libglew2.1"
+        "deb:10:libssl1.1"
+        "deb:10:libjpeg8"
+        "deb:10:libjson-glib-1.0-0"
+        "deb:10:gstreamer1.0-plugins-good"
+        "deb:10:gstreamer1.0-plugins-bad"
+        "deb:10:gstreamer1.0-plugins-ugly"
+        "deb:10:gstreamer1.0-tools"
+        "deb:10:gstreamer1.0-libav"
+        "deb:10:gstreamer1.0-alsa"
+        "deb:10:libcurl4"
+        "deb:10:libuuid1"
+        "deb:10:libjansson4"
+        "deb:10:libjansson-dev"
+        "deb:10:librabbitmq4"
+        "deb:10:libgles2-mesa"
+        "deb:10:libgstrtspserver-1.0-0"
+        "deb:10:libv4l-dev"
+        "deb:10:gdb"
+        "deb:10:bash-completion"
+        "deb:10:libboost-dev"
+        "deb:10:uuid-dev"
+        "deb:10:libgstrtspserver-1.0-0"
+        "deb:10:libgstrtspserver-1.0-0-dbg"
+        "deb:10:libgstrtspserver-1.0-dev"
+        "deb:10:libgstreamer1.0-dev"
+        "deb:10:libgstreamer-plugins-base1.0-dev"
+        "deb:10:libglew-dev"
+        "deb:10:libssl-dev"
+        "deb:10:libopencv-dev"
+        "deb:10:freeglut3-dev"
+        "deb:10:libjpeg-dev"
+        "deb:10:libcurl4-gnutls-dev"
+        "deb:10:libjson-glib-dev"
+        "deb:10:libboost-dev"
+        "deb:10:librabbitmq-dev"
+        "deb:10:libgles2-mesa-dev"
+        "deb:10:pkg-config"
+        "deb:10:libxau-dev"
+        "deb:10:libxdmcp-dev"
+        "deb:10:libxcb1-dev"
+        "deb:10:libxext-dev"
+        "deb:10:libx11-dev"
+        "deb:10:libnss3"
+        "deb:10:linux-libc-dev"
+        "deb:10:git"
+        "deb:10:wget"
+        "deb:10:gnutls-bin"
+        "deb:10:sshfs"
+        "deb:10:python3-distutils"
+        "deb:10:python3-apt"
+        "deb:10:python"
+        "deb:10:rsyslog"
+        "deb:10:vim"
+        "deb:10:rsync"
+        "deb:10:gstreamer1.0-rtsp"
+        "deb:10:libcudnn8=${CUDNN_VERSION}"
+        "deb:10:libcudnn8-dev=${CUDNN_VERSION}"
+        "deb:10:libnvinfer8=${TENSORRT_VERSION}"
+        "deb:10:libnvinfer-dev=${TENSORRT_VERSION}"
+        "deb:10:libnvparsers8=${TENSORRT_VERSION}"
+        "deb:10:libnvparsers-dev=${TENSORRT_VERSION}"
+        "deb:10:libnvonnxparsers8=${TENSORRT_VERSION}"
+        "deb:10:libnvonnxparsers-dev=${TENSORRT_VERSION}"
+        "deb:10:libnvinfer-plugin8=${TENSORRT_VERSION}"
+        "deb:10:libnvinfer-plugin-dev=${TENSORRT_VERSION}"
+        "deb:10:python3-libnvinfer=${TENSORRT_VERSION}"
+        "deb:10:python3-libnvinfer-dev=${TENSORRT_VERSION}"
+        "deb:10:libx11-xcb-dev"
+        "deb:10:libxkbcommon-dev"
+        "deb:10:libwayland-dev"
+        "deb:10:libxrandr-dev"
+        "deb:10:libegl1-mesa-dev"
+    ) \
+ && pkgs=( \
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1604[@]}); \
+    elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then \
+        pkgs+=(${pkgs_rh7[@]}); \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && true;
+}
 function download_os_pkgs() {
     if $is_rhel; then
         download_os_pkgs_rh $@
