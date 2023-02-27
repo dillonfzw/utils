@@ -187,6 +187,7 @@ fi
  && declare PROFILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${BS}x${INPUT_SHAPE}-profile.json \
  && trtexec \
       --loadEngine=${ENGINE_FILE} \
+      ${IDLE_TIME:+"--idleTime=${IDLE_TIME}"} \
       ${PRECISION:+"--${PRECISION}"} \
       ${_optShapes:+"--shapes=${INPUT_NAME}:${BS}x${INPUT_SHAPE}"} \
       --profilingVerbosity=detailed \
