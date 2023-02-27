@@ -1601,7 +1601,7 @@ function pkg_list_installed_yum() {
 function pkg_list_installed_deb() {
     local pkgs="$@"
     local pkgs_m=`echo "$pkgs" | tr ' ' '\n' | sed -e 's/=.*$//g' | xargs`
-    dpkg -l $pkgs_m
+    env DPKG_PAGER="cat" dpkg -l $pkgs_m
 }
 function pkg_list_installed_pip() {
     local pip=$G_pip_bin
