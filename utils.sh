@@ -4470,9 +4470,12 @@ function setup_python3() {
         "pip:virtualenvwrapper" \
         "deb:virtualenv-clone" \
     ) \
- && pkgs_ub2004=( \
-        "deb:python3-virtualenvwrapper" \
-        "deb:python3-virtualenv-clone" \
+ && pkgs_ub2004=(
+        "deb:python3-virtualenvwrapper"
+        "deb:python3-virtualenv-clone"
+        # ub2004's python3.6 comes from deadsnakes/ppa
+        "deb:python3.6-full"
+        "deb:python3.6-dev"
     ) \
  && pkgs=( \
         "python3" \
@@ -4493,8 +4496,10 @@ function setup_python3() {
         pkgs+=(${pkgs_ub1604[@]}); \
     elif grep -sq "VERSION=\"18.04" /etc/os-release; then \
         pkgs+=(${pkgs_ub1804[@]}); \
-    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
-        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then true \
+     && pkgs+=(${pkgs_ub2004[@]}) \
+     && $sudo add-apt-repository -y ppa:deadsnakes/ppa \
+     && true; \
     elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
      && pkgs+=(${pkgs_rh7[@]}) \
      && install_epel \
