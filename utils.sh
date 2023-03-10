@@ -4187,7 +4187,7 @@ function scrape_iluvatar_sdk_pkgs() {
     if [ -n "${ILUVATAR_APPS_TAG}" ]; then true \
      && local _ILUVATAR_APPS_site_prefix="MRr$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/\.//g')" \
      && local _ILUVATAR_APPS_site_dir_suffix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/^.*\([0-9]\{8\}\)/\1/' -e 's,\.,/,g')" \
-     && if [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_dir_suffix}]}" == "x" ]; then true \
+     && if [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" ]; then true \
          && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/${_ILUVATAR_APPS_site_dir_suffix}/" \
          && true; \
         fi \
