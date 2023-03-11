@@ -50,7 +50,7 @@ for _CUDA_DEVICE in `echo ${_CUDA_DEVICES} | tr ',' ' '`
 do
     env CUDA_VISIBLE_DEVICES=${_CUDA_DEVICE} \
     ${_WRAPPED_CMD} $@ \
-    >logs/log.${_WRAPPED_CMD}-${TS}-d${_CUDA_DEVICE}.txt 2>&1 &
+    >logs/log.${_WRAPPED_CMD##*/}-${TS}-d${_CUDA_DEVICE}.txt 2>&1 &
 
     G_task_pids+=($!)
 done
@@ -59,7 +59,7 @@ done
 #
 # show aggregated output
 #
-tail -F logs/log.${_WRAPPED_CMD}-${TS}-d*.txt &
+tail -F logs/log.${_WRAPPED_CMD##*/}-${TS}-d*.txt &
 G_task_wait=$!
 
 
