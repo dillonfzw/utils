@@ -72,5 +72,5 @@ wait ${G_task_pids[@]}
 #
 # terminate output
 #
-kill -SIGINT ${G_task_wait}
+kill -SIGTERM ${G_task_wait}
 exit 0
