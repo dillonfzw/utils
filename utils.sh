@@ -4163,9 +4163,11 @@ function scrape_iluvatar_sdk_pkgs() {
         declare -gA G_iluvatar_sdk_pkgs_cache=()
     fi
     local -A DEFAULT_download_url_prefix_map=(
-        ["latest"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
-        ["r230"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
+        ["latest"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
+        ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
+        ["BIr300"]="http://10.150.9.95/corex/release_packages/3.0.0/x86/"
         ["r231"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
+        ["r230"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
         ["r221"]="http://10.150.9.95/corex/release_packages/2.2.1/x86/"
         ["MRr230Beta1"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
         ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
@@ -4175,8 +4177,10 @@ function scrape_iluvatar_sdk_pkgs() {
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
-        ["r230"]="\.sh\"|\.run\"|\.whl\""
+        ["BIr301"]="\.sh\"|\.run\"|\.whl\""
+        ["BIr300"]="\.sh\"|\.run\"|\.whl\""
         ["r231"]="\.sh\"|\.run\"|\.whl\""
+        ["r230"]="\.sh\"|\.run\"|\.whl\""
         ["r221"]="\.sh\"|\.run\"|\.whl\""
         ["MRr230Beta1"]="^cmake-.*\.sh\"|^corex-installer.*_beta_1.*\.run\"|^corex-samples.*\.run\"|\.whl\""
         ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
