@@ -15,6 +15,7 @@ if echo "${1}" | grep -sq "^[0-9]*$"; then true \
  && true; \
 fi
 
+declare IDLE_TIME=${IDLE_TIME:-"10"}
 #
 # Build TensorRT engine from ONNX models and run inference benchmark
 #
@@ -157,13 +158,18 @@ if [ ! -f ${ENGINE_FILE} ]; then true \
       --onnx=${ONNX_FILE} \
       --saveEngine=${ENGINE_FILE} \
       --buildOnly \
+      \
       --memPoolSize=workspace:$((8<<10)) \
+      \
       ${_minShapes:+"--minShapes=${_minShapes}"} \
       ${_optShapes:+"--optShapes=${_optShapes}"} \
       ${_maxShapes:+"--maxShapes=${_maxShapes}"} \
+      \
       ${PRECISION:+"--${PRECISION}"} \
+      \
       --dumpLayerInfo \
       --exportLayerInfo=${LAYER_FILE} \
+      --profilingVerbosity=detailed \
       --verbose 2>&1 | tee ${LOG_FILE} \
  && true; \
 fi
@@ -180,6 +186,8 @@ fi
       --loadEngine=${ENGINE_FILE} \
       ${PRECISION:+"--${PRECISION}"} \
       ${_optShapes:+"--shapes=${INPUT_NAME}:${BS}x${INPUT_SHAPE}"} \
+      \
+      ${IDLE_TIME:+"--idleTime=${IDLE_TIME}"} \
       --iterations=20 \
       --verbose 2>&1 | tee -a ${LOG_FILE} \
  && true "Run profiling..." \
@@ -187,12 +195,14 @@ fi
  && declare PROFILE=`basename ${ONNX_FILE} .onnx`-${PRECISION:+${PRECISION}-}${BS}x${INPUT_SHAPE}-profile.json \
  && trtexec \
       --loadEngine=${ENGINE_FILE} \
-      ${IDLE_TIME:+"--idleTime=${IDLE_TIME}"} \
       ${PRECISION:+"--${PRECISION}"} \
       ${_optShapes:+"--shapes=${INPUT_NAME}:${BS}x${INPUT_SHAPE}"} \
+      \
       --profilingVerbosity=detailed \
       --dumpProfile \
       --exportProfile=${PROFILE} \
+      \
+      ${IDLE_TIME:+"--idleTime=${IDLE_TIME}"} \
       --iterations=20 \
       --verbose 2>&1 | tee -a ${LOG_FILE} \
  && true; \
