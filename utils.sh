@@ -4163,28 +4163,42 @@ function scrape_iluvatar_sdk_pkgs() {
         declare -gA G_iluvatar_sdk_pkgs_cache=()
     fi
     local -A DEFAULT_download_url_prefix_map=(
-        ["latest"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
-        ["r230"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
+        ["latest"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
+        ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
+        ["BIr300"]="http://10.150.9.95/corex/release_packages/3.0.0/x86/"
         ["r231"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
+        ["r230"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
         ["r221"]="http://10.150.9.95/corex/release_packages/2.2.1/x86/"
         ["MRr230Beta1"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
         ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
         ["MRDailyLatest"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/"
+        # 移动集采
+        ["MRr20221105231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
-        ["r230"]="\.sh\"|\.run\"|\.whl\""
+        ["BIr301"]="\.sh\"|\.run\"|\.whl\""
+        ["BIr300"]="\.sh\"|\.run\"|\.whl\""
         ["r231"]="\.sh\"|\.run\"|\.whl\""
+        ["r230"]="\.sh\"|\.run\"|\.whl\""
         ["r221"]="\.sh\"|\.run\"|\.whl\""
         ["MRr230Beta1"]="^cmake-.*\.sh\"|^corex-installer.*_beta_1.*\.run\"|^corex-samples.*\.run\"|\.whl\""
         ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRDailyLatest"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
+        # 移动集采
+        ["MRr20221105231"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
     )
     if [ -n "${ILUVATAR_APPS_TAG}" ]; then true \
      && local _ILUVATAR_APPS_site_prefix="MRr$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/\.//g')" \
      && local _ILUVATAR_APPS_site_dir_suffix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/^.*\([0-9]\{8\}\)/\1/' -e 's,\.,/,g')" \
-     && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/${_ILUVATAR_APPS_site_dir_suffix}/" \
-     && DEFAULT_pkg_patterns_map["${_ILUVATAR_APPS_site_prefix}"]=${DEFAULT_pkg_patterns_map["MRDailyLatest"]} \
+     && if [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" ]; then true \
+         && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/${_ILUVATAR_APPS_site_dir_suffix}/" \
+         && true; \
+        fi \
+     && if [ "x${DEFAULT_pkg_patterns_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" ]; then true \
+         && DEFAULT_pkg_patterns_map["${_ILUVATAR_APPS_site_prefix}"]=${DEFAULT_pkg_patterns_map["MRDailyLatest"]} \
+         && true; \
+        fi \
      && true; \
     fi
     function _filter_87tY() {
