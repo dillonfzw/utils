@@ -4348,6 +4348,7 @@ function setup_os() {
         "deb:netcat-openbsd"    "rpm:nmap-ncat" \
         "deb:openjdk-8-jdk"     "rpm:java-1.8.0-openjdk" \
         "deb:p7zip-full" \
+        "deb:pkg-config"        "rpm:pkgconfig" \
         "deb:uuid-runtime"      "rpm:uuid" \
         "deb:collectd-utils" \
                                 "rpm:collectd-amqp" \
@@ -4662,13 +4663,14 @@ function setup_opencv() {
                                   "rpm:gstreamer-plugins-base-devel" \
                                   "rpm:gstreamer-plugins-bad-free-devel" \
         "deb:libgstreamer1.0-dev" "rpm:gstreamer-devel" \
-        "deb:libgtk-3-dev" \
+        "deb:libgtk-3-dev"        "rpm:gtk3-devel" \
         "deb:libjpeg-dev"         "rpm:libjpeg-turbo-devel" \
         "deb:libopenexr-dev"      "rpm:OpenEXR-devel" \
         "deb:libpng-dev"          "rpm:libpng-devel" \
         "deb:libswscale-dev" \
         "deb:libtiff-dev"         "rpm:libtiff-devel" \
         "deb:libwebp-dev"         "rpm:libwebp-devel" \
+        "deb:pkg-config"          "rpm:pkgconfig" \
         "deb:python3-pil"         "rpm:python36-pillow" \
     ) \
  && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
