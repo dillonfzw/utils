@@ -4359,7 +4359,8 @@ function setup_os() {
         "deb:locales"           "rpm:glibc-common" \
         "deb:locales-all" \
         "deb:lsb-base"          "#rpm:initscripts" \
-        "deb:netcat-openbsd"    "rpm:nmap-ncat" \
+        "deb:netcat-openbsd"    "rpm:netcat" \
+                                "rpm:nmap-ncat" \
         "deb:openjdk-8-jdk"     "rpm:java-1.8.0-openjdk" \
         "deb:p7zip-full" \
         "deb:pkg-config"        "rpm:pkgconfig" \
