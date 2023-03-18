@@ -4769,17 +4769,17 @@ function setup_xfce_xrdp() {
     ) \
  && pkgs=( \
         "deb:10:xfce4"
-        "deb:10:xfce4-clipman-plugin"
-        "deb:10:xfce4-cpugraph-plugin"
-        "deb:10:xfce4-netload-plugin"
-        "deb:10:xfce4-screenshooter"
-        "deb:10:xfce4-taskmanager"
-        "deb:10:xfce4-terminal"
-        "deb:10:xfce4-xkb-plugin"
-        "deb:20:sudo"
-        "deb:20:wget"
-        "deb:20:xorgxrdp"
-        "deb:20:xrdp"
+        "xfce4-clipman-plugin"
+        "xfce4-cpugraph-plugin"
+        "xfce4-netload-plugin"
+        "xfce4-screenshooter"
+        "xfce4-taskmanager"
+        "xfce4-terminal"
+        "xfce4-xkb-plugin"
+        "sudo"
+        "wget"
+        "xorgxrdp"
+        "xrdp"
     ) \
  && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
  && if grep -sq "VERSION=\"16.04" /etc/os-release; then \
@@ -4800,17 +4800,27 @@ function setup_xfce_xrdp() {
      && true "TODO: danchitnis/container-xrdp原来的Dockerfile隐含依赖--install-recommends，现在还没搞清楚，暂时也用" \
      && local apt_install_flags="-y" \
      && true; \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && true "Centos install Xfce by group" \
+     && $_sudo yum -y groups install "Xfce" \
+     && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
- && pkgs=(`dpkg -l light-lock xscreensaver | grep "^ii" | awk '{print $2}' | xargs`) \
- && if [ ${#pkgs[@]} -gt 0 ]; then $_sudo ${G_apt_bin} remove -y ${pkgs[@]}; fi \
- && $_sudo ${G_apt_bin} autoremove -y \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && pkgs=(`dpkg -l light-lock xscreensaver | grep "^ii" | awk '{print $2}' | xargs`) \
+     && if [ ${#pkgs[@]} -gt 0 ]; then $_sudo ${G_apt_bin} remove -y ${pkgs[@]}; fi \
+     && $_sudo ${G_apt_bin} autoremove -y \
+     && true; \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && { $_sudo yum erase -y xscreensaver || true; } \
+     && true; \
+    fi \
  && local run_sh=`download_by_cache "https://github.com/danchitnis/container-xrdp/raw/master/build/ubuntu-run.sh"` \
  && $_sudo cp -p ${run_sh} /usr/bin/run.sh \
  && $_sudo chmod a+x /usr/bin/run.sh \
  && $_sudo mkdir /var/run/dbus \
  && $_sudo cp /etc/X11/xrdp/xorg.conf /etc/X11 \
- && $_sudo sed -i "s/console/anybody/g" /etc/X11/Xwrapper.config \
+ && { $_sudo sed -i "s/console/anybody/g" /etc/X11/Xwrapper.config || true; } \
  && $_sudo sed -i "s/xrdp\/xorg/xorg/g" /etc/xrdp/sesman.ini \
  && $_sudo bash -c "echo xfce4-session >> /etc/skel/.Xsession" \
  && true;
