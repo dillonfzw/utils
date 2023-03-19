@@ -4820,9 +4820,16 @@ function setup_xfce_xrdp() {
  && $_sudo chmod a+x /usr/bin/run.sh \
  && $_sudo mkdir /var/run/dbus \
  && $_sudo cp /etc/X11/xrdp/xorg.conf /etc/X11 \
- && { $_sudo sed -i "s/console/anybody/g" /etc/X11/Xwrapper.config || true; } \
  && $_sudo sed -i "s/xrdp\/xorg/xorg/g" /etc/xrdp/sesman.ini \
- && $_sudo bash -c "echo xfce4-session >> /etc/skel/.Xsession" \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && $_sudo sed -i "s/console/anybody/g" /etc/X11/Xwrapper.config \
+     && $_sudo bash -c "echo xfce4-session >> /etc/skel/.Xsession" \
+     && true; \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && $_sudo bash -c "echo 'allowed_users = anybody' >> /etc/X11/Xwrapper.config" \
+     && $_sudo bash -c "echo xfce4-session >> /etc/skel/.Xclients; chmod a+x /etc/skel/.Xclients;" \
+     && true; \
+    fi \
  && true;
 }
 function setup_deepstream() {
