@@ -4672,6 +4672,7 @@ function setup_opencv() {
             "rpm:opencv" \
             "rpm:opencv-python" \
             "rpm:opencv-devel" \
+        "ffmpeg" \
         "deb:libavcodec-dev" \
         "deb:libavformat-dev" \
         "deb:libgstreamer-plugins-base1.0-dev" \
@@ -4704,6 +4705,10 @@ function setup_opencv() {
          && true; \
         fi \
      && $_sudo apt-get update \
+     && true; \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && true "ffmpeg comes from rpmfusion repo" \
+     && install_rpmfusion_free \
      && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
