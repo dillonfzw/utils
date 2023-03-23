@@ -4374,6 +4374,7 @@ function setup_os() {
  && $_sudo bash -c 'echo "Asia/Shanghai" >/etc/timezone' \
  && pkgs=( \
         "rpm:5:deltarpm" \
+        "rpm:5:centos-release-scl" \
         "deb:5:apt-transport-https" \
         "deb:5:apt-utils" \
         "deb:5:ca-certificates" \
@@ -4381,6 +4382,7 @@ function setup_os() {
         \
         "deb:8:build-essential" "rpm:8:rpm-build" \
         "deb:8:dpkg-dev"        "rpm:8:createrepo" \
+                                "rpm:8:devtoolset-9" \
         \
         "deb:cgroup-tools"      "rpm:libcgroup-tools" \
         "deb:dnsutils"          "rpm:bind-utils" \
