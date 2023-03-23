@@ -4586,6 +4586,7 @@ function setup_darwin_deps() {
         "deb:libffi-dev"      "rpm:libffi-devel" \
         "deb:libgl1-mesa-glx" \
         "deb:libssl-dev"      "rpm:openssl-devel" \
+                              "rpm:openssl11" \
         "deb:libxml2"         "rpm:libxml2" \
         "deb:libxml2-dev"     "rpm:libxml2-devel" \
         "deb:libxslt1.1"      "rpm:libxslt" \
