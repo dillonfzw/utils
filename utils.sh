@@ -4133,7 +4133,7 @@ function install_iluvatar_sdk_corex_samples() {
 }
 function install_iluvatar_sdk_apps() {
     local _release=${1:-latest}
-    local _tf_ver=${_tf_ver:-1}
+    local _tf_ver=${_tf_ver:-2}
     local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
     function _filter_op() {
         local _line
