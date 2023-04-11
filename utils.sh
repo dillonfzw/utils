@@ -4301,7 +4301,7 @@ function scrape_iluvatar_sdk_r221_pkgs() { scrape_iluvatar_sdk_pkgs r221; }
 function install_iluvatar_sdk() {
     true \
  && local _release=${1:-latest} \
- && local _tf_ver=${_tf_ver:-1} \
+ && local _tf_ver=${_tf_ver:-2} \
  && if [ `whoami` = 'root' ]; then true \
      && local DEFAULT_install_dir=/opt \
      && true; \
