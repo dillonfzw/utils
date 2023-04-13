@@ -911,6 +911,7 @@ function setup_linux_os_flags() {
     eval "OS_ID=`grep "^ID=" /etc/os-release | cut -d= -f2-`"
     # compatible with centos OS
     [ "$OS_ID" = "centos" ] && OS_ID="rhel"
+    [ "$OS_ID" = "kylin" ] && OS_ID="rhel"
     # 7 for rhel, 16.04 for ubuntu
     eval "OS_VER=`grep "^VERSION_ID=" /etc/os-release | cut -d= -f2-`"
     ARCH=${ARCH:-`uname -m`}
