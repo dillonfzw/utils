@@ -45,6 +45,63 @@ function reset_gpu_service() {
     done \
  && true; \
 }
+function reset_gpu_all() { echo -e "-1\nYES\n\nbye" | reset_gpu_service $@; }
+
+function get_gpu_pids_iluvatar() {
+    true \
+ && ixsmi ${1:+"-i"} ${1} --query-compute-apps=pid --format=csv | \
+    tail +2 | sort -u | xargs \
+ && true; \
+}
+function kill_gpu_apps_iluvatar() {
+    true \
+ && local try_cnt=${try_cnt:-300} \
+ && local try_interval=${try_interval:-2.0} \
+ && local _succ=true \
+ && for _cnt in `seq 1 $((try_cnt+1))`
+    do true \
+     && local -a _pids=(`get_gpu_pids_iluvatar ${1}` `pidof ixsmi`) \
+     && if [ ${#_pids} -ge 1 -a ${_cnt} -gt ${try_cnt} ]; then true \
+	 && _succ=false \
+	 && echo "[W]: kill apps on gpu ${1:-all} failed!" >&2 \
+	 && { ps -o pid,ppid,user,group,cmd ${_pids[@]}; \
+	      ixsmi pmon -c 1 ${1:+"-i"} ${1}; \
+	    } | sed -e 's/^/[W]: >> /g' >&2 \
+	 && break; \
+        elif [ ${#_pids} -ge 1 ]; then true \
+	 && { ps -o pid,ppid,user,group,cmd ${_pids[@]}; \
+	      ixsmi pmon -c 1 ${1:+"-i"} ${1}; \
+	    } | sed -e 's/^/[I]: killing >> /g' >&2 \
+         && { kill -KILL ${_pids[@]} || true; } \
+	 && sleep ${try_interval} \
+	 && true; \
+        else true \
+	 && _succ=true \
+	 && echo "[I]: kill apps on gpu ${1:-all} successfully!" >&2 \
+	 && break; \
+	fi \
+     && true; \
+    done \
+ && ${_succ}; \
+}
+function house_clean_gpu() {
+    true \
+ && true "sample usage: ${FUNCNAME[0]} iluvatar ~fuzhiwen/bin/corex.sh 2,4" \
+ && local gpu_type=${1:-iluvatar} \
+ && if [ -n "${1}" ]; then shift; fi \
+ && local backend_profile=${1} \
+ && if [ -n "${1}" ]; then source ${backend_profile}; shift; fi \
+ && local _gpu_ids="$@" \
+ && local reset_gpu=reset_gpu_${gpu_type} \
+ && local show_gpu=show_gpu_${gpu_type} \
+ && local kill_gpu_apps=kill_gpu_apps_${gpu_type} \
+ && $show_gpu "$@" | sed -e 's/^/[bef] >> /g' \
+ && $kill_gpu_apps "$@" \
+ && $show_gpu "$@" | sed -e 's/^/[aft] >> /g' \
+ && $reset_gpu "$@" \
+ && $show_gpu "$@" | sed -e 's/^/[fin] >> /g' \
+ && true; \
+}
 
 
-reset_gpu_service $@
+${cmd:-reset_gpu_service} $@
