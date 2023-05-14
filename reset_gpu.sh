@@ -69,10 +69,12 @@ function kill_gpu_apps_iluvatar() {
 	    } | sed -e 's/^/[W]: >> /g' >&2 \
 	 && break; \
         elif [ ${#_pids} -ge 1 ]; then true \
+         && local _sig=SIGKILL \
+         && if [ ${_cnt} -le 2 ]; then _sig=SIGTERM; fi \
 	 && { ps -o pid,ppid,user,group,cmd ${_pids[@]}; \
 	      ixsmi pmon -c 1 ${1:+"-i"} ${1}; \
-	    } | sed -e 's/^/[I]: killing >> /g' >&2 \
-         && { kill -KILL ${_pids[@]} || true; } \
+	    } | sed -e 's/^/[I]: '${_sig}'ing >> /g' >&2 \
+	 && { kill -${_sig} ${_pids[@]} || true; } \
 	 && sleep ${try_interval} \
 	 && true; \
         else true \
