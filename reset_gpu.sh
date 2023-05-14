@@ -89,6 +89,8 @@ function kill_gpu_apps_iluvatar() {
 function house_clean_gpu() {
     true \
  && true "sample usage: ${FUNCNAME[0]} iluvatar ~fuzhiwen/bin/corex.sh 2,4" \
+ && local _silent=false \
+ && if [ "x${1}" == "x--silent" ]; then _silent=true; shift; fi \
  && local gpu_type=${1:-iluvatar} \
  && if [ -n "${1}" ]; then shift; fi \
  && local backend_profile=${1} \
@@ -97,12 +99,24 @@ function house_clean_gpu() {
  && local reset_gpu=reset_gpu_${gpu_type} \
  && local show_gpu=show_gpu_${gpu_type} \
  && local kill_gpu_apps=kill_gpu_apps_${gpu_type} \
- && $show_gpu "$@" | sed -e 's/^/[bef] >> /g' \
+ && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[bef] >> /g'; fi \
  && $kill_gpu_apps "$@" \
- && $show_gpu "$@" | sed -e 's/^/[aft] >> /g' \
- && $reset_gpu "$@" \
- && $show_gpu "$@" | sed -e 's/^/[fin] >> /g' \
- && dmesg -H | tail -n10 | sed -e 's/^/[kernel] >> /g' \
+ && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[aft] >> /g'; fi \
+ && local _reset_cnt=${_reset_cnt:-10} \
+ && local _reset_interval=${_reset_interval:-2.0} \
+ && local _reset_succ=false \
+ && local _idx \
+ && for _idx in `seq 1 ${_reset_cnt}`; \
+    do true \
+     && if $reset_gpu "$@"; then _reset_succ=true; break; fi \
+     && if [ ${_idx} -ge ${_reset_cnt} ]; then break; fi \
+     && echo "[I]: Wait ${_reset_interval}s and try resetting ${_idx} of ${_reset_cnt} times" >&2 \
+     && sleep ${_reset_interval} \
+     && true; \
+    done \
+ && ${_reset_succ} \
+ && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[fin] >> /g'; fi \
+ && if ! $_silent; then dmesg -H | tail -n10 | sed -e 's/^/[kernel] >> /g'; fi \
  && true; \
 }
 
