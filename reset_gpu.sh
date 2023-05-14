@@ -100,6 +100,7 @@ function house_clean_gpu() {
  && $show_gpu "$@" | sed -e 's/^/[aft] >> /g' \
  && $reset_gpu "$@" \
  && $show_gpu "$@" | sed -e 's/^/[fin] >> /g' \
+ && dmesg -H | tail -n10 | sed -e 's/^/[kernel] >> /g' \
  && true; \
 }
 
