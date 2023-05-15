@@ -53,6 +53,19 @@ function get_gpu_pids_iluvatar() {
     tail +2 | sort -u | xargs \
  && true; \
 }
+function get_gpu_cnt_iluvatar() {
+    true \
+ && local _n_pci_cnt=`lspci | grep 1e3e | wc -l` \
+ && local _n_ixsmi_cnt=`ixsmi -L | grep -i iluvatar | wc -l` \
+ && echo ${_n_pci_cnt} ${_n_ixsmi_cnt} \
+ && true; \
+}
+function are_all_gpus_online_iluvatar() {
+    true \
+ && local -a _cnts=(`get_gpu_cnt_iluvatar`) \
+ && if [ ${#_cnts[@]} -eq 2 -a ${_cnts[0]} -eq ${_cnts[1]} ]; then true; else declare -p _cnts; false; fi \
+ && true;
+}
 function kill_gpu_apps_iluvatar() {
     true \
  && local try_cnt=${try_cnt:-300} \
@@ -99,6 +112,7 @@ function house_clean_gpu() {
  && local reset_gpu=reset_gpu_${gpu_type} \
  && local show_gpu=show_gpu_${gpu_type} \
  && local kill_gpu_apps=kill_gpu_apps_${gpu_type} \
+ && local are_all_gpus_online=are_all_gpus_online_${gpu_type} \
  && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[bef] >> /g'; fi \
  && $kill_gpu_apps "$@" \
  && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[aft] >> /g'; fi \
@@ -117,6 +131,7 @@ function house_clean_gpu() {
  && ${_reset_succ} \
  && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[fin] >> /g'; fi \
  && if ! $_silent; then dmesg -H | tail -n10 | sed -e 's/^/[kernel] >> /g'; fi \
+ && if ! ${are_all_gpus_online}; then echo "[W]: Not all gpus are online." >&2; fi \
  && true; \
 }
 
