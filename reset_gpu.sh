@@ -67,7 +67,7 @@ function get_pgids_by_pids() {
 }
 function get_pids_by_pgids() {
     true \
- && local _pgids=`echo "$@" | tr -s ', ' '\n\n' | sed -e 's/^/-/g' | xargs` \
+ && local _pgids=`echo "$@" | tr -s ', ' '\n\n' | sed -e 's/^\([0-9]\)/-\1/g' | xargs` \
  && if [ -z "${_pgids}" ]; then return 0; fi \
  && ps -o pid= ${_pgids} | sort -u | xargs \
  && true; \
