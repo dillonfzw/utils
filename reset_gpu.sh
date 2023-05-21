@@ -101,6 +101,7 @@ function get_defunct_apps() {
 }
 function kill_gpu_apps_iluvatar() {
     true \
+ && local _silent=${_silent:-false} \
  && true "Default killing interval is 5 seconds" \
  && local try_interval=${try_interval:-5.0} \
  && true "Try killing in 5 minutes" \
@@ -118,16 +119,22 @@ function kill_gpu_apps_iluvatar() {
      && if [ ${#_pids} -ge 1 -a ${_cnt} -gt ${try_cnt} ]; then true \
 	 && _succ=false \
 	 && echo "[W]: kill apps on gpu ${1:-all} failed!" >&2 \
-	 && { ps -H -o pid,ppid,pgid,user,group,cmd ${_pids[@]}; \
-	      ixsmi pmon -c 1 ${1:+"-i"} ${1}; \
-	    } | sed -e 's/^/[W]: >> /g' >&2 \
+	 && if ! ${_silent}; then true \
+	     && { ps -H -o pid,ppid,pgid,user,group,cmd ${_pids[@]}; \
+	          ixsmi pmon -c 1 ${1:+"-i"} ${1};
+		} | sed -e 's/^/[W]: >> /g' >&2 \
+	     && true; \
+	    fi \
 	 && break; \
         elif [ ${#_pids} -ge 1 ]; then true \
          && local _sig=SIGTERM \
          && if [ ${_cnt} -ge ${try_cnt} ]; then _sig=SIGKILL; fi \
-	 && { ps -H -o pid,ppid,pgid,user,group,cmd ${_pids[@]}; \
-	      ixsmi pmon -c 1 ${1:+"-i"} ${1}; \
-	    } | sed -e 's/^/[I]: '${_sig}'ing >> /g' >&2 \
+	 && if ! ${_silent}; then true \
+	     && { ps -H -o pid,ppid,pgid,user,group,cmd ${_pids[@]}; \
+	          ixsmi pmon -c 1 ${1:+"-i"} ${1}; \
+	        } | sed -e 's/^/[I]: '${_sig}'ing >> /g' >&2 \
+	     && true; \
+	    fi \
 	 && { $sudo ${sudo:+"-n"} kill -${_sig} ${_pids[@]} || true; } \
 	 && sleep ${try_interval} \
 	 && true; \
@@ -143,12 +150,14 @@ function kill_gpu_apps_iluvatar() {
 function unload_gpu_kmd_iluvatar() {
     true \
  && if lsmod | grep -sq -F "itr_peer_mem_drv"; then true \
+     && echo "[I]: Unloading itr_peer_mem_drv kernel module..." 2>&1 \
      && { $sudo ${sudo:+"-n"} modprobe -r itr_peer_mem_drv || true; } \
      && true; \
     fi \
  && local _kmd_name="bi_driver" \
  && if modinfo iluvatar >/dev/null 2>&1; then _kmd_name="iluvatar"; fi \
  && if lsmod | grep -sq -F ${_kmd_name}; then true \
+     && echo "[I]: Unloading ${_kmd_name} kernel module..." 2>&1 \
      && $sudo ${sudo:+"-n"} modprobe -r ${_kmd_name} \
      && true; \
     fi \
@@ -159,10 +168,12 @@ function load_gpu_kmd_iluvatar() {
  && local _kmd_name="bi_driver" \
  && if modinfo iluvatar >/dev/null 2>&1; then _kmd_name="iluvatar"; fi \
  && if ! lsmod | grep -sq -F ${_kmd_name}; then true \
+     && echo "[I]: Loading ${_kmd_name} kernel module..." 2>&1 \
      && $sudo ${sudo:+"-n"} modprobe ${_kmd_name} \
      && true; \
     fi \
  && if ! lsmod | grep -sq -F itr_peer_mem_drv; then true \
+     && echo "[I]: Loading itr_peer_mem_drv kernel module..." 2>&1 \
      && { $sudo ${sudo:+"-n"} modprobe itr_peer_mem_drv || true; } \
      && true; \
     fi \
