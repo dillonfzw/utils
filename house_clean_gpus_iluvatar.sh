@@ -69,4 +69,4 @@ fi
 
 COREX_SH=`command -v corex.sh`
 if [ "x${1}" == "x--silent" ]; then _flag="--silent"; shift; fi
-sudo -n cmd=${cmd:-house_clean_gpu} ${PROG_DIR}/reset_gpu.sh ${_flag} iluvatar ${COREX_SH:-${PROG_DIR}/corex.sh} $@
+sudo -n env cmd=${cmd:-house_clean_gpu} ${PROG_DIR}/reset_gpu.sh ${_flag} iluvatar ${COREX_SH:-${PROG_DIR}/corex.sh} $@
