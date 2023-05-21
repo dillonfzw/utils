@@ -67,9 +67,9 @@ function get_pgids_by_pids() {
 }
 function get_pids_by_pgids() {
     true \
- && local _pgids=`echo "$@" | sed -e 's/ \+/,/g'` \
+ && local _pgids=`echo "$@" | tr -s ', ' '\n\n' | sed -e 's/^/-/g' | xargs` \
  && if [ -z "${_pgids}" ]; then return 0; fi \
- && ps -o pid= -g ${_pgids} | sort -u | xargs \
+ && ps -o pid= ${_pgids} | sort -u | xargs \
  && true; \
 }
 function get_gpu_pids_ext_iluvatar() {
@@ -170,7 +170,9 @@ function load_gpu_kmd_iluvatar() {
 }
 function reload_gpu_kmd_iluvatar() {
     true \
+ && local _sleep_interval=${1:-${_sleep_interval:-5.0}} \
  && unload_gpu_kmd_iluvatar \
+ && sleep ${_sleep_interval} \
  && load_gpu_kmd_iluvatar \
  && true; \
 }
