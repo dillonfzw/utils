@@ -4551,7 +4551,7 @@ function setup_python3() {
         "pip:virtualenvwrapper" \
         "deb:virtualenv-clone" \
         "deb:python3.8" \
-        "deb:python3.8-devel" \
+        "deb:python3.8-dev" \
         "deb:python3.8-venv" \
     ) \
  && pkgs_ub2004=(
