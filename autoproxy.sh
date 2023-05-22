@@ -48,7 +48,7 @@ function main() {
      && true; \
     fi \
  && if [ "$HOST_NAME_s" == "bladesk1" ]; then true \
-     && true run_job socks_7077 "start self proxy at 7077" \
+     && run_job socks_7077 "start self proxy at 7077" \
      && true run_job fwd01_7077 "forward 7077 to bj-209-20-22" \
      && true run_job fwd02_7077 "forward 7077 to bj-209-20-22-fzw-mr1" \
      && true; \
