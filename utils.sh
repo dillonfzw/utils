@@ -4217,7 +4217,7 @@ function scrape_iluvatar_sdk_pkgs() {
             \) ]; then true \
          && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/release_packages/x86/mr/${_ILUVATAR_APPS_site_dir_suffix}/" \
          && true; \
-        elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \
+        elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
                 "x${_ILUVATAR_APPS_site_catetory}" == "xBId" \
             \) ]; then true \
          && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/daily_release_packages/x86/${_ILUVATAR_APPS_site_dir_suffix}/" \
