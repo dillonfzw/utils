@@ -4157,6 +4157,8 @@ function install_iluvatar_sdk_apps() {
     _c=$(array_map _pkgs[@] download_by_cache) || { log_error "Fail to download pkgs, Abort!"; return 1; }
     local -a _pkgs=${_c}
 
+    # opencv-python uses skbuild now
+    pkg_install_pip scikit-build && \
     pkg_install_pip ${_pkgs[@]}
 }
 function scrape_iluvatar_sdk_pkgs() {
@@ -4312,10 +4314,9 @@ function install_iluvatar_sdk() {
      && true; \
     fi \
  && local _install_dir=${_install_dir:-${DEFAULT_install_dir}} \
- && local _pyvers=`python3 -c "import sys; print('{}{}'.format(sys.version_info.major, sys.version_info.minor))"` \
  && if ! do_and_verify \
-        'eval ls -1d /opt/cmake*corex*' \
-        "install_iluvatar_sdk_cmake $_release /opt" \
+        'eval ls -1d '"${_install_dir}"'/cmake*corex*' \
+        "install_iluvatar_sdk_cmake $_release ${_install_dir}" \
         'true'; then true \
      && log_error "Fail to install iluvatar corex's CMake" \
      && false; \
@@ -4328,30 +4329,45 @@ function install_iluvatar_sdk() {
      && false; \
     fi \
  && if ! do_and_verify \
-        'eval ls -1d $HOME/workspace/corex-samples-*' \
-        "install_iluvatar_sdk_corex_samples $_release" \
+        'eval ls -1d '"${_install_dir}"'/corex-samples-*' \
+        "install_iluvatar_sdk_corex_samples $_release ${_install_dir}" \
         'true'; then true \
      && log_error "Fail to install iluvatar corex's samples" \
      && false; \
     fi \
- && { true \
- && local pyvepath=${_install_dir}/corex${_release}py${_pyvers}tf${_tf_ver} \
- && true "Create Iluvatar Corex apps' virtualenv at ${pyvepath}" \
- && mkdir -p `dirname ${pyvepath}` \
- && if ! do_and_verify \
-        "test -f ${pyvepath}/bin/activate" \
-        "env PYTHONPATH= python3 -m virtualenv -p `command -v python3` ${pyvepath}" \
-        'true'; then true \
-     && log_error "Fail to create iluvatar corex's app virtualenv: ${pyvepath}" \
-     && false; \
+ && local -a _pyvers_a=() \
+ && local _pyvers=${_pyvers:-`python3 -c "import sys; print('{}.{}'.format(sys.version_info.major, sys.version_info.minor))"`} \
+ && _pyvers_a+=("${_pyvers}") \
+ && true "Python 3.8 is mandatory if available" \
+ && if [ "${_pyvers}" != "3.8" -a -n "`command -v python3.8`" ]; then true \
+     && _pyvers_a+=("3.8") \
+     && true;
     fi \
- && source ${pyvepath}/bin/activate \
- && setup_pip_flags \
- && install_iluvatar_sdk_apps $_release ${_tf_ver} \
- && deactivate \
- && setup_pip_flags \
- && true; \
- } \
+ && local err_cnt=0 \
+ && for _pyvers in ${_pyvers_a[@]}; \
+    do true \
+     && if [ ${err_cnt} -gt 0 ]; then break; fi \
+     && ((err_cnt+=1)) \
+     && local _pyvers_s=`echo ${_pyvers} | sed -e 's/\.//g'` \
+     && local _pyvepath=${_install_dir}/corex${_release}py${_pyvers_s}tf${_tf_ver} \
+     && log_info "Create Iluvatar Corex apps' Python${_pyvers} virtualenv at ${_pyvepath}" \
+     && mkdir -p `dirname ${_pyvepath}` \
+     && if ! do_and_verify \
+            "test -f ${_pyvepath}/bin/activate" \
+            "env PYTHONPATH= python${_pyvers} -m virtualenv -p `command -v python${_pyvers}` ${_pyvepath}" \
+            'true'; then true \
+         && log_error "Fail to create iluvatar corex's app virtualenv: ${_pyvepath}" \
+         && false; \
+        fi \
+     && source ${_pyvepath}/bin/activate \
+     && setup_pip_flags \
+     && install_iluvatar_sdk_apps $_release ${_tf_ver} \
+     && deactivate \
+     && setup_pip_flags \
+     && ((err_cnt-=1)) \
+     && true; \
+    done \
+ && test ${err_cnt} -eq 0 \
  && true;
 }
 function setup_repo_mirror_CN_ub() {
