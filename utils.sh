@@ -1454,7 +1454,7 @@ function setup_pip_flags() {
     #        $env_activated || _shadow_cmd_conda deactivate
     #    fi
     #else
-        G_python_bin=`command -v python3`
+        G_python_bin=`command -v ${1:-${G_python_bin:-python3}}`
         G_python_ver=`${G_python_bin} --version 2>&1 | grep ^Python | awk '{print $2}'`
         G_pip_bin="${G_python_bin} -m pip"
     #fi
@@ -1530,7 +1530,7 @@ function pkg_install_yum() {
     $_sudo yum ${G_yum_flags[@]} install -y $pkgs
     local rc=$?
 
-    if echo "$pkgs" | grep -sq -Ew "python2-pip|python3-pip|python34-pip"; then
+    if echo "$pkgs" | grep -sq -Ew "python2-pip|python3-pip|python34-pip|rh-python38-python-pip"; then
         setup_pip_flags
     fi
     return $rc
@@ -4347,7 +4347,7 @@ function install_iluvatar_sdk() {
  && for _pyvers in ${_pyvers_a[@]}; \
     do true \
      && if [ ${err_cnt} -gt 0 ]; then break; fi \
-     && ((err_cnt+=1)) \
+     && { ((err_cnt+=1)) || true; } \
      && local _pyvers_s=`echo ${_pyvers} | sed -e 's/\.//g'` \
      && local _pyvepath=${_install_dir}/corex${_release}py${_pyvers_s}tf${_tf_ver} \
      && log_info "Create Iluvatar Corex apps' Python${_pyvers} virtualenv at ${_pyvepath}" \
@@ -4364,7 +4364,7 @@ function install_iluvatar_sdk() {
      && install_iluvatar_sdk_apps $_release ${_tf_ver} \
      && deactivate \
      && setup_pip_flags \
-     && ((err_cnt-=1)) \
+     && { ((err_cnt-=1)) || true; } \
      && true; \
     done \
  && test ${err_cnt} -eq 0 \
@@ -4598,6 +4598,25 @@ function setup_python3() {
      && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && if grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && { cat <<EOF
+source /opt/rh/rh-python38/enable
+export X_SCLS="\`scl enable rh-python38 'echo $X_SCLS'\`"
+EOF
+} | $sudo tee /etc/profile.d/python38.sh | sed -e 's/^/>> /g' | log_lines info \
+     && local _G_python_bin_bak=${G_python_bin} \
+     && source /etc/profile.d/python38.sh \
+     && test -n "`command -v python3.8`" \
+     && setup_pip_flags python3.8 \
+     && pkgs=( \
+            "pip:ipython" \
+            "pip:virtualenv" \
+            "pip:virtualenvwrapper" \
+        )  \
+     && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+     && setup_pip_flags ${_G_python_bin_bak} \
+     && true; \
+    fi \
  && true;
 }
 function setup_darwin_deps() {
