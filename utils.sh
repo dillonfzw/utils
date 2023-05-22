@@ -4538,6 +4538,11 @@ function setup_python3() {
         "rpm:python36-virtualenv" \
         "pip:ipython" \
         "pip:virtualenvwrapper" \
+        "rpm:rh-python38" \
+        "rpm:rh-python38-python-devel" \
+        "rpm:rh-python38-python-Cython" \
+        "rpm:rh-python38-python-lxml" \
+        "rpm:rh-python38-python-numpy" \
     ) \
  && pkgs_ub1604=( \
         "deb:virtualenv-clone" \
@@ -4545,6 +4550,9 @@ function setup_python3() {
  && pkgs_ub1804=( \
         "pip:virtualenvwrapper" \
         "deb:virtualenv-clone" \
+        "deb:python3.8" \
+        "deb:python3.8-devel" \
+        "deb:python3.8-venv" \
     ) \
  && pkgs_ub2004=(
         "deb:python3-virtualenvwrapper"
