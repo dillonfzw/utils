@@ -4362,10 +4362,11 @@ function install_iluvatar_sdk() {
      && if ! grep -Fsq corex.sh ${_pyvepath}/bin/activate; then true \
          && true "Some pip wheel build and end user need corex env, so make corex.sh an default activation action" \
          && echo 'if command -v corex.sh >/dev/null 2>&1; then source corex.sh; fi' >> ${_pyvepath}/bin/activate \
-	 && true; \
-	fi \
+         && true; \
+        fi \
+     && local _G_python_bin_bak=${G_python_bin} \
      && source ${_pyvepath}/bin/activate \
-     && setup_pip_flags \
+     && setup_pip_flags python \
      && if grep -Esq "VERSION=\"18.04|ID=ubuntu" /etc/os-release; then true \
          && true "WA onnx build issue by ref: https://github.com/onnx/onnx/issues/3570" \
          && local -a pkgs=( \
@@ -4374,12 +4375,11 @@ function install_iluvatar_sdk() {
             ) \
          && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
          && export CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=ON" \
+         && true; \
         fi \
-	 && true; \
-	fi \
      && install_iluvatar_sdk_apps $_release ${_tf_ver} \
      && deactivate \
-     && setup_pip_flags \
+     && setup_pip_flags ${_G_python_bin_bak} \
      && { ((err_cnt-=1)) || true; } \
      && true; \
     done \
@@ -4441,6 +4441,8 @@ function setup_os() {
         "deb:p7zip-full" \
         "deb:pkg-config"        "rpm:pkgconfig" \
         "deb:uuid-runtime"      "rpm:uuid" \
+        "deb:libprotobuf-dev" \
+        "deb:protobuf-compiler" \
         "deb:collectd-utils" \
                                 "rpm:collectd-amqp" \
                                 "rpm:collectd-apache" \
@@ -5189,12 +5191,12 @@ function download_os_pkgs_ubuntu() {
             _filter_arch
         ))
 
-	if [ ${#bad_pkgs[@]} -gt 0 ]; then
+    if [ ${#bad_pkgs[@]} -gt 0 ]; then
             log_warn "Exclude ${#bad_pkgs[@]} bad pkgs"
             echo "$lines" | grep "E: Can't find a source to download version" | log_lines warn
             apt-cache madison `for _pkg in ${bad_pkgs[@]}; do echo "${_pkg}" | cut -d= -f1; done | xargs` 2>&1 | log_lines warn
             local -a pkgs=`set_difference pkgs[@] bad_pkgs[@]`
-	fi
+    fi
 
         log_debug "Downloading ${#pkgs[@]} good pkgs"
         apt-get download ${_arg_stage[@]} ${pkgs[@]}
