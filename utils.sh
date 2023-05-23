@@ -4359,8 +4359,24 @@ function install_iluvatar_sdk() {
          && log_error "Fail to create iluvatar corex's app virtualenv: ${_pyvepath}" \
          && false; \
         fi \
+     && if ! grep -Fsq corex.sh ${_pyvepath}/bin/activate; then true \
+         && true "Some pip wheel build and end user need corex env, so make corex.sh an default activation action" \
+         && echo 'if command -v corex.sh >/dev/null 2>&1; then source corex.sh; fi' >> ${_pyvepath}/bin/activate \
+	 && true; \
+	fi \
      && source ${_pyvepath}/bin/activate \
      && setup_pip_flags \
+     && if grep -Esq "VERSION=\"18.04|ID=ubuntu" /etc/os-release; then true \
+         && true "WA onnx build issue by ref: https://github.com/onnx/onnx/issues/3570" \
+         && local -a pkgs=( \
+                "deb:libprotobuf-dev" \
+                "deb:protobuf-compiler" \
+            ) \
+         && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+         && export CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=ON" \
+        fi \
+	 && true; \
+	fi \
      && install_iluvatar_sdk_apps $_release ${_tf_ver} \
      && deactivate \
      && setup_pip_flags \
