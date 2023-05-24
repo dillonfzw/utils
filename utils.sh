@@ -4378,6 +4378,7 @@ function install_iluvatar_sdk() {
          && true; \
         fi \
      && install_iluvatar_sdk_apps $_release ${_tf_ver} \
+     && ${G_pip_bin} list | grep -i corex | sed -e 's/^/>> /g' | log_lines info \
      && deactivate \
      && setup_pip_flags ${_G_python_bin_bak} \
      && { ((err_cnt-=1)) || true; } \
