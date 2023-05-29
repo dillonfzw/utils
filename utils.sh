@@ -4019,14 +4019,17 @@ function install_iluvatar_sdk_corex() {
      && true; \
     fi
 
-    local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
-    function _filter_op() { echo "$@" | grep -si "corex-installer.*run"; }
-    local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
-    if [ ${#_pkgs[@]} -ne 1 ]; then
-        log_error "No unique corex pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`"
-        return 1
+    local _pkg_f=${_release}
+    if [ ! -f "${_release}" ]; then
+        local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
+        function _filter_op() { echo "$@" | grep -si "corex-installer.*run"; }
+        local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
+        if [ ${#_pkgs[@]} -ne 1 ]; then
+            log_error "No unique corex pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`"
+            return 1
+        fi
+        _pkg_f=`download_by_cache ${_pkgs[0]}`
     fi
-    local _pkg_f=`download_by_cache ${_pkgs[0]}`
     local _info=`bash ${_pkg_f} --info`
 
     if echo "$_info" | grep -sqF "2.3.0-iluvatar" >/dev/null 2>&1; then true \
