@@ -172,7 +172,7 @@ function load_gpu_kmd_iluvatar() {
      && $sudo ${sudo:+"-n"} modprobe ${_kmd_name} \
      && true; \
     fi \
- && if ! lsmod | grep -sq -F itr_peer_mem_drv; then true \
+ && if ! lsmod | grep -sq -F itr_peer_mem_drv && modinfo itr_peer_mem_drv >/dev/null 2>&1; then true \
      && echo "[I]: Loading itr_peer_mem_drv kernel module..." 2>&1 \
      && { $sudo ${sudo:+"-n"} modprobe itr_peer_mem_drv || true; } \
      && true; \
@@ -189,9 +189,9 @@ function reload_gpu_kmd_iluvatar() {
 }
 function show_last_reload_kmd_log_iluvatar() {
     true \
- && local _nl=`dmesg -H | grep iluvatar | nl | grep "exit$" | awk '{print $1}' | tail -1` \
+ && local _nl=`dmesg -H | grep iluvatar | nl | grep "exit$" | awk '{print $1}' | tail -n -1` \
  && if [ -z "${_nl}" ]; then return 0; fi \
- && dmesg -H | grep iluvatar | tail +$((_nl+1)) \
+ && dmesg -H | grep iluvatar | tail -n +$((_nl+1)) \
  && true; \
 }
 function house_clean_gpu() {
