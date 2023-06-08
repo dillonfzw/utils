@@ -5545,6 +5545,46 @@ function detach_pci_dev() {
     fi \
  && true;
 }
+function supermicro_rcmd() {
+    true \
+ && local _ssh_config=${_ssh_config:-~/.ssh/config} \
+ && local _rp_tgt=${1} && shift \
+ && local _rp_user="ADMIN" \
+ && if [ "x${1}" != "x--" -a -n "${1}" ]; then _rp_user=${1}; shift; fi \
+ && local _SSHPASS="${SSHPASS}" \
+ && if [ "x${1}" != "x--" -a -n "${1}" ]; then _SSHPASS="${1}"; shift; fi \
+ && if [ "x${1}" != "x--" -o $# -lt 2 ]; then log_error "Invalid args \"$@\""; false; fi \
+ && shift \
+ && local _rp_cmd="${@}" \
+ && if [ -z "${_SSHPASS}" ]; then true \
+     && _SSHPASS=$(grep -A999 "Host ${_rp_tgt}$" ${_ssh_config} | grep "BMC PWD:" | \
+                   head -n1 | cut -d: -f2 | awk '{print $1}') \
+     && test -n "${_SSHPASS}" \
+     && true; \
+    fi \
+ && env SSHPASS=${_SSHPASS} \
+    sshpass -e bash -c "echo -e '${_rp_cmd}' | ssh -oConnectTimeout=4 ${_rp_tgt} -l${_rp_user}" \
+ && true; \
+}
+function rpower_query_supermicro() { supermicro_rcmd $@ -- "show system1/pwrmgtsvc1"; }
+function rpower_status_supermicro() {
+    # PowerState=1(ON) | 6 (OFF)
+    true \
+ && local _lines=$(rpower_query_supermicro $@ 2>&1) \
+ && local _PowerState=`echo "$_lines" | grep "^ *PowerState=[0-9]$" | cut -d= -f2` \
+ && if [ -z "${_PowerState}" ]; then true \
+     && log_error "Fail to get power status of \"${_rp_tgt}\", detail responses are:" \
+     && echo "${_lines}" | sed -e 's/^/>> /g' | log_lines warn \
+     && false; \
+    elif [ "${_PowerState}" == "1" ]; then echo "ON"; \
+    elif [ "${_PowerState}" == "6" ]; then echo "OFF"; \
+    else log_error "Unknown power state \"${_PowerState}\""; false; \
+    fi \
+ && true; \
+}
+function rpower_on_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nstart"; }
+function rpower_off_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nstop"; }
+function rpower_reset_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nreset"; }
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
