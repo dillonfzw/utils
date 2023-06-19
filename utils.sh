@@ -4170,6 +4170,7 @@ function scrape_iluvatar_sdk_pkgs() {
     fi
     local -A DEFAULT_download_url_prefix_map=(
         ["latest"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
+        ["BIr310"]="http://10.113.3.1/corex/release_packages/3.1.0-BI/x86/"
         ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
         ["BIr300"]="http://10.150.9.95/corex/release_packages/3.0.0/x86/"
         ["BIr231"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
@@ -4178,17 +4179,18 @@ function scrape_iluvatar_sdk_pkgs() {
         ["BIr220"]="http://10.150.9.95/corex/release_packages/2.2.0/x86/"
         ["BIr211"]="http://10.150.9.95/corex/release_packages/2.1.1/x86/"
         ["BIr210"]="http://10.150.9.95/corex/release_packages/2.1.0/x86/"
-        ["BIDailyLatest"]="http://10.150.9.95/corex/daily_release_packages/x86/"
+        ["BIDailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/latest/"
         ["MRr311"]="http://10.113.3.1/corex/release_packages/3.1.1-MR/x86/"
         ["MRr310"]="http://10.150.9.95/corex/release_packages/3.1.0-MR/x86/"
         ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
         ["MRr230Beta1"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
-        ["MRDailyLatest"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/"
+        ["MRDailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/mr/latest/"
         # 移动集采
         ["MRd20221105231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
+        ["BIr310"]="\.sh\"|\.run\"|\.whl\""
         ["BIr301"]="\.sh\"|\.run\"|\.whl\""
         ["BIr300"]="\.sh\"|\.run\"|\.whl\""
         ["BIr231"]="\.sh\"|\.run\"|\.whl\""
