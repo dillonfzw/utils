@@ -14,6 +14,8 @@ function  start_socks_7071() { autossh -M 20012 -f fuzwvps1.2alice.site       -D
 function verify_socks_7071() { test_port localhost 7071; }
 function  start_socks_7072() { autossh -M 20014 -f vpn2c-bladesk1.2alice.site -D7072 -gfCN -T -e none; }
 function verify_socks_7072() { test_port localhost 7072; }
+function  start_socks_7073() { autossh -M 20016 -f atyx-c1-login1             -D7073 -gfCN -T -e none; }
+function verify_socks_7073() { test_port localhost 7073; }
 function  start_socks_7077() { autossh -M 20020 -f localhost                  -D7077 -gfCN -T -e none; }
 function verify_socks_7077() { test_port localhost 7077; }
 function  start_fwd01_7077() { autossh -M 20022 -f mr-n1-dmz                  -R7077:localhost:7077 -gfCN -T -e none; }
@@ -48,6 +50,7 @@ function main() {
      && true; \
     fi \
  && if [ "$HOST_NAME_s" == "bladesk1" ]; then true \
+     && run_job socks_7073 "start tunnel to atyx at 7073" \
      && run_job socks_7077 "start self proxy at 7077" \
      && true run_job fwd01_7077 "forward 7077 to bj-209-20-22" \
      && true run_job fwd02_7077 "forward 7077 to bj-209-20-22-fzw-mr1" \
