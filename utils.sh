@@ -42,7 +42,7 @@
 
 
 PROG_CLI=${PROG_CLI:-$0}
-if echo "$PROG_CLI" | grep -sq "^\/"; then
+if echo "$PROG_CLI" | grep -sq "^\/" && command -v ${PROG_CLI} >/dev/null 2>&1; then
     PROG_CLI=`command -v $PROG_CLI`
 fi
 PROG_NAME=${PROG_NAME:-${PROG_CLI##*/}}
@@ -4180,6 +4180,8 @@ function scrape_iluvatar_sdk_pkgs() {
         ["BIr211"]="http://10.150.9.95/corex/release_packages/2.1.1/x86/"
         ["BIr210"]="http://10.150.9.95/corex/release_packages/2.1.0/x86/"
         ["BIDailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/latest/"
+	# 智源二期BF16
+        ["BId202307131382"]="http://10.113.3.1/corex/daily_packages/x86/20230713/1382/"
         ["MRr311"]="http://10.113.3.1/corex/release_packages/3.1.1-MR/x86/"
         ["MRr310"]="http://10.150.9.95/corex/release_packages/3.1.0-MR/x86/"
         ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
@@ -4200,6 +4202,8 @@ function scrape_iluvatar_sdk_pkgs() {
         ["BIr211"]="\.sh\"|\.run\"|\.whl\""
         ["BIr210"]="\.sh\"|\.run\"|\.whl\""
         ["BIDailyLatest"]="\.sh\"|\.run\"|\.whl\""
+	# 智源二期BF16
+        ["BId202307131382"]="\.sh\"|\.run\"|\.whl\""
         ["MRr311"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr310"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
