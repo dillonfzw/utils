@@ -5478,7 +5478,7 @@ function fix_pyvirtualenv() {
  && for _FILE in `find ${_VIRTUAL_ENV}/bin -name "*.bak" | xargs`; do mv -vf ${_FILE} ${_FILE%*.bak} || { ((_err_cnt+=1)); break; }; done \
  && test ${_err_cnt} -eq 0 \
  && true "Fix VIRTUAL_ENV dir in pip virtualenv" \
- && local _CUR_DIR=`grep "^VIRTUAL_ENV=" ${_VIRTUAL_ENV}/bin/activate | cut -d= -f2 | sed -e 's/"//g'` \
+ && local _CUR_DIR=`grep "^VIRTUAL_ENV=" ${_VIRTUAL_ENV}/bin/activate | cut -d= -f2 | sed -e "s/[\"']//g"` \
  && for _FILE in `grep -rF "$_CUR_DIR" ${_VIRTUAL_ENV}/bin 2>/dev/null | cut -d: -f1 | sort -u | grep -vE "\.bak$|Binary file"`; do true \
      && if ! sed -i.bak -e "s,${_CUR_DIR},${_VIRTUAL_ENV},g" ${_FILE}; then ((_err_cnt+=1)); break; fi \
      && if cmp -s ${_FILE}.bak ${_FILE}; then rm -f ${_FILE}.bak; fi \
