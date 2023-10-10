@@ -4004,6 +4004,42 @@ function install_iluvatar_sdk_cmake() {
      && true; \
     fi
 }
+function uninstall_iluvatar_sdk_corex() {
+    local _sudo=${sudo:-sudo}
+    if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi
+
+    true \
+ && set -x \
+ && local err_cnt=0 \
+ && local _uninstaller \
+ && for _uninstaller in `find /usr/local/corex*/ -name "corex-uninstaller" -type f 2>/dev/null | xargs`; do true \
+     && if [ ! -f ${_uninstaller} ]; then continue; fi \
+     && if ! ${_sudo} ${_sudo:+-n} ${_uninstaller}; then ((err_cnt+=1)); break; fi \
+     && local _dir=`echo ${_uninstaller} | cut -d\/ -f-4` \
+     && if ! echo "${_dir}" | grep -sq "^/usr/local/corex"; then ((err_cnt+=1)); break; fi \
+     && if [ ! -d ${_dir}/ ]; then continue; fi \
+     && if ! ${_sudo} ${_sudo:+-n} find ${_dir}/ -delete; then ((err_cnt+=1)); break; fi \
+     && if [ -d ${_dir}/ ]; then ((err_cnt+=1)); break; fi \
+     && true; \
+    done \
+ && test ${err_cnt} -eq 0 \
+ && local _kmd \
+ && for _kmd in itr_peer_mem_drv bi_driver iluvatar; do true \
+     && _kmd=`lsmod | grep -E "^${_kmd} " | awk '{print $1}'` \
+     && if ! if [ -n "${_kmd}" ]; then ${_sudo} ${_sudo:+-n} modprobe -r ${_kmd}; fi; then ((err_cnt+=1)); break; fi \
+     && true; \
+    done \
+ && test ${err_cnt} -eq 0 \
+ && for _kmd in `find /lib/modules -name "bi_driver.*" -o -name "iluvatar.*" | xargs`; do true \
+     && if ! ${_sudo} ${_sudo:+-n} rm -f ${_kmd}; then ((err_cnt+=1)); break; fi \
+     && true; \
+    done \
+ && test ${err_cnt} -eq 0 \
+ && true; \
+}
 function install_iluvatar_sdk_corex() {
     local _release=${1:-latest}
     if [ "x${_release}" = "x${1}" ]; then shift; fi
