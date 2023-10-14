@@ -5678,6 +5678,101 @@ $_USER ALL=(ALL) NOPASSWD:ALL" \
     fi \
  && true; \
 }
+function _smart_link() {
+    true \
+ && if [ "x${1}" == "x--dry-run" ]; then _dry_run_prefix="echo"; shift; fi \
+ && if [ "x${1}" == "x--" ]; then shift; fi \
+ && local _entry=$(eval "echo $`seq -s:\$ 1 $#`") \
+ && local _src=`echo "${_entry}" | cut -d: -f1` \
+ && local _dst=`echo "${_entry}" | cut -d: -f2 -s` \
+ && local _mandatory=`echo "${_entry}" | cut -d: -f3 -s` \
+ && local _own=`echo "${_entry}" | cut -d: -f4 -s` \
+ && local _grp=`echo "${_entry}" | cut -d: -f5 -s` \
+ && local _own_self=`id -n -u` \
+ && local _grp_self=`id -n -g` \
+ && if [ "x${_own}" == "x${_own_self}" ]; then _own=""; fi \
+ && if [ "x${_grp}" == "x${_grp_self}" ]; then _grp=""; fi \
+ && true "# 没指定grp的话，取own的grp" \
+ && if [ -z "${_grp}" -a -n "${_own}" ]; then _grp=`id -n -g ${_own}`; fi \
+ && true "# 目标目录已经存在，下一个" \
+ && true "# 存在的话，如果需要，也强制复位own和grp" \
+ && if [ -n "${_dst}" -a -d "${_dst}" ]; then true \
+     && if [ -n "${_mandatory}" -a -n "${_own}" ]; then true \
+         && ${_dry_run_prefix} ${sudo} chown ${_own} `if [ -d ${_dst} ]; then echo "${_dst}/"; else echo "${_dst}"; fi` \
+         && true; \
+        fi \
+     && if [ -n "${_mandatory}" -a -n "${_grp}" ]; then true \
+         && ${_dry_run_prefix} ${sudo} chgrp ${_grp} `if [ -d ${_dst} ]; then echo "${_dst}/"; else echo "${_dst}"; fi` \
+         && true; \
+        fi \
+     && log_debug "Skip mnt entry: \"${_entry}\"" \
+     && continue; \
+    else true \
+     && log_debug "Process mnt entry: \"${_entry}\"" \
+     && true; \
+    fi \
+ && true "# 确保源目录存在，否则创建" \
+ && if ! if [ \
+        -n "${_mandatory}" \
+        -a -n "${_src}" -a ! -d "${_src}" \
+    ]; then true \
+     && log_debug "Create mandatory src: \"${_entry}\"" \
+     && if [ -L "${_src}" ]; then rm -f ${_src}; fi \
+     && mkdir -p ${_src} \
+     && if [ -n "${_own}" ]; then true \
+         && chown ${_own} `if [ -d ${_src} ]; then echo "${_src}/"; else echo "${_src}"; fi` \
+         && true; \
+        fi \
+     && if [ -n "${_grp}" ]; then true \
+         && chgrp ${_grp} `if [ -d ${_src} ]; then echo "${_src}/"; else echo "${_src}"; fi` \
+         && true; \
+        fi \
+     && ls -ld ${_src} | sed -e 's/^/[src]: >> /g' | log_lines info \
+     && true; \
+    fi; then true \
+     && log_error "Fail to create mandatory src: \"${_entry}\"" \
+     && ls -ld ${_src} | sed -e 's/^/[src]: >> /g' | log_lines error \
+     && false; \
+    fi \
+ && true "# 把源目录连接到目标，仅当目标不存在时" \
+ && if ! if [ -n "${_src}" -a -d "${_src}" \
+        -a -n "${_dst}" -a ! -e "${_dst}" \
+    ]; then true \
+     && log_debug "Link src to mandatory dst: \"${_entry}\"" \
+     && { rm -f ${_dst} 2>/dev/null || true; } \
+     && if [ "`dirname ${_src}`" == "`dirname ${_dst}`" ]; then true \
+         && ln -s `basename ${_src}` ${_dst} \
+         && true; \
+        else true \
+         && ln -s ${_src} ${_dst} \
+         && true; \
+        fi \
+     && ls -ld ${_dst} | sed -e 's/^/[dst]: >> /g' | log_lines info \
+     && true; \
+    fi; then true \
+     && log_error "Fail to link src to mandatory dst: \"${_entry}\"" \
+     && false; \
+    fi \
+ && true "# 强制复位own和grp" \
+ && if true; then true \
+     && if [ -n "${_mandatory}" -a -n "${_own}" -a -n "${_src}" -a -z "${_dst}" ]; then true \
+         && chown ${_own} `if [ -d ${_src} ]; then echo "${_src}/"; else echo "${_src}"; fi` \
+         && true; \
+        elif [ -n "${_mandatory}" -a -n "${_own}" -a -n "${_dst}" ]; then true \
+         && chown ${_own} `if [ -d ${_dst} ]; then echo "${_dst}/"; else echo "${_dst}"; fi` \
+         && true; \
+        fi \
+     && if [ -n "${_mandatory}" -a -n "${_grp}" -a -n "${_src}" -a -z "${_dst}" ]; then true \
+         && chgrp ${_grp} `if [ -d ${_src} ]; then echo "${_src}/"; else echo "${_src}"; fi` \
+         && true; \
+        elif [ -n "${_mandatory}" -a -n "${_grp}" -a -n "${_dst}" ]; then true \
+         && chgrp ${_grp} `if [ -d ${_dst} ]; then echo "${_dst}/"; else echo "${_dst}"; fi` \
+         && true; \
+        fi \
+     && true; \
+    fi \
+ && true; \
+}
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
