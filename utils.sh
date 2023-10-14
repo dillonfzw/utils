@@ -4206,6 +4206,9 @@ function scrape_iluvatar_sdk_pkgs() {
     fi
     local -A DEFAULT_download_url_prefix_map=(
         ["latest"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
+        #
+        # BI-V100
+        #
         ["BIr310"]="http://10.113.3.1/corex/release_packages/3.1.0-BI/x86/"
         ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
         ["BIr300"]="http://10.150.9.95/corex/release_packages/3.0.0/x86/"
@@ -4216,8 +4219,16 @@ function scrape_iluvatar_sdk_pkgs() {
         ["BIr211"]="http://10.150.9.95/corex/release_packages/2.1.1/x86/"
         ["BIr210"]="http://10.150.9.95/corex/release_packages/2.1.0/x86/"
         ["BIDailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/latest/"
-	# 智源二期BF16
+        # 智源二期BF16
         ["BId202307131382"]="http://10.113.3.1/corex/daily_packages/x86/20230713/1382/"
+        #
+        # BI-V150
+        #
+        ["BI150DailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/bi150/latest/"
+        ["BI150d2023101334"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231013/34/"
+        #
+        # MR-V100/50
+        #
         ["MRr311"]="http://10.113.3.1/corex/release_packages/3.1.1-MR/x86/"
         ["MRr310"]="http://10.150.9.95/corex/release_packages/3.1.0-MR/x86/"
         ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
@@ -4228,6 +4239,9 @@ function scrape_iluvatar_sdk_pkgs() {
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
+        #
+        # BI-V100
+        #
         ["BIr310"]="\.sh\"|\.run\"|\.whl\""
         ["BIr301"]="\.sh\"|\.run\"|\.whl\""
         ["BIr300"]="\.sh\"|\.run\"|\.whl\""
@@ -4238,8 +4252,16 @@ function scrape_iluvatar_sdk_pkgs() {
         ["BIr211"]="\.sh\"|\.run\"|\.whl\""
         ["BIr210"]="\.sh\"|\.run\"|\.whl\""
         ["BIDailyLatest"]="\.sh\"|\.run\"|\.whl\""
-	# 智源二期BF16
+        # 智源二期BF16
         ["BId202307131382"]="\.sh\"|\.run\"|\.whl\""
+        #
+        # BI-V150
+        #
+        ["BI150DailyLatest"]="\.sh\"|\.run\"|\.whl\""
+        ["BI150d2023101334"]="\.sh\"|\.run\"|\.whl\""
+        #
+        # MR-V100/50
+        #
         ["MRr311"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr310"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
@@ -4251,7 +4273,7 @@ function scrape_iluvatar_sdk_pkgs() {
     if [ -n "${ILUVATAR_APPS_TAG}" ]; then true \
      && local _ILUVATAR_APPS_site_prefix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/\.//g')" \
      && local _ILUVATAR_APPS_site_dir_suffix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/^.*\([0-9]\{8\}\)/\1/' -e 's,\.,/,g')" \
-     && true "category = MRd | MRr | BId | BIr, r == release, d = daily" \
+     && true "category = MRd | MRr | BId | BIr | BI150d | BI150r, r == release, d = daily" \
      && local _ILUVATAR_APPS_site_catetory="${ILUVATAR_APPS_TAG:0:3}" \
      && if [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
                 "x${_ILUVATAR_APPS_site_catetory}" == "xMRd" -o \
@@ -4269,10 +4291,20 @@ function scrape_iluvatar_sdk_pkgs() {
             \) ]; then true \
          && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/daily_release_packages/x86/${_ILUVATAR_APPS_site_dir_suffix}/" \
          && true; \
-     elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
+        elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
                 "x${_ILUVATAR_APPS_site_catetory}" == "xBIr" \
             \) ]; then true \
          && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/release_packages/x86/${_ILUVATAR_APPS_site_dir_suffix}/" \
+         && true; \
+        elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
+                "x${_ILUVATAR_APPS_site_catetory}" == "xBI150d" \
+            \) ]; then true \
+         && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.113.3.1/corex/daily_release_packages/x86/bi150/${_ILUVATAR_APPS_site_dir_suffix}/" \
+         && true; \
+        elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
+                "x${_ILUVATAR_APPS_site_catetory}" == "xBI150r" \
+            \) ]; then true \
+         && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.113.3.1/corex/release_packages/x86/bi150/${_ILUVATAR_APPS_site_dir_suffix}/" \
          && true; \
         fi \
      && if [ "x${DEFAULT_pkg_patterns_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
@@ -4287,6 +4319,12 @@ function scrape_iluvatar_sdk_pkgs() {
                 "x${_ILUVATAR_APPS_site_catetory}" == "xBIr" \
             \) ]; then true \
          && DEFAULT_pkg_patterns_map["${_ILUVATAR_APPS_site_prefix}"]=${DEFAULT_pkg_patterns_map["BIDailyLatest"]} \
+         && true; \
+        elif [ "x${DEFAULT_pkg_patterns_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
+                "x${_ILUVATAR_APPS_site_catetory}" == "xBI150d" -o \
+                "x${_ILUVATAR_APPS_site_catetory}" == "xBI150r" \
+            \) ]; then true \
+         && DEFAULT_pkg_patterns_map["${_ILUVATAR_APPS_site_prefix}"]=${DEFAULT_pkg_patterns_map["BI150DailyLatest"]} \
          && true; \
         fi \
      && true; \
@@ -5627,6 +5665,19 @@ function rpower_status_supermicro() {
 function rpower_on_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nstart"; }
 function rpower_off_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nstop"; }
 function rpower_reset_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nreset"; }
+function gensudo() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then _sudo=""; fi \
+ && local _USER=${_USER:-${1:-${USER:-`whoami`}}} \
+ && lines="Defaults:$_USER !requiretty
+$_USER ALL=(ALL) NOPASSWD:ALL" \
+ && if [ "$_USER" != "root" -a ! -f /etc/sudoers.d/$_USER ]; then true \
+     && echo "$lines" | sudo tee /etc/sudoers.d/$_USER \
+     && true; \
+    fi \
+ && true; \
+}
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
