@@ -1055,19 +1055,19 @@ function for_each_op() {
     fi
 
     # loop run each input data
-    local i=0
+    local _i_5rYn=0
     local line=""
     for line in ${op_data[@]}
     do
         IFS="$IFS_OLD"
         [ -n "$line" ] || continue
         if ! $_silent; then
-            print_title "Run \"$op\" at round $((i+1)) of $lcnt with parameter \"$line\""
+            print_title "Run \"$op\" at round $((_i_5rYn+1)) of $lcnt with parameter \"$line\""
         fi | log_lines debug
         $op ${op_args[@]} $line || $_ignore_error || break
-        ((i+=1))
+        ((_i_5rYn+=1))
     done
-    test $i -ge $lcnt
+    test $_i_5rYn -ge $lcnt
 }
 function __test_for_each_op() {
     local err_cnt=0
@@ -5716,7 +5716,7 @@ if [ "$PROG_NAME" = "utils.sh" -o "$PROG_NAME" = "bash" ]; then
     for item in error warn info debug lines; do unset log_$item; done && \
     # load the lib
     if ! eval "$(if [ ! -f "${PROG_DIR}/log.sh" -o "`type -t log.sh`" != "file" ]; then
-        echo "gen_lib_source_cmd log.sh https://github.com/dillonfzw/utils/raw/master/log.sh"
+        gen_lib_source_cmd log.sh https://github.com/dillonfzw/utils/raw/master/log.sh
     else
         echo "source ${PROG_DIR}/log.sh"
     fi)"; then
@@ -5727,7 +5727,7 @@ if [ "$PROG_NAME" = "utils.sh" -o "$PROG_NAME" = "bash" ]; then
     # loading getopt.sh
     #
     if ! eval "$(if [ ! -f "${PROG_DIR}/getopt.sh" -o "`type -t getopt.sh`" != "file" ]; then
-        echo "gen_lib_source_cmd getopt.sh https://github.com/dillonfzw/utils/raw/master/getopt.sh"
+        gen_lib_source_cmd getopt.sh https://github.com/dillonfzw/utils/raw/master/getopt.sh
     else
         echo "source ${PROG_DIR}/getopt.sh"
     fi)"; then
