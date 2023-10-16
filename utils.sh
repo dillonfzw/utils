@@ -4359,7 +4359,7 @@ function scrape_iluvatar_sdk_pkgs() {
     local -a urls=(
         "${site_prefix}"
         "${site_prefix}/not_release/"
-        `true && for _pyver_87tY in 3.{6,7,8,9} latest-wheels-3.{6,7,8.9};
+        `true && for _pyver_87tY in 3.{6,7,8,9,10} latest-wheels-3.{6,7,8,9,10};
          do
             echo "${site_prefix}/${_pyver_87tY}/"
             echo "${site_prefix}/${_pyver_87tY}/paddle/"
