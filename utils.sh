@@ -4229,6 +4229,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # MR-V100/50
         #
+        ["MRr320"]="http://10.113.3.1/corex/release_packages/3.2.0-MR/x86/"
         ["MRr311"]="http://10.113.3.1/corex/release_packages/3.1.1-MR/x86/"
         ["MRr310"]="http://10.150.9.95/corex/release_packages/3.1.0-MR/x86/"
         ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
@@ -4262,6 +4263,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # MR-V100/50
         #
+        ["MRr320"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr311"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr310"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
