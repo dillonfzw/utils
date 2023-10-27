@@ -4843,6 +4843,62 @@ function setup_darwin_deps() {
     done; fi \
  && true;
 }
+function setup_iluvatar_deps() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1804=( \
+    ) \
+ && pkgs_ub2004=( \
+    ) \
+ && pkgs_ub2204=( \
+    ) \
+ && pkgs=( \
+        "deb:5:apt-transport-https" \
+        "ca-certificates" \
+        "curl" \
+        "deb:libffi-dev"      "rpm:libffi-devel" \
+        "deb:libssl-dev"      "rpm:openssl-devel" \
+                              "rpm:openssl11" \
+        "deb:lsb-base"        "#rpm:initscripts" \
+        "deb:zlib1g"           "rpm:zlib" \
+        "deb:zlib1g-dev"       "rpm:zlib-devel" \
+        "deb:libpci-dev" \
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "VERSION=\"22.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2204[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && pkgs+=(${pkgs_rh7[@]}) \
+     && true "这个包在rhel里面和系统包有冲突，暂时只在检测到centos时安装" \
+     && pkgs+=("rpm:initscripts") \
+     && install_epel \
+     && true; \
+    elif grep -sq "PRETTY_NAME=\"Red Hat Enterprise Linux Server 7" /etc/os-release; then true \
+     && pkgs+=(${pkgs_rh7[@]}) \
+     && install_epel \
+     && true; \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' "true" \
+ && true;
+}
 function setup_opencv() {
     true \
  && local _sudo=${sudo:-sudo} \
