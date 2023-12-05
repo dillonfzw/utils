@@ -3459,8 +3459,26 @@ function install_ubuntu1804_nvidia_repo_cu110() {
  && true;
 }
 function install_ubuntu2004_nvidia_repo_cu102() {
-    log_error "Nvidia does not support install CUDA 10.2 in Ubuntu 20.04"
-    false
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && local _f_run_uri="ftp://10.209.16.37:10021/softwares/nvidia/cuda_10.2.89_min_linux.run" \
+ && function _install() {
+        true \
+     && local _f_run=`download_by_cache $f_run_url` \
+     && $_sudo bash ${_f_run} \
+     && true;
+    } \
+ && if do_and_verify \
+        "test -f /usr/local/cuda-10.2/include/cuda.h" \
+        "_install" \
+        "true"; then true \
+     && true; \
+    fi \
+ && true; \
 }
 function install_ubuntu1804_nvidia_repo_cu102() {
     # https://developer.nvidia.com/cuda-10.2-download-archive?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1804&target_type=debnetwork
