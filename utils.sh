@@ -4464,7 +4464,7 @@ function install_iluvatar_sdk() {
          && export CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=ON" \
          && true; \
         fi \
-     && install_iluvatar_sdk_apps $_release ${_tf_ver} \
+     && { install_iluvatar_sdk_apps $_release ${_tf_ver} || true; } \
      && ${G_pip_bin} list | grep -i corex | sed -e 's/^/>> /g' | log_lines info \
      && deactivate \
      && setup_pip_flags ${_G_python_bin_bak} \
