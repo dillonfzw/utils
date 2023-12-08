@@ -3992,7 +3992,9 @@ function install_rabbitmq() {
 }
 function install_iluvatar_sdk_cmake() {
     local _release=${1:-latest}
-    local _install_dir=${2:-/opt}
+    if [ -n "${1}" ]; then shift; fi
+    local _install_dir=${1:-/opt}
+    if [ -n "${1}" ]; then shift; fi
     local _sudo=${sudo:-sudo}
     if [ "$as_root" != "true" ]; then true \
      && _sudo="" \
@@ -4006,7 +4008,7 @@ function install_iluvatar_sdk_cmake() {
         return 1
     fi
     local _pkg_f=`download_by_cache ${_pkgs[0]}`
-    if [ "x${1}" == "x--download-only" ]; then return 0; fi
+    if [ "x$download_only" == "xtrue" ]; then return 0; fi
     local _info=`bash ${_pkg_f} --version`
     if echo "${_info}" | grep -sqF "3.21.5-corex.2.3.0" >/dev/null 2>&1; then true \
      && ${_sudo} bash ${_pkg_f} \
@@ -4084,7 +4086,7 @@ function install_iluvatar_sdk_corex() {
             return 1
         fi
         _pkg_f=`download_by_cache ${_pkgs[0]}`
-        if [ "x${1}" == "x--download-only" ]; then return 0; fi
+        if [ "x$download_only" == "xtrue" ]; then return 0; fi
     fi
     local _info=`bash ${_pkg_f} --info`
 
@@ -4144,7 +4146,9 @@ function install_iluvatar_sdk_corex() {
 }
 function install_iluvatar_sdk_corex_samples() {
     local _release=${1:-latest}
-    local _install_dir=${2:-$HOME/workspace}
+    if [ -n "${1}" ]; then shift; fi
+    local _install_dir=${1:-$HOME/workspace}
+    if [ -n "${1}" ]; then shift; fi
     local _sudo=${sudo:-sudo}
     if [ "$as_root" != "true" ]; then true \
      && _sudo="" \
@@ -4158,7 +4162,7 @@ function install_iluvatar_sdk_corex_samples() {
         return 1
     fi
     local _pkg_f=`download_by_cache ${_pkgs[0]}`
-    if [ "x${1}" == "x--download-only" ]; then return 0; fi
+    if [ "x$download_only" == "xtrue" ]; then return 0; fi
     local _info=`bash ${_pkg_f} --info`
 
     if echo "$_info" | grep -sqF "2.3.0-iluvatar" >/dev/null 2>&1; then true \
@@ -4194,6 +4198,7 @@ function install_iluvatar_sdk_corex_samples() {
 }
 function install_iluvatar_sdk_apps() {
     local _release=${1:-latest}
+    if [ -n "${1}" ]; then shift; fi
     local _tf_ver=${_tf_ver:-2}
     local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
     function _filter_op() {
@@ -4215,7 +4220,7 @@ function install_iluvatar_sdk_apps() {
     fi
     local _c
     _c=$(array_map _pkgs[@] download_by_cache) || { log_error "Fail to download pkgs, Abort!"; return 1; }
-    if [ "x${1}" == "x--download-only" ]; then return 0; fi
+    if [ "x$download_only" == "xtrue" ]; then return 0; fi
     local -a _pkgs=${_c}
 
     # opencv-python uses skbuild now
@@ -4294,6 +4299,19 @@ function scrape_iluvatar_sdk_pkgs() {
         # 移动集采
         ["MRd20221105231"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
     )
+    function _filter_87tY() {
+        local _prefix_87tY=$1
+        cut -d\" -f1 | \
+        sed -e 's,/\+,/,g' | \
+        sed -e "s,^,${_prefix_87tY},g" | \
+        xargs
+    }
+    local site_prefix="${1:-latest}"
+    local pkg_patterns="${2:-true}"
+    if echo "${site_prefix}" | grep -sqE "^BI[dr]|^BI150[dr]|^MR[dr]" && [ -z "${ILUVATAR_APPS_TAG}" ]; then true \
+     && ILUVATAR_APPS_TAG="$(echo ${site_prefix} | sed -e 's/^\(.*[dr][0-9]\{8\}\)\([0-9]\+\)$/\1.\2/')" \
+     && true; \
+    fi
     if [ -n "${ILUVATAR_APPS_TAG}" ]; then true \
      && local _ILUVATAR_APPS_site_prefix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/\.//g')" \
      && local _ILUVATAR_APPS_site_dir_suffix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/^.*\([0-9]\{8\}\)/\1/' -e 's,\.,/,g')" \
@@ -4353,15 +4371,6 @@ function scrape_iluvatar_sdk_pkgs() {
         fi \
      && true; \
     fi
-    function _filter_87tY() {
-        local _prefix_87tY=$1
-        cut -d\" -f1 | \
-        sed -e 's,/\+,/,g' | \
-        sed -e "s,^,${_prefix_87tY},g" | \
-        xargs
-    }
-    local site_prefix="${1:-latest}"
-    local pkg_patterns="${2:-true}"
     # try expanding the site_prefix
     local _val=${DEFAULT_download_url_prefix_map[${site_prefix}]}
     if [ -n "${_val}" ]; then true \
@@ -4395,6 +4404,7 @@ function scrape_iluvatar_sdk_pkgs() {
     local _url
     for _url in ${urls[@]}
     do true \
+     && _url=`echo "${_url}" | sed -e 's,\([^:]\)/\+,\1/,g'` \
      && local _f_url=`download_by_cache ${_url}` \
      && _target_urls+=($(cat ${_f_url} | grep "a href=" | sed -e 's/a href="/\n/' | \
             grep -E "${pkg_patterns}" | \
