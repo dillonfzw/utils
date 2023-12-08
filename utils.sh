@@ -3468,7 +3468,7 @@ function install_ubuntu2004_nvidia_repo_cu102() {
  && local _f_run_uri="ftp://10.209.16.37:10021/softwares/nvidia/cuda_10.2.89_min_linux.run" \
  && function _install() {
         true \
-     && local _f_run=`download_by_cache $f_run_url` \
+     && local _f_run=`download_by_cache $_f_run_uri` \
      && $_sudo bash ${_f_run} \
      && true;
     } \
@@ -4391,7 +4391,8 @@ function scrape_iluvatar_sdk_pkgs() {
     local _url
     for _url in ${urls[@]}
     do true \
-     && _target_urls+=($({ curl ${CURL_PROXY:+--socks5} ${CURL_PROXY} -k ${_url}; } | grep "a href=" | sed -e 's/a href="/\n/' | \
+     && local _f_url=`download_by_cache ${_url}` \
+     && _target_urls+=($(cat ${_f_url} | grep "a href=" | sed -e 's/a href="/\n/' | \
             grep -E "${pkg_patterns}" | \
             _filter_87tY ${_url}
         )) \
