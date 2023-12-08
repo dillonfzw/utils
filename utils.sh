@@ -4006,6 +4006,7 @@ function install_iluvatar_sdk_cmake() {
         return 1
     fi
     local _pkg_f=`download_by_cache ${_pkgs[0]}`
+    if [ "x${1}" == "x--download-only" ]; then return 0; fi
     local _info=`bash ${_pkg_f} --version`
     if echo "${_info}" | grep -sqF "3.21.5-corex.2.3.0" >/dev/null 2>&1; then true \
      && ${_sudo} bash ${_pkg_f} \
@@ -4083,6 +4084,7 @@ function install_iluvatar_sdk_corex() {
             return 1
         fi
         _pkg_f=`download_by_cache ${_pkgs[0]}`
+        if [ "x${1}" == "x--download-only" ]; then return 0; fi
     fi
     local _info=`bash ${_pkg_f} --info`
 
@@ -4156,6 +4158,7 @@ function install_iluvatar_sdk_corex_samples() {
         return 1
     fi
     local _pkg_f=`download_by_cache ${_pkgs[0]}`
+    if [ "x${1}" == "x--download-only" ]; then return 0; fi
     local _info=`bash ${_pkg_f} --info`
 
     if echo "$_info" | grep -sqF "2.3.0-iluvatar" >/dev/null 2>&1; then true \
@@ -4212,6 +4215,7 @@ function install_iluvatar_sdk_apps() {
     fi
     local _c
     _c=$(array_map _pkgs[@] download_by_cache) || { log_error "Fail to download pkgs, Abort!"; return 1; }
+    if [ "x${1}" == "x--download-only" ]; then return 0; fi
     local -a _pkgs=${_c}
 
     # opencv-python uses skbuild now
