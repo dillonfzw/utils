@@ -92,23 +92,28 @@ function pdsh_cp() {
 }
 function pdsh_cp2() {
     true \
+ && local _LINE \
  && local _src=$1 && shift \
  && local _dst=$1 && shift \
- && local -A _pair=`_pair ${_src} ${_dst} | grep "^declare" | tail -n1 | cut -d= -f2-` \
- && local _src=`echo ${!_pair[@]} | tr ' ' ','` \
- && time pdsh -f 9999 -w ${_src} 'true set -x \
-     && '"`declare -p _pair`"' \
-     && function work() { true \
-         && true set -x \
-         && local _src="%h" \
-         && local _dst=${_pair[${_src}]} \
-         && pdsh -f 9999 -w ${_dst} "hostname -s" \
-         && time pdcp -f 9999 -w ${_dst} '$@' \
+ && local _fanout=$1 && shift \
+ && _pair2 ${_src} ${_dst} ${_fanout} | while read _LINE; do if true \
+     && local -A _pair=`echo "${_LINE}" | grep "^declare" | tail -n1 | cut -d= -f2-` \
+     && local _src=`echo ${!_pair[@]} | tr ' ' ','` \
+     && time pdsh -f 9999 -w ${_src} 'true set -x \
+         && '"`declare -p _pair`"' \
+         && function work() { true \
+             && true set -x \
+             && local _src="%h" \
+             && local _dst=${_pair[${_src}]} \
+             && echo pdsh -f 9999 -w ${_dst} "hostname -s" \
+             && echo time pdcp -f 9999 -w ${_dst} '$@' \
+             && true; \
+            } \
+         && work \
          && true; \
-        } \
-     && work \
-     && true; \
-    ' \
+        ' \
+     && true; then true; else break; fi; \
+    done \
  && true; \
 }
 
