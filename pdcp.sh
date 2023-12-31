@@ -7,7 +7,7 @@ DST_TARGETS="n[62-65,70-73,75,78-80,82,84-87,89,91,93,95,97,99,102,104,106,109-1
 #DSH_TARGETS="n[62-63]"
 
 
-function _pair() {
+function _pdsh_cp_pair() {
     true \
  && true set -x \
  && local _idx \
@@ -38,16 +38,16 @@ function _pair() {
  && declare -p _pairs \
  && true; \
 }
-function _pair2() {
+function _pdsh_cp_pair_w_fanout() {
     true \
  && true set -x \
  && local _fanout=${3} \
- && if [ -z "${_fanout}" ]; then _pair $@; return $?; fi \
+ && if [ -z "${_fanout}" ]; then _pdsh_cp_pair $@; return $?; fi \
  && local -a _dst=(`pdsh -R exec -f 1 -w ${2} -x ${1} echo | cut -d: -f1 | xargs`) \
  && local -a _src=(`pdsh -R exec -f 1 -w ${1} echo | cut -d: -f1 | head -n${#_dst[@]} | xargs`) \
  && if [ $((${#_src[@]} * (_fanout+1))) -gt ${#_dst[@]} ]; then { ((_fanout+=1)) || true; } fi \
  && true declare -p _src _dst _fanout \
- && local -A _pair=`_pair ${1} ${2} ${_fanout} | grep "^declare" | tail -n1 | cut -d= -f2-` \
+ && local -A _pair=`_pdsh_cp_pair ${1} ${2} ${_fanout} | grep "^declare" | tail -n1 | cut -d= -f2-` \
  && declare -p _pair \
  && local _s \
  && local _cnt=`for _s in ${!_pair[@]}; do echo ${_pair[${_s}]} | awk -F, '{print NF}'; done | xargs | tr ' ' '+' | bc -l` \
@@ -71,32 +71,11 @@ function _pair2() {
 }
 function pdsh_cp() {
     true \
- && local _src=$1 && shift \
- && local _dst=$1 && shift \
- && local -A _pair=`_pair ${_src} ${_dst} | grep "^declare" | tail -n1 | cut -d= -f2-` \
- && local _src=`echo ${!_pair[@]} | tr ' ' ','` \
- && time pdsh -f 9999 -w ${_src} 'true set -x \
-     && '"`declare -p _pair`"' \
-     && function work() { true \
-         && true set -x \
-         && local _src="%h" \
-         && local _dst=${_pair[${_src}]} \
-         && pdsh -f 9999 -w ${_dst} "hostname -s" \
-         && time pdcp -f 9999 -w ${_dst} '$@' \
-         && true; \
-        } \
-     && work \
-     && true; \
-    ' \
- && true; \
-}
-function pdsh_cp2() {
-    true \
  && local _LINE \
  && local _src=$1 && shift \
  && local _dst=$1 && shift \
  && local _fanout=$1 && shift \
- && _pair2 ${_src} ${_dst} ${_fanout} | while read _LINE; do if true \
+ && _pdsh_cp_pair_w_fanout ${_src} ${_dst} ${_fanout} | while read _LINE; do if true \
      && local -A _pair=`echo "${_LINE}" | grep "^declare" | tail -n1 | cut -d= -f2-` \
      && local _src=`echo ${!_pair[@]} | tr ' ' ','` \
      && time pdsh -f 9999 -w ${_src} 'true set -x \
