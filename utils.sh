@@ -4236,6 +4236,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V100
         #
+        ["BIr311"]="http://10.113.3.1/corex/release_packages/frequent_version/x86/bi100/3.1.1/"
         ["BIr310"]="http://10.113.3.1/corex/release_packages/3.1.0-BI/x86/"
         ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
         ["BIr300"]="http://10.150.9.95/corex/release_packages/3.0.0/x86/"
@@ -4270,6 +4271,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V100
         #
+        ["BIr311"]="\.sh\"|\.run\"|\.whl\""
         ["BIr310"]="\.sh\"|\.run\"|\.whl\""
         ["BIr301"]="\.sh\"|\.run\"|\.whl\""
         ["BIr300"]="\.sh\"|\.run\"|\.whl\""
