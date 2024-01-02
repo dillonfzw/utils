@@ -4254,6 +4254,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         ["BI150DailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/bi150/latest/"
         ["BI150d2023101334"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231013/34/"
+        ["BI150d2023112376"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231123/76/"
         #
         # MR-V100/50
         #
@@ -4289,6 +4290,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         ["BI150DailyLatest"]="\.sh\"|\.run\"|\.whl\""
         ["BI150d2023101334"]="\.sh\"|\.run\"|\.whl\""
+        ["BI150d2023112376"]="\.sh\"|\.run\"|\.whl\""
         #
         # MR-V100/50
         #
