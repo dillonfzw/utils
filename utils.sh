@@ -3211,10 +3211,7 @@ function install_cu102() {
      && _install_cu102 \
      && true;
     elif [ "x${distribution}" = "xubuntu20.04" ]; then true \
-     && install_${distribution/./}_nvidia_repo_cu102 \
-     && install_${distribution/./}_nvidia_ml_repo \
-     && $_sudo apt-get update \
-     && _install_cu102 \
+     && install_${distribution/./}_nvidia_cu102 \
      && true;
     elif [ "x${distribution}" = "xubuntu18.04" ]; then true \
      && install_${distribution/./}_nvidia_repo_cu102 \
@@ -3224,6 +3221,28 @@ function install_cu102() {
      && true;
     fi \
  && true;
+}
+function install_ubuntu2004_nvidia_cu102() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && local _f_run_uri="ftp://10.209.16.37:10021/softwares/nvidia/cuda_10.2.89_min_linux.run" \
+ && function _install() {
+        true \
+     && local _f_run=`download_by_cache $_f_run_uri` \
+     && $_sudo bash ${_f_run} \
+     && true;
+    } \
+ && if do_and_verify \
+        "test -f /usr/local/cuda-10.2/include/cuda.h" \
+        "_install" \
+        "true"; then true \
+     && true; \
+    fi \
+ && true; \
 }
 function _install_centos7_nvidia_repo_legacy() {
     local _sudo=$sudo
@@ -3457,28 +3476,6 @@ function install_ubuntu1804_nvidia_repo_cu110() {
     true \
  && install_ubuntu2004_nvidia_repo_cu110 \
  && true;
-}
-function install_ubuntu2004_nvidia_repo_cu102() {
-    true \
- && local _sudo=${sudo:-sudo} \
- && if [ "$as_root" != "true" ]; then true \
-     && _sudo="" \
-     && true; \
-    fi \
- && local _f_run_uri="ftp://10.209.16.37:10021/softwares/nvidia/cuda_10.2.89_min_linux.run" \
- && function _install() {
-        true \
-     && local _f_run=`download_by_cache $_f_run_uri` \
-     && $_sudo bash ${_f_run} \
-     && true;
-    } \
- && if do_and_verify \
-        "test -f /usr/local/cuda-10.2/include/cuda.h" \
-        "_install" \
-        "true"; then true \
-     && true; \
-    fi \
- && true; \
 }
 function install_ubuntu1804_nvidia_repo_cu102() {
     # https://developer.nvidia.com/cuda-10.2-download-archive?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1804&target_type=debnetwork
