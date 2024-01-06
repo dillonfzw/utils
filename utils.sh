@@ -4252,12 +4252,14 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r330"]="http://10.113.3.1/corex/release_packages/3.3.0-BI150/x86/"
         ["BI150DailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/bi150/latest/"
         ["BI150d2023101334"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231013/34/"
         ["BI150d2023112376"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231123/76/"
         #
         # MR-V100/50
         #
+        ["MRr321p1"]="http://10.113.3.1/corex/release_packages/frequent_version/x86/mr/3.2.1-patch1/"
         ["MRr320"]="http://10.113.3.1/corex/release_packages/3.2.0-MR/x86/"
         ["MRr311"]="http://10.113.3.1/corex/release_packages/3.1.1-MR/x86/"
         ["MRr310"]="http://10.150.9.95/corex/release_packages/3.1.0-MR/x86/"
@@ -4288,12 +4290,14 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r330"]="\.sh\"|\.run\"|\.whl\""
         ["BI150DailyLatest"]="\.sh\"|\.run\"|\.whl\""
         ["BI150d2023101334"]="\.sh\"|\.run\"|\.whl\""
         ["BI150d2023112376"]="\.sh\"|\.run\"|\.whl\""
         #
         # MR-V100/50
         #
+        ["MRr321p1"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr320"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr311"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr310"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
@@ -4396,6 +4400,7 @@ function scrape_iluvatar_sdk_pkgs() {
     local -a urls=(
         "${site_prefix}"
         "${site_prefix}/not_release/"
+        "${site_prefix}/add-on/"
         `true && for _pyver_87tY in 3.{6,7,8,9,10} latest-wheels-3.{6,7,8,9,10};
          do
             echo "${site_prefix}/${_pyver_87tY}/"
