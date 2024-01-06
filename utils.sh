@@ -1602,7 +1602,8 @@ function pkg_list_installed_yum() {
 function pkg_list_installed_deb() {
     local pkgs="$@"
     local pkgs_m=`echo "$pkgs" | tr ' ' '\n' | sed -e 's/=.*$//g' | xargs`
-    env DPKG_PAGER="cat" dpkg -l $pkgs_m
+    env DPKG_PAGER="cat" dpkg -l $pkgs_m && \
+    env DPKG_PAGER="cat" dpkg -s $pkgs_m >/dev/null
 }
 function pkg_list_installed_pip() {
     local pip=$G_pip_bin
@@ -1695,7 +1696,7 @@ function pkg_verify_yum() {
     (exit $rc)
 }
 function pkg_verify_deb() {
-    declare -a pkgs=($@)
+    local -a pkgs=($@)
     if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
@@ -4523,10 +4524,10 @@ function setup_repo_mirror_CN_ub() {
  && true "要先安装ca-certificates，否则有些https的源会fail" \
  && $_sudo apt-get update \
  && do_and_verify \
-      'eval pkg_verify "ca-certificates" "apt-transport-https"' \
-      'eval pkg_install "ca-certificates" "apt-transport-https"' \
+      'eval pkg_verify_deb ca-certificates apt-transport-https' \
+      'eval pkg_install_deb ca-certificates apt-transport-https' \
       "true" \
- && $_sudo sed -i \
+ && $_sudo sed -i.bak \
         -e 's,https\?://\(archive.ubuntu.com\),https://mirrors.aliyun.com,g' \
         -e 's,//\(archive.ubuntu.com\),//cn.\1,g' \
         -e 's,//\(ports.ubuntu.com\),//cn.\1,g' \
