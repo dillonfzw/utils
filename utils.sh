@@ -5017,15 +5017,16 @@ function setup_tf_deps() {
  && pkgs_rh7=( \
     ) \
  && pkgs_ub1604=( \
+        "deb:libhdf5-serial-dev" \
     ) \
  && pkgs_ub1804=( \
+        "deb:libhdf5-serial-dev" \
     ) \
  && pkgs_ub2004=( \
     ) \
  && pkgs=( \
         "deb:hdf5-tools"         "rpm:hdf5" \
         "deb:libhdf5-dev"        "rpm:hdf5-devel" \
-        "deb:libhdf5-serial-dev" \
         "deb:libjpeg8-dev"       "rpm:libjpeg-turbo-devel" \
         "deb:zlib1g-dev"         "rpm:zlib-devel" \
     ) \
