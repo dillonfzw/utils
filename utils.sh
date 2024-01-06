@@ -4649,6 +4649,7 @@ function setup_os() {
         pkgs+=(${pkgs_rh7[@]}); \
     fi \
  && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && do_and_verify 'eval pkg_verify gnupg' 'eval pkg_install gnupg' 'true' \
      && true "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
      && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && if [ "${_BLD_REGION}" = "CN" ]; then true \
