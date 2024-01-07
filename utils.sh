@@ -4609,6 +4609,8 @@ function setup_os() {
         "nmap" \
         "nmon" \
         "openssh-server" \
+        # mpi4py depends
+        "deb:libopenmpi-dev"    "rpm:openmpi-devel" \
         "p7zip" \
         "patchelf" \
         "pdsh" \
