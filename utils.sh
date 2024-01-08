@@ -4405,6 +4405,8 @@ function scrape_iluvatar_sdk_pkgs() {
             echo "${site_prefix}/${_pyver_87tY}/paddle/"
             echo "${site_prefix}/${_pyver_87tY}/tensorflow/"
             echo "${site_prefix}/${_pyver_87tY}/mindspore/"
+            echo "${site_prefix}/${_pyver_87tY}/flash-attn/"
+            echo "${site_prefix}/${_pyver_87tY}/not_installed/"
          done`
     )
     # scrape pkgs
