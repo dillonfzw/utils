@@ -4,6 +4,7 @@
 
 USER=${USER:-`id -u -n`}
 if [ "${USER}" != "root" ]; then sudo=sudo; else sudo=""; fi
+kernel_module_dir=${kernel_module_dir:-${DEFAULT_kernel_module_dir:-`uname -r`}}
 
 
 function reset_gpu_iluvatar() { $sudo ${sudo:+"-n"} ixsmi -r ${1:+"-i"} ${1}; }
@@ -147,36 +148,94 @@ function kill_gpu_apps_iluvatar() {
     done \
  && ${_succ}; \
 }
+function get_drv_kmd() {
+    true \
+ && local _drv_dir=${_drv_dir:-${kernel_module_dir:-/lib/modules/`uname -r`/}} \
+ && local _drv_name=${1:-iluvatar} \
+ && local _drv_file=`find ${_drv_dir}/ -name "${_drv_name}*" 2>/dev/null | head -n1` \
+ && if [ -z "${_drv_file}" -o ! -f "${_drv_file}" ]; then echo "[W]: ${_drv_name} does not exists in ${_drv_dir}!" >&2; return 1; fi \
+ && echo ${_drv_file} \
+ && true; \
+}
+function _xx_drv_kmd() {
+    true \
+ && local _op=${1} && shift \
+ && if [ "x${1}" == "x--dry-run" ]; then _dry_run_prefix="echo"; shift; fi \
+ && if [ "x${1}" == "x--" ]; then shift; fi \
+ && local _drv_name=${1:-iluvatar} && shift \
+ && local _drv_file="" \
+ && if echo "${_drv_name}" | grep -sq "\.ko$"; then true \
+     && _drv_file=${_drv_name} \
+     && _drv_name=`basename ${_drv_name} .ko` \
+     && true; \
+    fi \
+ && if [ "x${_op}" == "xload" ]; then true \
+     && local _op1="modprobe" \
+     && local _op2="insmod" \
+     && true; \
+    elif [ "x${_op}" == "xunload" ]; then true \
+     && local _op1="modprobe -r" \
+     && local _op2="rmmod" \
+     && true; \
+    else echo "[E]: Unknown operation \"${_op}\", Abort!" >&2; false; fi \
+ && if [ -z "${_drv_file}" ] && modinfo ${_drv_name} >/dev/null 2>&1; then true \
+     && true "驱动是在系统注册的，直接按名字操作" \
+     && eval ${_dry_run_prefix} $sudo ${sudo:+"-n"} ${_op1} ${_drv_name} \
+     && true; \
+    elif [ "x${_op}" == "xload" ]; then true \
+     && true "按文件载入驱动模块" \
+     && local _drv_dir=${_drv_dir:-${kernel_module_dir:-/lib/modules/`uname -r`/}} \
+     && local _drv_file=${_drv_file:-`get_drv_kmd ${_drv_name}`} \
+     && if [ -n "${_drv_file}" -a -f "${_drv_file}" ]; then true \
+         && eval ${_dry_run_prefix} $sudo ${sudo:+"-n"} ${_op2} ${_drv_file} \
+         && true; \
+        fi \
+     && true; \
+    elif [ "x${_op}" == "xunload" ]; then true \
+     && true "按名字卸载驱动模块就可以了，因为已经载入内核了" \
+     && eval ${_dry_run_prefix} $sudo ${sudo:+"-n"} ${_op2} ${_drv_name} \
+     && true; \
+    fi \
+ && true; \
+}
+function load_drv_kmd() { _xx_drv_kmd load $@; }
+function unload_drv_kmd() { _xx_drv_kmd unload $@; }
 function unload_gpu_kmd_iluvatar() {
     true \
  && if lsmod | grep -sq -F "itr_peer_mem_drv"; then true \
-     && echo "[I]: Unloading itr_peer_mem_drv kernel module..." 2>&1 \
-     && { $sudo ${sudo:+"-n"} modprobe -r itr_peer_mem_drv || true; } \
+     && echo "[I]: Unloading kernel module itr_peer_mem_drv ..." 2>&1 \
+     && { unload_drv_kmd itr_peer_mem_drv || true; } \
      && true; \
     fi \
- && local _kmd_name="bi_driver" \
- && if modinfo iluvatar >/dev/null 2>&1; then _kmd_name="iluvatar"; fi \
- && if lsmod | grep -sq -F ${_kmd_name}; then true \
-     && echo "[I]: Unloading ${_kmd_name} kernel module..." 2>&1 \
-     && $sudo ${sudo:+"-n"} modprobe -r ${_kmd_name} \
+ && local _kmd_name="" \
+ && if lsmod | grep -sq -F iluvatar; then true \
+     && _kmd_name="iluvatar" \
+     && true; \
+    elif lsmod | grep -sq -F bi_driver ; then true \
+     && _kmd_name="bi_driver" \
+     && true; \
+    fi \
+ && if [ -n "${_kmd_name}" ]; then true \
+     && echo "[I]: Unloading kernel module ${_kmd_name} ..." 2>&1 \
+     && unload_drv_kmd ${_kmd_name} \
      && true; \
     fi \
  && true; \
 }
 function load_gpu_kmd_iluvatar() {
     true \
- && local _kmd_name="bi_driver" \
- && if modinfo iluvatar >/dev/null 2>&1; then _kmd_name="iluvatar"; fi \
- && if ! lsmod | grep -sq -F ${_kmd_name}; then true \
-     && echo "[I]: Loading ${_kmd_name} kernel module..." 2>&1 \
-     && $sudo ${sudo:+"-n"} modprobe ${_kmd_name} \
+ && local _drv_name \
+ && local _succ_cnt=0 \
+ && for _drv_name in iluvatar bi_driver itr_peer_mem_drv; do true \
+     && if [ "${_drv_name}" == "itr_peer_mem_drv" -a ${_succ_cnt} -ne 1 ]; then break; fi \
+     && if [ "${_drv_name}" == "bi_driver" -a ${_succ_cnt} -eq 1 ]; then continue; fi \
+     && local _drv_file=`get_drv_kmd ${_drv_name}` \
+     && if [ -z "${_drv_file}" -o ! -f "${_drv_file}" ]; then continue; fi \
+     && echo "[I]: Loading kernel module ${_drv_name} from ${_drv_file} ..." 2>&1 \
+     && if load_drv_kmd ${_drv_file}; then ((_succ_cnt+=1)); true; fi \
      && true; \
-    fi \
- && if ! lsmod | grep -sq -F itr_peer_mem_drv && modinfo itr_peer_mem_drv >/dev/null 2>&1; then true \
-     && echo "[I]: Loading itr_peer_mem_drv kernel module..." 2>&1 \
-     && { $sudo ${sudo:+"-n"} modprobe itr_peer_mem_drv || true; } \
-     && true; \
-    fi \
+    done \
+ && test ${_succ_cnt} -ge 1 \
  && true; \
 }
 function reload_gpu_kmd_iluvatar() {
