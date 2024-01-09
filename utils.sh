@@ -1602,7 +1602,8 @@ function pkg_list_installed_yum() {
 function pkg_list_installed_deb() {
     local pkgs="$@"
     local pkgs_m=`echo "$pkgs" | tr ' ' '\n' | sed -e 's/=.*$//g' | xargs`
-    env DPKG_PAGER="cat" dpkg -l $pkgs_m
+    env DPKG_PAGER="cat" dpkg -l $pkgs_m && \
+    env DPKG_PAGER="cat" dpkg -s $pkgs_m >/dev/null
 }
 function pkg_list_installed_pip() {
     local pip=$G_pip_bin
@@ -1695,7 +1696,7 @@ function pkg_verify_yum() {
     (exit $rc)
 }
 function pkg_verify_deb() {
-    declare -a pkgs=($@)
+    local -a pkgs=($@)
     if [ ${#pkgs[@]} -eq 0 ]; then return 0; fi
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
@@ -3211,10 +3212,7 @@ function install_cu102() {
      && _install_cu102 \
      && true;
     elif [ "x${distribution}" = "xubuntu20.04" ]; then true \
-     && install_${distribution/./}_nvidia_repo_cu102 \
-     && install_${distribution/./}_nvidia_ml_repo \
-     && $_sudo apt-get update \
-     && _install_cu102 \
+     && install_${distribution/./}_nvidia_cu102 \
      && true;
     elif [ "x${distribution}" = "xubuntu18.04" ]; then true \
      && install_${distribution/./}_nvidia_repo_cu102 \
@@ -3224,6 +3222,28 @@ function install_cu102() {
      && true;
     fi \
  && true;
+}
+function install_ubuntu2004_nvidia_cu102() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && local _f_run_uri="ftp://10.209.16.37:10021/softwares/nvidia/cuda_10.2.89_min_linux.run" \
+ && function _install() {
+        true \
+     && local _f_run=`download_by_cache $_f_run_uri` \
+     && $_sudo bash ${_f_run} \
+     && true;
+    } \
+ && if do_and_verify \
+        "test -f /usr/local/cuda-10.2/include/cuda.h" \
+        "_install" \
+        "true"; then true \
+     && true; \
+    fi \
+ && true; \
 }
 function _install_centos7_nvidia_repo_legacy() {
     local _sudo=$sudo
@@ -3457,10 +3477,6 @@ function install_ubuntu1804_nvidia_repo_cu110() {
     true \
  && install_ubuntu2004_nvidia_repo_cu110 \
  && true;
-}
-function install_ubuntu2004_nvidia_repo_cu102() {
-    log_error "Nvidia does not support install CUDA 10.2 in Ubuntu 20.04"
-    false
 }
 function install_ubuntu1804_nvidia_repo_cu102() {
     # https://developer.nvidia.com/cuda-10.2-download-archive?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1804&target_type=debnetwork
@@ -3974,7 +3990,9 @@ function install_rabbitmq() {
 }
 function install_iluvatar_sdk_cmake() {
     local _release=${1:-latest}
-    local _install_dir=${2:-/opt}
+    if [ -n "${1}" ]; then shift; fi
+    local _install_dir=${1:-/opt}
+    if [ -n "${1}" ]; then shift; fi
     local _sudo=${sudo:-sudo}
     if [ "$as_root" != "true" ]; then true \
      && _sudo="" \
@@ -3988,6 +4006,7 @@ function install_iluvatar_sdk_cmake() {
         return 1
     fi
     local _pkg_f=`download_by_cache ${_pkgs[0]}`
+    if [ "x$download_only" == "xtrue" ]; then return 0; fi
     local _info=`bash ${_pkg_f} --version`
     if echo "${_info}" | grep -sqF "3.21.5-corex.2.3.0" >/dev/null 2>&1; then true \
      && ${_sudo} bash ${_pkg_f} \
@@ -4065,6 +4084,7 @@ function install_iluvatar_sdk_corex() {
             return 1
         fi
         _pkg_f=`download_by_cache ${_pkgs[0]}`
+        if [ "x$download_only" == "xtrue" ]; then return 0; fi
     fi
     local _info=`bash ${_pkg_f} --info`
 
@@ -4124,7 +4144,9 @@ function install_iluvatar_sdk_corex() {
 }
 function install_iluvatar_sdk_corex_samples() {
     local _release=${1:-latest}
-    local _install_dir=${2:-$HOME/workspace}
+    if [ -n "${1}" ]; then shift; fi
+    local _install_dir=${1:-$HOME/workspace}
+    if [ -n "${1}" ]; then shift; fi
     local _sudo=${sudo:-sudo}
     if [ "$as_root" != "true" ]; then true \
      && _sudo="" \
@@ -4138,6 +4160,7 @@ function install_iluvatar_sdk_corex_samples() {
         return 1
     fi
     local _pkg_f=`download_by_cache ${_pkgs[0]}`
+    if [ "x$download_only" == "xtrue" ]; then return 0; fi
     local _info=`bash ${_pkg_f} --info`
 
     if echo "$_info" | grep -sqF "2.3.0-iluvatar" >/dev/null 2>&1; then true \
@@ -4173,6 +4196,7 @@ function install_iluvatar_sdk_corex_samples() {
 }
 function install_iluvatar_sdk_apps() {
     local _release=${1:-latest}
+    if [ -n "${1}" ]; then shift; fi
     local _tf_ver=${_tf_ver:-2}
     local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
     function _filter_op() {
@@ -4194,6 +4218,7 @@ function install_iluvatar_sdk_apps() {
     fi
     local _c
     _c=$(array_map _pkgs[@] download_by_cache) || { log_error "Fail to download pkgs, Abort!"; return 1; }
+    if [ "x$download_only" == "xtrue" ]; then return 0; fi
     local -a _pkgs=${_c}
 
     # opencv-python uses skbuild now
@@ -4206,6 +4231,10 @@ function scrape_iluvatar_sdk_pkgs() {
     fi
     local -A DEFAULT_download_url_prefix_map=(
         ["latest"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
+        #
+        # BI-V100
+        #
+        ["BIr311"]="http://10.113.3.1/corex/release_packages/frequent_version/x86/bi100/3.1.1/"
         ["BIr310"]="http://10.113.3.1/corex/release_packages/3.1.0-BI/x86/"
         ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
         ["BIr300"]="http://10.150.9.95/corex/release_packages/3.0.0/x86/"
@@ -4216,8 +4245,20 @@ function scrape_iluvatar_sdk_pkgs() {
         ["BIr211"]="http://10.150.9.95/corex/release_packages/2.1.1/x86/"
         ["BIr210"]="http://10.150.9.95/corex/release_packages/2.1.0/x86/"
         ["BIDailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/latest/"
-	# 智源二期BF16
+        # 智源二期BF16
         ["BId202307131382"]="http://10.113.3.1/corex/daily_packages/x86/20230713/1382/"
+        #
+        # BI-V150
+        #
+        ["BI150r330"]="http://10.113.3.1/corex/release_packages/3.3.0-BI150/x86/"
+        ["BI150DailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/bi150/latest/"
+        ["BI150d2023101334"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231013/34/"
+        ["BI150d2023112376"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231123/76/"
+        #
+        # MR-V100/50
+        #
+        ["MRr321p1"]="http://10.113.3.1/corex/release_packages/frequent_version/x86/mr/3.2.1-patch1/"
+        ["MRr320"]="http://10.113.3.1/corex/release_packages/3.2.0-MR/x86/"
         ["MRr311"]="http://10.113.3.1/corex/release_packages/3.1.1-MR/x86/"
         ["MRr310"]="http://10.150.9.95/corex/release_packages/3.1.0-MR/x86/"
         ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
@@ -4228,6 +4269,10 @@ function scrape_iluvatar_sdk_pkgs() {
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\""
+        #
+        # BI-V100
+        #
+        ["BIr311"]="\.sh\"|\.run\"|\.whl\""
         ["BIr310"]="\.sh\"|\.run\"|\.whl\""
         ["BIr301"]="\.sh\"|\.run\"|\.whl\""
         ["BIr300"]="\.sh\"|\.run\"|\.whl\""
@@ -4238,8 +4283,20 @@ function scrape_iluvatar_sdk_pkgs() {
         ["BIr211"]="\.sh\"|\.run\"|\.whl\""
         ["BIr210"]="\.sh\"|\.run\"|\.whl\""
         ["BIDailyLatest"]="\.sh\"|\.run\"|\.whl\""
-	# 智源二期BF16
+        # 智源二期BF16
         ["BId202307131382"]="\.sh\"|\.run\"|\.whl\""
+        #
+        # BI-V150
+        #
+        ["BI150r330"]="\.sh\"|\.run\"|\.whl\""
+        ["BI150DailyLatest"]="\.sh\"|\.run\"|\.whl\""
+        ["BI150d2023101334"]="\.sh\"|\.run\"|\.whl\""
+        ["BI150d2023112376"]="\.sh\"|\.run\"|\.whl\""
+        #
+        # MR-V100/50
+        #
+        ["MRr321p1"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
+        ["MRr320"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr311"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr310"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         ["MRr300Beta2"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
@@ -4248,16 +4305,29 @@ function scrape_iluvatar_sdk_pkgs() {
         # 移动集采
         ["MRd20221105231"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
     )
+    function _filter_87tY() {
+        local _prefix_87tY=$1
+        cut -d\" -f1 | \
+        sed -e 's,/\+,/,g' | \
+        sed -e "s,^,${_prefix_87tY},g" | \
+        xargs
+    }
+    local site_prefix="${1:-latest}"
+    local pkg_patterns="${2:-true}"
+    if echo "${site_prefix}" | grep -sqE "^BI[dr]|^BI150[dr]|^MR[dr]" && [ -z "${ILUVATAR_APPS_TAG}" ]; then true \
+     && ILUVATAR_APPS_TAG="$(echo ${site_prefix} | sed -e 's/^\(.*[dr][0-9]\{8\}\)\([0-9]\+\)$/\1.\2/')" \
+     && true; \
+    fi
     if [ -n "${ILUVATAR_APPS_TAG}" ]; then true \
      && local _ILUVATAR_APPS_site_prefix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/\.//g')" \
      && local _ILUVATAR_APPS_site_dir_suffix="$(echo ${ILUVATAR_APPS_TAG} | sed -e 's/^.*\([0-9]\{8\}\)/\1/' -e 's,\.,/,g')" \
-     && true "category = MRd | MRr | BId | BIr, r == release, d = daily" \
+     && true "category = MRd | MRr | BId | BIr | BI150d | BI150r, r == release, d = daily" \
      && local _ILUVATAR_APPS_site_catetory="${ILUVATAR_APPS_TAG:0:3}" \
      && if [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
                 "x${_ILUVATAR_APPS_site_catetory}" == "xMRd" -o \
                 "x${_ILUVATAR_APPS_site_catetory}" == "x" \
             \) ]; then true \
-         && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/daily_release_packages/x86/mr/${_ILUVATAR_APPS_site_dir_suffix}/" \
+         && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.113.3.1/corex/daily_packages/x86/mr/${_ILUVATAR_APPS_site_dir_suffix}/" \
          && true; \
         elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
                 "x${_ILUVATAR_APPS_site_catetory}" == "xMRr" \
@@ -4269,10 +4339,20 @@ function scrape_iluvatar_sdk_pkgs() {
             \) ]; then true \
          && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/daily_release_packages/x86/${_ILUVATAR_APPS_site_dir_suffix}/" \
          && true; \
-     elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
+        elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
                 "x${_ILUVATAR_APPS_site_catetory}" == "xBIr" \
             \) ]; then true \
          && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.150.9.95/corex/release_packages/x86/${_ILUVATAR_APPS_site_dir_suffix}/" \
+         && true; \
+        elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
+                "x${_ILUVATAR_APPS_site_catetory}" == "xBI150d" \
+            \) ]; then true \
+         && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.113.3.1/corex/daily_release_packages/x86/bi150/${_ILUVATAR_APPS_site_dir_suffix}/" \
+         && true; \
+        elif [ "x${DEFAULT_download_url_prefix_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
+                "x${_ILUVATAR_APPS_site_catetory}" == "xBI150r" \
+            \) ]; then true \
+         && DEFAULT_download_url_prefix_map["${_ILUVATAR_APPS_site_prefix}"]="http://10.113.3.1/corex/release_packages/x86/bi150/${_ILUVATAR_APPS_site_dir_suffix}/" \
          && true; \
         fi \
      && if [ "x${DEFAULT_pkg_patterns_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
@@ -4288,18 +4368,15 @@ function scrape_iluvatar_sdk_pkgs() {
             \) ]; then true \
          && DEFAULT_pkg_patterns_map["${_ILUVATAR_APPS_site_prefix}"]=${DEFAULT_pkg_patterns_map["BIDailyLatest"]} \
          && true; \
+        elif [ "x${DEFAULT_pkg_patterns_map[${_ILUVATAR_APPS_site_prefix}]}" == "x" -a \( \
+                "x${_ILUVATAR_APPS_site_catetory}" == "xBI150d" -o \
+                "x${_ILUVATAR_APPS_site_catetory}" == "xBI150r" \
+            \) ]; then true \
+         && DEFAULT_pkg_patterns_map["${_ILUVATAR_APPS_site_prefix}"]=${DEFAULT_pkg_patterns_map["BI150DailyLatest"]} \
+         && true; \
         fi \
      && true; \
     fi
-    function _filter_87tY() {
-        local _prefix_87tY=$1
-        cut -d\" -f1 | \
-        sed -e 's,/\+,/,g' | \
-        sed -e "s,^,${_prefix_87tY},g" | \
-        xargs
-    }
-    local site_prefix="${1:-latest}"
-    local pkg_patterns="${2:-true}"
     # try expanding the site_prefix
     local _val=${DEFAULT_download_url_prefix_map[${site_prefix}]}
     if [ -n "${_val}" ]; then true \
@@ -4321,19 +4398,24 @@ function scrape_iluvatar_sdk_pkgs() {
     local -a urls=(
         "${site_prefix}"
         "${site_prefix}/not_release/"
-        `true && for _pyver_87tY in 3.{6,7,8,9} latest-wheels-3.{6,7,8.9};
+        "${site_prefix}/add-on/"
+        `true && for _pyver_87tY in 3.{6,7,8,9,10} latest-wheels-3.{6,7,8,9,10};
          do
             echo "${site_prefix}/${_pyver_87tY}/"
             echo "${site_prefix}/${_pyver_87tY}/paddle/"
             echo "${site_prefix}/${_pyver_87tY}/tensorflow/"
             echo "${site_prefix}/${_pyver_87tY}/mindspore/"
+            echo "${site_prefix}/${_pyver_87tY}/flash-attn/"
+            echo "${site_prefix}/${_pyver_87tY}/not_installed/"
          done`
     )
     # scrape pkgs
     local _url
     for _url in ${urls[@]}
     do true \
-     && _target_urls+=($({ curl ${CURL_PROXY:+--socks5} ${CURL_PROXY} -k ${_url}; } | grep "a href=" | sed -e 's/a href="/\n/' | \
+     && _url=`echo "${_url}" | sed -e 's,\([^:]\)/\+,\1/,g'` \
+     && local _f_url=`download_by_cache ${_url}` \
+     && _target_urls+=($(cat ${_f_url} | grep "a href=" | sed -e 's/a href="/\n/' | \
             grep -E "${pkg_patterns}" | \
             _filter_87tY ${_url}
         )) \
@@ -4424,7 +4506,7 @@ function install_iluvatar_sdk() {
          && export CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=ON" \
          && true; \
         fi \
-     && install_iluvatar_sdk_apps $_release ${_tf_ver} \
+     && { install_iluvatar_sdk_apps $_release ${_tf_ver} || true; } \
      && ${G_pip_bin} list | grep -i corex | sed -e 's/^/>> /g' | log_lines info \
      && deactivate \
      && setup_pip_flags ${_G_python_bin_bak} \
@@ -4444,10 +4526,10 @@ function setup_repo_mirror_CN_ub() {
  && true "要先安装ca-certificates，否则有些https的源会fail" \
  && $_sudo apt-get update \
  && do_and_verify \
-      'eval pkg_verify "ca-certificates" "apt-transport-https"' \
-      'eval pkg_install "ca-certificates" "apt-transport-https"' \
+      'eval pkg_verify_deb ca-certificates apt-transport-https' \
+      'eval pkg_install_deb ca-certificates apt-transport-https' \
       "true" \
- && $_sudo sed -i \
+ && $_sudo sed -i.bak \
         -e 's,https\?://\(archive.ubuntu.com\),https://mirrors.aliyun.com,g' \
         -e 's,//\(archive.ubuntu.com\),//cn.\1,g' \
         -e 's,//\(ports.ubuntu.com\),//cn.\1,g' \
@@ -4529,6 +4611,8 @@ function setup_os() {
         "nmap" \
         "nmon" \
         "openssh-server" \
+        # mpi4py depends
+        "deb:libopenmpi-dev"    "rpm:openmpi-devel" \
         "p7zip" \
         "patchelf" \
         "pdsh" \
@@ -4570,8 +4654,6 @@ function setup_os() {
         pkgs+=(${pkgs_rh7[@]}); \
     fi \
  && if grep -sq "ID=ubuntu" /etc/os-release; then true \
-     && true "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
-     && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && if [ "${_BLD_REGION}" = "CN" ]; then true \
          && setup_repo_mirror_CN_ub \
          && true; \
@@ -4587,6 +4669,11 @@ function setup_os() {
      && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
+ && if true; then true \
+     && true "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
+     && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
+     && true; \
+    fi \
  && true;
 }
 function setup_python3() {
@@ -4803,6 +4890,62 @@ function setup_darwin_deps() {
     done; fi \
  && true;
 }
+function setup_iluvatar_deps() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && pkgs_rh7=( \
+    ) \
+ && pkgs_ub1804=( \
+    ) \
+ && pkgs_ub2004=( \
+    ) \
+ && pkgs_ub2204=( \
+    ) \
+ && pkgs=( \
+        "deb:5:apt-transport-https" \
+        "ca-certificates" \
+        "curl" \
+        "deb:libffi-dev"      "rpm:libffi-devel" \
+        "deb:libssl-dev"      "rpm:openssl-devel" \
+                              "rpm:openssl11" \
+        "deb:lsb-base"        "#rpm:initscripts" \
+        "deb:zlib1g"           "rpm:zlib" \
+        "deb:zlib1g-dev"       "rpm:zlib-devel" \
+        "deb:libpci-dev" \
+    ) \
+ && cat /etc/os-release | sed -e 's/^/>> /g' | log_lines info \
+ && if grep -sq "VERSION=\"18.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub1804[@]}); \
+    elif grep -sq "VERSION=\"20.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2004[@]}); \
+    elif grep -sq "VERSION=\"22.04" /etc/os-release; then \
+        pkgs+=(${pkgs_ub2204[@]}); \
+    elif grep -sq "CentOS Linux 7" /etc/os-release; then true \
+     && pkgs+=(${pkgs_rh7[@]}) \
+     && true "这个包在rhel里面和系统包有冲突，暂时只在检测到centos时安装" \
+     && pkgs+=("rpm:initscripts") \
+     && install_epel \
+     && true; \
+    elif grep -sq "PRETTY_NAME=\"Red Hat Enterprise Linux Server 7" /etc/os-release; then true \
+     && pkgs+=(${pkgs_rh7[@]}) \
+     && install_epel \
+     && true; \
+    fi \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+     && if [ "${_BLD_REGION}" = "CN" ]; then true \
+         && setup_repo_mirror_CN_ub \
+         && true; \
+        fi \
+     && $_sudo apt-get update \
+     && true; \
+    fi \
+ && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' "true" \
+ && true;
+}
 function setup_opencv() {
     true \
  && local _sudo=${sudo:-sudo} \
@@ -4878,15 +5021,16 @@ function setup_tf_deps() {
  && pkgs_rh7=( \
     ) \
  && pkgs_ub1604=( \
+        "deb:libhdf5-serial-dev" \
     ) \
  && pkgs_ub1804=( \
+        "deb:libhdf5-serial-dev" \
     ) \
  && pkgs_ub2004=( \
     ) \
  && pkgs=( \
         "deb:hdf5-tools"         "rpm:hdf5" \
         "deb:libhdf5-dev"        "rpm:hdf5-devel" \
-        "deb:libhdf5-serial-dev" \
         "deb:libjpeg8-dev"       "rpm:libjpeg-turbo-devel" \
         "deb:zlib1g-dev"         "rpm:zlib-devel" \
     ) \
@@ -5627,6 +5771,114 @@ function rpower_status_supermicro() {
 function rpower_on_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nstart"; }
 function rpower_off_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nstop"; }
 function rpower_reset_supermicro() { supermicro_rcmd $@ -- "cd system1/pwrmgtsvc1\nreset"; }
+function gensudo() {
+    true \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then _sudo=""; fi \
+ && local _USER=${_USER:-${1:-${USER:-`whoami`}}} \
+ && lines="Defaults:$_USER !requiretty
+$_USER ALL=(ALL) NOPASSWD:ALL" \
+ && if [ "$_USER" != "root" -a ! -f /etc/sudoers.d/$_USER ]; then true \
+     && echo "$lines" | sudo tee /etc/sudoers.d/$_USER \
+     && true; \
+    fi \
+ && true; \
+}
+function _smart_link() {
+    true \
+ && if [ "x${1}" == "x--dry-run" ]; then _dry_run_prefix="echo"; shift; fi \
+ && if [ "x${1}" == "x--" ]; then shift; fi \
+ && local _entry=$(eval "echo $`seq -s:\$ 1 $#`") \
+ && local _src=`echo "${_entry}" | cut -d: -f1` \
+ && local _dst=`echo "${_entry}" | cut -d: -f2 -s` \
+ && local _mandatory=`echo "${_entry}" | cut -d: -f3 -s` \
+ && local _own=`echo "${_entry}" | cut -d: -f4 -s` \
+ && local _grp=`echo "${_entry}" | cut -d: -f5 -s` \
+ && local _own_self=`id -n -u` \
+ && local _grp_self=`id -n -g` \
+ && if [ "x${_own}" == "x${_own_self}" ]; then _own=""; fi \
+ && if [ "x${_grp}" == "x${_grp_self}" ]; then _grp=""; fi \
+ && true "# 没指定grp的话，取own的grp" \
+ && if [ -z "${_grp}" -a -n "${_own}" ]; then _grp=`id -n -g ${_own}`; fi \
+ && true "# 目标目录已经存在，下一个" \
+ && true "# 存在的话，如果需要，也强制复位own和grp" \
+ && if [ -n "${_dst}" -a -d "${_dst}" ]; then true \
+     && if [ -n "${_mandatory}" -a -n "${_own}" ]; then true \
+         && ${_dry_run_prefix} ${sudo} chown ${_own} `if [ -d ${_dst} ]; then echo "${_dst}/"; else echo "${_dst}"; fi` \
+         && true; \
+        fi \
+     && if [ -n "${_mandatory}" -a -n "${_grp}" ]; then true \
+         && ${_dry_run_prefix} ${sudo} chgrp ${_grp} `if [ -d ${_dst} ]; then echo "${_dst}/"; else echo "${_dst}"; fi` \
+         && true; \
+        fi \
+     && log_debug "Skip mnt entry: \"${_entry}\"" \
+     && continue; \
+    else true \
+     && log_debug "Process mnt entry: \"${_entry}\"" \
+     && true; \
+    fi \
+ && true "# 确保源目录存在，否则创建" \
+ && if ! if [ \
+        -n "${_mandatory}" \
+        -a -n "${_src}" -a ! -d "${_src}" \
+    ]; then true \
+     && log_debug "Create mandatory src: \"${_entry}\"" \
+     && if [ -L "${_src}" ]; then rm -f ${_src}; fi \
+     && mkdir -p ${_src} \
+     && if [ -n "${_own}" ]; then true \
+         && chown ${_own} `if [ -d ${_src} ]; then echo "${_src}/"; else echo "${_src}"; fi` \
+         && true; \
+        fi \
+     && if [ -n "${_grp}" ]; then true \
+         && chgrp ${_grp} `if [ -d ${_src} ]; then echo "${_src}/"; else echo "${_src}"; fi` \
+         && true; \
+        fi \
+     && ls -ld ${_src} | sed -e 's/^/[src]: >> /g' | log_lines info \
+     && true; \
+    fi; then true \
+     && log_error "Fail to create mandatory src: \"${_entry}\"" \
+     && ls -ld ${_src} | sed -e 's/^/[src]: >> /g' | log_lines error \
+     && false; \
+    fi \
+ && true "# 把源目录连接到目标，仅当目标不存在时" \
+ && if ! if [ -n "${_src}" -a -d "${_src}" \
+        -a -n "${_dst}" -a ! -e "${_dst}" \
+    ]; then true \
+     && log_debug "Link src to mandatory dst: \"${_entry}\"" \
+     && { rm -f ${_dst} 2>/dev/null || true; } \
+     && if [ "`dirname ${_src}`" == "`dirname ${_dst}`" ]; then true \
+         && ln -s `basename ${_src}` ${_dst} \
+         && true; \
+        else true \
+         && ln -s ${_src} ${_dst} \
+         && true; \
+        fi \
+     && ls -ld ${_dst} | sed -e 's/^/[dst]: >> /g' | log_lines info \
+     && true; \
+    fi; then true \
+     && log_error "Fail to link src to mandatory dst: \"${_entry}\"" \
+     && false; \
+    fi \
+ && true "# 强制复位own和grp" \
+ && if true; then true \
+     && if [ -n "${_mandatory}" -a -n "${_own}" -a -n "${_src}" -a -z "${_dst}" ]; then true \
+         && chown ${_own} `if [ -d ${_src} ]; then echo "${_src}/"; else echo "${_src}"; fi` \
+         && true; \
+        elif [ -n "${_mandatory}" -a -n "${_own}" -a -n "${_dst}" ]; then true \
+         && chown ${_own} `if [ -d ${_dst} ]; then echo "${_dst}/"; else echo "${_dst}"; fi` \
+         && true; \
+        fi \
+     && if [ -n "${_mandatory}" -a -n "${_grp}" -a -n "${_src}" -a -z "${_dst}" ]; then true \
+         && chgrp ${_grp} `if [ -d ${_src} ]; then echo "${_src}/"; else echo "${_src}"; fi` \
+         && true; \
+        elif [ -n "${_mandatory}" -a -n "${_grp}" -a -n "${_dst}" ]; then true \
+         && chgrp ${_grp} `if [ -d ${_dst} ]; then echo "${_dst}/"; else echo "${_dst}"; fi` \
+         && true; \
+        fi \
+     && true; \
+    fi \
+ && true; \
+}
 # end of feature functions
 #-------------------------------------------------------------------------------
 #---------------- cut here end iecha4aeXot7AecooNgai7Ezae3zoRi7 ----------------
