@@ -3,14 +3,14 @@
 
 
 USER=${USER:-`id -u -n`}
-if [ "${USER}" != "root" ]; then sudo=sudo; else sudo=""; fi
+if [ "${USER}" != "root" ]; then _sudo=/usr/bin/sudo; else _sudo=""; fi
 kernel_module_dir=${kernel_module_dir:-${DEFAULT_kernel_module_dir:-`uname -r`}}
 
 
-function reset_gpu_iluvatar() { $sudo ${sudo:+"-n"} ixsmi -r ${1:+"-i"} ${1}; }
+function reset_gpu_iluvatar() { ${_sudo} ${_sudo:+"-n"} ixsmi -r ${1:+"-i"} ${1}; }
 function show_gpu_iluvatar() { ixsmi ${1:+"-i"} ${1} | grep -B99999 "^ *$"; }
 
-function reset_gpu_nvidia() { $sudo ${sudo:+"-n"} nvidia-smi -r ${1:+"-i"} ${1}; }
+function reset_gpu_nvidia() { ${_sudo} ${_sudo:+"-n"} nvidia-smi -r ${1:+"-i"} ${1}; }
 function show_gpu_nvidia() { nvidia-smi ${1:+"-i"} ${1} | grep -B99999 "^ *$"; }
 
 function reset_gpu_service() {
@@ -56,7 +56,7 @@ function reset_gpu_all() { echo -e "-1\nYES\n\nbye" | reset_gpu_service $@; }
 function get_gpu_pids_iluvatar() {
     true \
  && ixsmi ${1:+"-i"} ${1} --query-compute-apps=pid --format=csv | \
-    tail +2 | sort -u | xargs \
+    tail -n+2 | sort -u | xargs \
  && true; \
 }
 function get_pgids_by_pids() {
@@ -84,7 +84,7 @@ function get_gpu_pids_ext_iluvatar() {
 }
 function get_gpu_cnt_iluvatar() {
     true \
- && local _n_pci_cnt=`lspci | grep 1e3e | wc -l` \
+ && local _n_pci_cnt=`lspci -n | grep 1e3e | wc -l` \
  && local _n_ixsmi_cnt=`ixsmi -L | grep -i iluvatar | wc -l` \
  && echo ${_n_pci_cnt} ${_n_ixsmi_cnt} \
  && true; \
@@ -101,7 +101,7 @@ function get_defunct_apps() {
  && true; \
 }
 function kill_gpu_apps_iluvatar() {
-    true \
+    true set -x \
  && local _silent=${_silent:-false} \
  && true "Default killing interval is 5 seconds" \
  && local try_interval=${try_interval:-5.0} \
@@ -136,7 +136,7 @@ function kill_gpu_apps_iluvatar() {
 	        } | sed -e 's/^/[I]: '${_sig}'ing >> /g' >&2 \
 	     && true; \
 	    fi \
-	 && { $sudo ${sudo:+"-n"} kill -${_sig} ${_pids[@]} || true; } \
+	 && { ${_sudo} ${_sudo:+"-n"} kill -${_sig} ${_pids[@]} || true; } \
 	 && sleep ${try_interval} \
 	 && true; \
         else true \
@@ -149,10 +149,10 @@ function kill_gpu_apps_iluvatar() {
  && ${_succ}; \
 }
 function get_drv_kmd() {
-    true \
+    true set -x \
  && local _drv_dir=${_drv_dir:-${kernel_module_dir:-/lib/modules/`uname -r`/}} \
  && local _drv_name=${1:-iluvatar} \
- && local _drv_file=`find ${_drv_dir}/ -name "${_drv_name}*" 2>/dev/null | head -n1` \
+ && local _drv_file=`find ${_drv_dir}/ ${_drv_dir}/*/ -maxdepth 1 -name "${_drv_name}*" 2>/dev/null | head -n1` \
  && if [ -z "${_drv_file}" -o ! -f "${_drv_file}" ]; then echo "[W]: ${_drv_name} does not exists in ${_drv_dir}!" >&2; return 1; fi \
  && echo ${_drv_file} \
  && true; \
@@ -180,20 +180,20 @@ function _xx_drv_kmd() {
     else echo "[E]: Unknown operation \"${_op}\", Abort!" >&2; false; fi \
  && if [ -z "${_drv_file}" ] && modinfo ${_drv_name} >/dev/null 2>&1; then true \
      && true "驱动是在系统注册的，直接按名字操作" \
-     && eval ${_dry_run_prefix} $sudo ${sudo:+"-n"} ${_op1} ${_drv_name} \
+     && eval ${_dry_run_prefix} ${_sudo} ${_sudo:+"-n"} ${_op1} ${_drv_name} \
      && true; \
     elif [ "x${_op}" == "xload" ]; then true \
      && true "按文件载入驱动模块" \
      && local _drv_dir=${_drv_dir:-${kernel_module_dir:-/lib/modules/`uname -r`/}} \
      && local _drv_file=${_drv_file:-`get_drv_kmd ${_drv_name}`} \
      && if [ -n "${_drv_file}" -a -f "${_drv_file}" ]; then true \
-         && eval ${_dry_run_prefix} $sudo ${sudo:+"-n"} ${_op2} ${_drv_file} \
+         && eval ${_dry_run_prefix} ${_sudo} ${_sudo:+"-n"} ${_op2} ${_drv_file} \
          && true; \
         fi \
      && true; \
     elif [ "x${_op}" == "xunload" ]; then true \
      && true "按名字卸载驱动模块就可以了，因为已经载入内核了" \
-     && eval ${_dry_run_prefix} $sudo ${sudo:+"-n"} ${_op2} ${_drv_name} \
+     && eval ${_dry_run_prefix} ${_sudo} ${_sudo:+"-n"} ${_op2} ${_drv_name} \
      && true; \
     fi \
  && true; \
@@ -223,7 +223,7 @@ function unload_gpu_kmd_iluvatar() {
  && true; \
 }
 function load_gpu_kmd_iluvatar() {
-    true \
+    true set -x \
  && local _drv_name \
  && local _succ_cnt=0 \
  && for _drv_name in iluvatar bi_driver itr_peer_mem_drv; do true \
@@ -240,6 +240,7 @@ function load_gpu_kmd_iluvatar() {
 }
 function reload_gpu_kmd_iluvatar() {
     true \
+ && if [ -f /opt/init_kmd.sh ]; then ${_sudo} ${_sudo:+-n} bash -l -c "/opt/init_kmd.sh"; return $?; fi \
  && local _sleep_interval=${1:-${_sleep_interval:-5.0}} \
  && unload_gpu_kmd_iluvatar \
  && sleep ${_sleep_interval} \
