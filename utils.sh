@@ -4250,6 +4250,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r340"]="http://10.113.3.1/corex/release_packages/3.4.0-BI150/x86/"
         ["BI150r330"]="http://10.113.3.1/corex/release_packages/3.3.0-BI150/x86/"
         ["BI150DailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/bi150/latest/"
         ["BI150d2023101334"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231013/34/"
@@ -4288,6 +4289,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r340"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r330"]="\.sh\"|\.run\"|\.whl\""
         ["BI150DailyLatest"]="\.sh\"|\.run\"|\.whl\""
         ["BI150d2023101334"]="\.sh\"|\.run\"|\.whl\""
@@ -4399,6 +4401,8 @@ function scrape_iluvatar_sdk_pkgs() {
         "${site_prefix}"
         "${site_prefix}/not_release/"
         "${site_prefix}/add-on/"
+        "${site_prefix}/tools/"
+        "${site_prefix}/sdk/"
         `true && for _pyver_87tY in 3.{6,7,8,9,10} latest-wheels-3.{6,7,8,9,10};
          do
             echo "${site_prefix}/${_pyver_87tY}/"
@@ -4407,6 +4411,15 @@ function scrape_iluvatar_sdk_pkgs() {
             echo "${site_prefix}/${_pyver_87tY}/mindspore/"
             echo "${site_prefix}/${_pyver_87tY}/flash-attn/"
             echo "${site_prefix}/${_pyver_87tY}/not_installed/"
+
+            echo "${site_prefix}/apps/py${_pyver_87tY}/"
+            echo "${site_prefix}/apps/py${_pyver_87tY}/paddle/"
+            echo "${site_prefix}/apps/py${_pyver_87tY}/tensorflow/"
+            echo "${site_prefix}/apps/py${_pyver_87tY}/mindspore/"
+            echo "${site_prefix}/apps/py${_pyver_87tY}/flash-attn/"
+            echo "${site_prefix}/apps/py${_pyver_87tY}/not_installed/"
+
+            echo "${site_prefix}/add-on/py${_pyver_87tY}/"
          done`
     )
     # scrape pkgs
@@ -4545,6 +4558,7 @@ function setup_os() {
     fi \
  && $_sudo bash -c 'echo "Asia/Shanghai" >/etc/timezone' \
  && pkgs=( \
+        #dmidecode sysstat ipmitool
         "rpm:5:deltarpm" \
         "rpm:5:centos-release-scl" \
         "deb:5:apt-transport-https" \
