@@ -4727,6 +4727,8 @@ function setup_python3() {
         # ub2004's python3.6 comes from deadsnakes/ppa
         "deb:python3.6-full"
         "deb:python3.6-dev"
+        "deb:python3.10-full"
+        "deb:python3.10-dev"
     ) \
  && pkgs=( \
         "python3" \
