@@ -4,7 +4,7 @@
 
 USER=${USER:-`id -u -n`}
 if [ "${USER}" != "root" ]; then _sudo=/usr/bin/sudo; else _sudo=""; fi
-kernel_module_dir=${kernel_module_dir:-${DEFAULT_kernel_module_dir:-`uname -r`}}
+kernel_module_dir=${kernel_module_dir:-${DEFAULT_kernel_module_dir}}
 
 
 function reset_gpu_iluvatar() { ${_sudo} ${_sudo:+"-n"} ixsmi -r ${1:+"-i"} ${1}; }
@@ -150,15 +150,22 @@ function kill_gpu_apps_iluvatar() {
 }
 function get_drv_kmd() {
     true set -x \
- && local _drv_dir=${_drv_dir:-${kernel_module_dir:-/lib/modules/`uname -r`/}} \
+ && local _drv_dir=${_drv_dir:-${kernel_module_dir}} \
  && local _drv_name=${1:-iluvatar} \
- && local _drv_file=`find ${_drv_dir}/ ${_drv_dir}/*/ -maxdepth 1 -name "${_drv_name}*" 2>/dev/null | head -n1` \
- && if [ -z "${_drv_file}" -o ! -f "${_drv_file}" ]; then echo "[W]: ${_drv_name} does not exists in ${_drv_dir}!" >&2; return 1; fi \
+ && local _drv_file="" \
+ && if [ -z "${_drv_dir}" -o ! -d "${_drv_dir}" ]; then true \
+     && _drv_file=`modinfo ${_drv_name} | grep "^filename:" | awk '{print $2}'` \
+     && true; \
+    else true \
+     && _drv_file=`find ${_drv_dir}/ ${_drv_dir}/*/ -maxdepth 1 -name "${_drv_name}*" 2>/dev/null | head -n1` \
+     && true; \
+    fi \
+ && if [ -z "${_drv_file}" -o ! -f "${_drv_file}" ]; then echo "[W]: ${_drv_name} does not exists in \"${_drv_dir}\"!" >&2; return 1; fi \
  && echo ${_drv_file} \
  && true; \
 }
 function _xx_drv_kmd() {
-    true \
+    true set -x \
  && local _op=${1} && shift \
  && if [ "x${1}" == "x--dry-run" ]; then _dry_run_prefix="echo"; shift; fi \
  && if [ "x${1}" == "x--" ]; then shift; fi \
