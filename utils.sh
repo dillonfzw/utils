@@ -4683,7 +4683,7 @@ function setup_os() {
      && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
- && if true; then true \
+ && if grep -sq "ID=ubuntu" /etc/os-release; then true \
      && true "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
      && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && true; \
