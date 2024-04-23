@@ -55,7 +55,7 @@ fi
 
 # ------------------ cut here beg Aeth4Aechoo7ca7aez4eesh3eigeitho -------------
 #-------------------------------------------------------------------------------
-# Utility functions
+# begin of utility functions
 #
 `command -v tac >/dev/null 2>&1` ||
 function tac() {
@@ -964,6 +964,16 @@ function print_title() {
     echo "| $@"
     echo "+-----------------------------------------------------------"
     echo -e "\n"
+}
+function log_info_title() {
+    true \
+ && { cat <<EOF
+#
+# $@
+#
+EOF
+} | sed -e 's/^/[I]: /g' >&2 \
+ && true; \
 }
 function version_cmp() {
     local silent=false
@@ -2330,6 +2340,34 @@ function get_host_key() {
     fi && \
     true
 }
+function rsh_by_sudoer() {
+    true \
+ && local _target=${1} \
+ && test -n "${_target}" && shift \
+ && local _sudoer=${1} \
+ && test -n "${_sudoer}" && shift \
+ && local _user=${1} \
+ && test -n "${_user}" && shift \
+ && if [ "x${1}" == "x--" ]; then shift; fi \
+ && test -n "${_sudoer_password}" \
+ && { echo '
+set timeout 20
+spawn ssh '"${_target}"' -l'"${_sudoer}"' sudo -u '"${_user}"' -S <<< '"${_sudoer_password}"' bash -x -c '"'"''"true && $@"''"'"'
+expect {
+  "password:" { send "'"${_sudoer_password}"'\r"; exp_continue }
+}
+'
+} | expect -f - \
+ && true;
+}
+function uniq_and_count() { sort | awk '
+    BEGIN { last=""; count=0; }
+    NR == 1 { last=$0; count+=1; next; }
+    {
+        if ($0 == last) { count+=1; } else { print count" "last; last=$0; count=1; }
+    }
+    END { if (count>0) { print count" "last; }; }
+'; }
 function run_initialize_ops() {
     for_each_op eval ${G_registered_initialize_op[@]}
 }
@@ -5894,6 +5932,25 @@ function _smart_link() {
      && true; \
     fi \
  && true; \
+}
+function run_docker_registry() {
+    true \
+ && local REGISTRY_PORT=${1:-${REGISTRY_PORT:-5000}} \
+ && local REGISTRY_NAME=${REGISTRY_NAME:-registry} \
+ && local REGISTRY_DIR=${REGISTRY_DIR:-$HOME/.local/var/lib/registry} \
+ && if [ ! -d ${REGISTRY_DIR} ]; then mkdir -p ${REGISTRY_DIR}; fi \
+ && if ! docker ps --format={{.Names}} | grep -s -x "${REGISTRY_NAME}"; then true \
+     && docker run -d \
+            -e REGISTRY_HTTP_ADDR=0.0.0.0:${REGISTRY_PORT} \
+            -p ${REGISTRY_PORT}:${REGISTRY_PORT} \
+            --restart=always \
+            --name ${REGISTRY_NAME} \
+            -v ${REGISTRY_DIR}:/var/lib/registry \
+            registry:2 \
+     && true; \
+    fi \
+ && docker ps | grep -F "${REGISTRY_NAME}" \
+ && true;
 }
 # end of feature functions
 #-------------------------------------------------------------------------------
