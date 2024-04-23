@@ -72,8 +72,9 @@ fi
 #
 ulimit -n 102400
 # nccl/ixccl needs extend -l limit or you have to use root to run workload
-if ! ulimit -l unlimited; then true \
+if ! ulimit -l unlimited 2>/dev/null; then true \
  && echo -e 'root - memlock -1\n* - memlock -1' | ${_sudo} ${_sudo:+-n} tee /etc/security/limits.d/nccl_memlock.conf \
+ && echo "[W]: Please re-login to activate the memlock ulimit config..." >&2 \
  && true; \
 fi
 
