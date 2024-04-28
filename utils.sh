@@ -3034,6 +3034,7 @@ function install_docker_compose_linux() {
     fi
     local _enforce=${enforce:-false}
     local docker_compose_url="https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)"
+    local docker_compose_url="https://github.com/docker/compose/releases/download/2.26.1/docker-compose-$(uname -s)-$(uname -m)"
     if do_and_verify \
         'eval command -v docker-compose >/dev/null && test "$_enforce" = "false"' \
         'eval true
