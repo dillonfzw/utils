@@ -7,10 +7,10 @@ if [ "${USER}" != "root" ]; then _sudo=/usr/bin/sudo; else _sudo=""; fi
 kernel_module_dir=${kernel_module_dir:-${DEFAULT_kernel_module_dir}}
 
 
-function reset_gpu_iluvatar() { ${_sudo} ${_sudo:+"-n"} ixsmi -r ${1:+"-i"} ${1}; }
+function reset_gpu_iluvatar() { ${_sudo} ${_sudo:+"-n"} bash -c "source ${backend_profile:-/dev/null}; ixsmi -r ${1:+-i} ${1};"; }
 function show_gpu_iluvatar() { ixsmi ${1:+"-i"} ${1} | grep -B99999 "^ *$"; }
 
-function reset_gpu_nvidia() { ${_sudo} ${_sudo:+"-n"} nvidia-smi -r ${1:+"-i"} ${1}; }
+function reset_gpu_nvidia() { ${_sudo} ${_sudo:+"-n"} bash -c "source ${backend_profile:-/dev/null}; nvidia-smi -r ${1:+-i} ${1};"; }
 function show_gpu_nvidia() { nvidia-smi ${1:+"-i"} ${1} | grep -B99999 "^ *$"; }
 
 function reset_gpu_service() {
@@ -109,6 +109,11 @@ function kill_gpu_apps_iluvatar() {
  && local try_cnt=${try_cnt:-$(echo "scale=0; 60/${try_interval}*5" | bc -l)} \
  && local _succ=true \
  && local -a _pgids=() \
+ && local -a _gpu_proc_patterns=(
+        "ixsmi"
+        "ix-device-plugin"
+        ${gpu_proc_patters}
+    ) \
  && for _cnt in `seq 1 $((try_cnt+1))`
     do true \
      && true "Get extended gpu pids" \
@@ -116,7 +121,8 @@ function kill_gpu_apps_iluvatar() {
      && true "Accumulate the pgds of gpu apps" \
      && local -a _pgids=($(echo ${_pgids[@]} $(get_pgids_by_pids ${_pids[@]}) | tr ' ' '\n' | sort -u | xargs)) \
      && true "Get possible gpu related pids by historical pgids" \
-     && local -a _pids=($(echo ${_pids[@]} $(pidof ixsmi) $(get_pids_by_pgids ${_pgids[@]}) | tr ' ' '\n' | sort -u | xargs)) \
+     && local _name \
+     && local -a _pids=($(echo ${_pids[@]} $(for _name in ${_gpu_proc_patterns[@]}; do pgrep -f ${_name}; done) $(get_pids_by_pgids ${_pgids[@]}) | tr ' ' '\n' | sort -u | xargs)) \
      && if [ ${#_pids} -ge 1 -a ${_cnt} -gt ${try_cnt} ]; then true \
 	 && _succ=false \
 	 && echo "[W]: kill apps on gpu ${1:-all} failed!" >&2 \
@@ -262,10 +268,22 @@ function show_last_reload_kmd_log_iluvatar() {
  && true; \
 }
 function house_clean_gpu() {
-    true \
- && true "sample usage: ${FUNCNAME[0]} iluvatar ~fuzhiwen/bin/corex.sh 2,4" \
+    true set -x \
+ && true "sample usage: ${FUNCNAME[0]} {--silent|--reset|--reload} iluvatar ~fuzhiwen/bin/corex.sh 2,4" \
+ && local _idx _name \
  && local _silent=false \
- && if [ "x${1}" == "x--silent" ]; then _silent=true; shift; fi \
+ && local _reset=false \
+ && local _reload=false \
+ && for _idx in `seq 1 ${#@}`; do for _name in silent reset reload; do true \
+     && if [ "x${1}" == "x--${_name}" ]; then eval _${_name}=true; shift; fi \
+     && if [ "x${1}" == "x--no${_name}" ]; then eval _${_name}=false; shift; fi \
+     && true; \
+    done; done \
+ && true "\"reload\" takes priority..." \
+ && if ${_reload}; then _reset=false; fi \
+ && if ${_reset}; then _reload=false; fi \
+ && true "default to use \"reset\"..." \
+ && if [ "x${_reset}${_reload}" == "xfalsefalse" ]; then _reset=true; fi \
  && local gpu_type=${1:-iluvatar} \
  && if [ -n "${1}" ]; then shift; fi \
  && local backend_profile=${1} \
@@ -279,7 +297,7 @@ function house_clean_gpu() {
      && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[kil] >> /g'; fi \
      && true; \
     fi \
- && if false; then true \
+ && if ${_reset}; then true \
      && local reset_gpu=reset_gpu_${gpu_type} \
      && local _reset_cnt=${_reset_cnt:-10} \
      && local _reset_interval=${_reset_interval:-2.0} \
@@ -296,7 +314,7 @@ function house_clean_gpu() {
      && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[rst] >> /g'; fi \
      && ${_reset_succ}; \
     fi \
- && if true; then true \
+ && if ${_reload}; then true \
      && local reload_gpu_kmd=reload_gpu_kmd_${gpu_type} \
      && $reload_gpu_kmd \
      && if ! $_silent; then $show_gpu "$@" | sed -e 's/^/[rld] >> /g'; fi \
