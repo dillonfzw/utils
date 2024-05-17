@@ -67,7 +67,7 @@ fi
 # [fin] >> +-------------------------------+----------------------+----------------------+
 # [fin] >>
 
-COREX_SH=`command -v corex.sh 2>/dev/null`
+COREX_SH=${COREX_SH:-`command -v corex.sh 2>/dev/null`}
 declare -a _flags=()
 if true; then true \
  && declare _idx _name \
