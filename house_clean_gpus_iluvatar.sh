@@ -68,7 +68,16 @@ fi
 # [fin] >>
 
 COREX_SH=`command -v corex.sh 2>/dev/null`
-if [ "x${1}" == "x--silent" ]; then _flag="--silent"; shift; fi
+declare -a _flags=()
+if true; then true \
+ && declare _idx _name \
+ && for _idx in `seq 1 ${#@}`; do for _name in silent reset reload; do true \
+     && if [ "x${1}" == "x--${_name}" ]; then _flags+=("--${_name}"); shift; fi \
+     && if [ "x${1}" == "x--no${_name}" ]; then _flags+=("--no${_name}"); shift; fi \
+     && true; \
+    done; done \
+ && true; \
+fi
 if [ "${USER:-`whoami`}" == "root" ]; then _sudo=""; else _sudo=/usr/bin/sudo; fi
 
 if true && [ -x ${PROG_DIR}/reset_gpu.sh ]; then true \
@@ -76,69 +85,73 @@ if true && [ -x ${PROG_DIR}/reset_gpu.sh ]; then true \
     env cmd=${cmd:-house_clean_gpu} \
         DEFAULT_kernel_module_dir=${DEFAULT_kernel_module_dir} \
         kernel_module_dir=${kernel_module_dir} \
-    ${PROG_DIR}/reset_gpu.sh ${_flag} iluvatar ${COREX_SH:-${PROG_DIR}/corex.sh} $@ \
+    ${PROG_DIR}/reset_gpu.sh ${_flags[@]} iluvatar ${COREX_SH:-${PROG_DIR}/corex.sh} $@ \
  && true; \
 else true \
  && true "Mask the eval's autostart cmd" \
  && declare cmd=true \
  && true "cat reset_gpu.sh | gzip -c | base64 -w80" \
  && eval "$({ cat - <<EOF
-H4sIAAAAAAAAA80a32/bxvk5/isurBDZiWlZ7jqgMpgla9I2WJoWbYNisx2JIk8yYYpkeaQjV2Gf1g4b
-2nXAgHVYO6x7KJA9DF3XYSua9b+JnO1p/8K+745HHY+kLKcv9UNCHe/77vv96/jMRdIZekFnaLPDNfi7
-+8bN163WDP/rmQPPJWZKzGCQrXkjskcM8SYzyEWLGHEYJgY52CXJIQ1In6VuaHVSFnOE+GuXUJ/R/I1h
-7JKRt3ZE44D6/Unopj7tu14Mp1XWemZrduPmi9fv3n6zX3mZZUDnKA2cxAsDElNGk/44Svuenx7biR2v
-b5AZac34qZl86F0xzMDIiDdlE4+YMax3cc0zcEs32yXZAic7DO9XUQpQDY48IOOYRsT88fP4R4x75HLL
-QGx1JAbHnuvZSwkUW8zzUKlgVaC/E6GMxseeQxHnGoG/JE4p2V8jly4RP3Rsn+Cm5CSiFh5jSjll+R5u
-LGaA9tLNFibCDr1RglZQQjW0nSMauP0oDkeezzGehSdMY4cCWxpoVsFdcGQteGvNJPFZaa+Up1UItrrz
-/iEcw6Wxiyvw54aFcPAP9rRmEkGmrEaxFyQjYrzmUxt8wguiNCEgsjFNUJiw4NJpjxgKiCDrpdfu9m/d
-UJZjarvVVeGf09ZMvAFpWeCi0+EJXchtCKBHUkbL4czuAiwNQHT5iRq0ymuBoobrF8Jg5MUTcgKaI4z6
-1Emoi3xvkn3jpzff2DdIGMPjnVf3jTohwJY7r+oy0BcLVvgL5AR+wfOCE1VTCyDqHIZAfWEhCisNcDks
-BzT2bh30hKER1WBQqRJPz7R9PyMsdRzK2Cj1/ZOLRg1C1bDkHw+hywl4a1UCRjaYr7vy0QtV55vcCWVj
-Yr4MwSQBVOCa3W14ZqBLk5I269zr7Il4fUCuXiWdcVtDUHgBkMuIHZyQI3pCkpA4YZB4QUq3DA2Ca7qv
-LTrgRLG2pjNQstOyxwYylsnlrC4GgsR4TOVCBvYMs7sfoK0G+wF3qwfVgEla18ohdZy/jzyXldKJHlbr
-s4tpvp3S+MR0wgnEC2raUcSsCNOyOQrjiZ1YDjsGQgRnuU6u7KBOwjjB5P2ATCHIsGaGkcJojOQNTziZ
-zUGfv7YGwupa14yS6jc7qO9BKXK/g5GbQynRO6ZJGgdkWwnWESNmSJAKi0iAc/MgWRifwcO4wkQSE5OR
-9iZpkzZqt1226f31vW3z+YP9jY6530Wbzump5XW8KrOS1/HTMFuYFJ0mS82qpLhaYwSTHdRKqGIYhWr0
-/Yvtqg4W3D2dUeQaKraeKRAnWEkWQT9yPNxsDXwGj1hg5MVRlz5L4fm+Q0x/oENxDxVweRV5uyiqPFKI
-UwPPk8vi1Ez8KrBlzYzZMcUohMyxfhj4XkBXYNC0CeJl1vqgTjKDDVUbrdkzfPPetQOINvRtsoPwQCFf
-3M4X5e8u/FZzaV7gu9TxgVZiRuJkUKIN64ou+WZdZy7lP/sY1OrYQUehua9sRvgPS+xk05m4IGT7/hFp
-t54l75LO3o2fHXQgUPPkQlrbu1m7WaZHnhAoP7VBmphJzWlZ/wwyJ6geq3X+1DM5j6r2iHGDjuzUT/gh
-XjCGoi6BvADgHiPPAVrIci4zSoiT+KQvtwF29WfPfG5ru3zAm/GJghxwTiBpJrQGp8OJzZ+gn1oX7sTg
-PbXAzX643Smfll1+DmPhEI13I9OYh8LFqjU0ESvWpU1BUuImgMQNGFhOl7TW13MqrnQ3NgYNRbNg7yUQ
-PEQ0KOlFdYiaZ9VqkB/Mzx00BkOeP4Wtl4647jjpJPXthKIZQ86BQBWO+GFoEQ2HCS5zIcq4xn2mtd4Y
-J/H9hkgvbZFa2tU4v1ElEaUQhYx5Q+g1kLCYIr0ulwYZnpBDjyVh7CF1/OBlElJoXpAMj8AzD0EbkoPa
-0H1+FoqoIpK4OaZgA0VIwQWsUnOLyPTK/AKiEObG3UsuKYUumj9XFcEwwmvcrl7eXr20IyGBnouk8NpM
-Py6nesaDzculYIMC2EyhsNscx2Ea8bijiHG3gOd/IiVEEyDKdNDstc597cKFTC+VkZ28TJYUa/XqhaKS
-5czkDdyiyKV+rbyX9DtFOBtbb9x66c2br79SbYj2FG3ROm1J8J/cun17V6Hv+yJsdXdF6tiutTmR46yN
-gfRcKmie3HDDNHPEJYd78CDHlkkszKdQNmgBWL7UOxm1A1QcRF1ROtEl/qH1n4qXFIZ1YZW2iTPuOFlN
-HebGx/2jiXt2PsWNYvonH3HoVzPsq4IF9qRh7qRs4qMkQ+ZFtfLMj4OKEgzwIjFdbbXOeVDoBdYBkOcF
-Ix5UJT3FfM24h3twqWfIMmWWVyY7meiPaqRb6fLLJ468wCUKlZ3Sj8sdYk7sqUuj5BCjLZ5eMMWpu2yQ
-nasdlx53AlA+0HWIbTW07030FJWbLjk+Z5OiG+nLUnZKvC4JyQ0pI0GIWR5yGMMyYV+V/r4h7HJXNgRd
-vSFQz2uu8vrT6eqmGEZi5oh+iRNKlXMcJ3WLoZjpQi8ep4Ey9YaVPqz0o5iOvKllIJHGbmXUWYfsrMFo
-o7FrhC6z+qKJKnRgFE0Le5sY+1tHIY6Bl1t8SYfaBk7gYGgzbvRldQPy1QwMJQN6kLLxQ9ttdMRCa13L
-AE+M4nBIqxUQvN+xDC9gsMVodLq6w9Pg3McTM26iIJ4sJQC8PveVm+Ard4OjILwfkDCisc0NmXsH0LZv
-bJLrQ6i7pH/oHVaDnx7gu9p4pYSDnauXuvXMioL0v3/5cv6rh6e//2L+6cMnXz168uhPp189nL//wZM/
-/Px///7gySf/OP3156cf/HL+mw/nf/349LcfPv72U5Vjih0QP1t1lawxkXKOuxlpsLqzNbhUf4IlIPf0
-d794/Oif//n22/l7n+ccPvzz/I8f12hyxWTVMzu+N+yIBdYZpNwjzHjQybJ6pKp34XPPHChZtCSBgYpC
-uRgpRWV7SUyuKQafSjM7WSUIKyhXHsM+lfMVyhO2Nv/wa9Cfqrz5376cf/TF40efP/7mfbDN+SefPf76
-m/m//v7k0UdC0/P33zv97Gt4+50tdGclCy2PQMpZCllV05SatvjLfJxcAAjpNIKI1w1A2CXDpuVD6BHx
-MWCqKcJ8kRheEvcjSuP+hE7wtIaEoVShd/mhWF0LLyHCKYiOiWxtbRk8ACl4ZhqjVahSRb1U7LmzIec8
-U6nJsY5XKZ6GlLjAIzcuTS51Jww9YME7pjE584xia9MhWvgXAUHCN9eyKyhKxVOrJE1Fpf1P6QrLTbSp
-i+BBtjKu4gOwbXUsVeyForOYEi2UodvYbs2USn4EoVZTGLYq/pFPPCQh0EgHal/efBFbxa3YQAUpH7BJ
-pPIKTcOrZ5vmBFPJL+et+hsoUKztdpOtLcLoKA4n5QRTZ33oW5r5FQA5NevrhaiuWN2Njd3c7la6GKQs
-0WTNByuN9hvT8wTZPRRiJ4ySjhd4CUJsscNCjNWsYwYZwS90iOnjwMPQQY2iX2r9qNpG8GGDOmTu9viY
-orQshs2ypWrIGflbOb3QUCy68GbQGtHxLwh8myX9XIgI5ofjle5yfGugXErzMKvcxAR+0ZZDw5m0Kh15
-N2sv7rKJ2a27qQr85fdUS86XiK+0wBgDHwfgzXI4DFNG+3i1HaD06rgW5Q+zJxF4TcrsMcX++sW7d164
-c/2Vm/y6pjj93VH6zqF3nwb8cywnjOkUjWxn8weGZh7iZkPOW5u6VbFN/d5LwAlO6jvY7+tXQg39Nv/k
-y2UWvxZW36zyaZCYfeZSkZ4s91evy+919oZ0JD+TKDdyQqTNzWfpDssq32hphOVwrdImIhlcBNNzkg7o
-dNLPqE7yfrWZqRU+1SpnNLFN3HMtfvTM7nbjZiUGais9c2erGa50IaHt8NypssgrDVxSLsAU6rKB2htp
-BcZCG61CBFz60uMUYoSYK3WEmr7hXCBEzvAVGprLkGrCfsv2ElKRVobf7rh4zyjUlmBOl+eFI+24xJvg
-DaUYN6vnFHlEw35GSynz9FNbb8ySBustaCnm27odn+Wb5ULA0uqCBu8s7/puvPnueTxTiW81KdhqzM3n
-iX818Ms/GqtE5poPIay6jyOaqJrVbJZlojKqvhMmBHZh2mJ4JhE7txpGboscvrbWmjkTt2dWPgiDIu7a
-2v8BCS9N5WUtAAA=
+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
+T2ufQUL1f2Xtf4+3mNC5MAAA
 EOF
 } | base64 -d | gzip -dc)" \
  && true set -x \
- && house_clean_gpu ${_flag} iluvatar ${COREX_SH:-/dev/null} $@ \
+ && house_clean_gpu ${_flags[@]} iluvatar ${COREX_SH:-/dev/null} $@ \
  && true; \
 fi
