@@ -137,10 +137,14 @@ function get_env() {
     eval "echo \${$1}" 2>/dev/null
 }
 function is_running_in_docker() {
+    mount | grep 'on / type' | grep -sqE '(overlay|aufs)' || \
+    grep -sqE '^1:.+(docker|lxc|kubepods)' /proc/self/cgroup || \
     # * https://stackoverflow.com/questions/23513045/how-to-check-if-a-process-is-running-inside-docker-container
     awk -F/ '$2 == "docker"' /proc/self/cgroup 2>/dev/null | read || \
+    # * 12:blkio:/system.slice/docker-ce36ac066645880e2512f2a4ef5638d34e7af1d2f47a9972146149e15a094a76.scope
+    awk -F/ '$3 ~ /^docker-/' /proc/self/cgroup 2>/dev/null | read || \
     # * https://stackoverflow.com/questions/20010199/how-to-determine-if-a-process-runs-inside-lxc-docker
-    [ -f /.dockerenv ]
+    test -f /.dockerenv
 }
 function declare_f() {
     declare -f $@
