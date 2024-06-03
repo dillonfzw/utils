@@ -4546,6 +4546,10 @@ function install_iluvatar_sdk() {
      && _pyvers_a+=("3.8") \
      && true;
     fi \
+ && if [ -n "`command -v python3.10`" ]; then true \
+     && _pyvers_a+=("3.10") \
+     && true;
+    fi \
  && local err_cnt=0 \
  && for _pyvers in ${_pyvers_a[@]}; \
     do true \
