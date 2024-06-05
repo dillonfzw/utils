@@ -4509,8 +4509,15 @@ function scrape_iluvatar_sdk_pkgs() {
 function scrape_iluvatar_sdk_MRr230_pkgs() { scrape_iluvatar_sdk_pkgs MRr230; }
 function scrape_iluvatar_sdk_r230_pkgs() { scrape_iluvatar_sdk_pkgs r230; }
 function scrape_iluvatar_sdk_r221_pkgs() { scrape_iluvatar_sdk_pkgs r221; }
+function cache_iluvatar_sdk() {
+    true set -x \
+ && local _release=${1:-latest} \
+ && local -a _pkgs=`scrape_iluvatar_sdk_pkgs $_release` \
+ && array_map _pkgs[@] download_by_cache \
+ && true; \
+}
 function install_iluvatar_sdk() {
-    true \
+    true set -x \
  && local _release=${1:-latest} \
  && local _tf_ver=${_tf_ver:-2} \
  && if [ `whoami` = 'root' ]; then true \
