@@ -4557,6 +4557,7 @@ function install_iluvatar_sdk() {
      && _pyvers_a+=("3.8") \
      && true;
     fi \
+ && true "Python 3.10 is mandatory if available" \
  && if [ -n "`command -v python3.10`" ]; then true \
      && _pyvers_a+=("3.10") \
      && true;
@@ -4569,7 +4570,7 @@ function install_iluvatar_sdk() {
      && local _pyvers_s=`echo ${_pyvers} | sed -e 's/\.//g'` \
      && local _pyvepath=${_install_dir}/corex${_release}py${_pyvers_s}tf${_tf_ver} \
      && log_info "Create Iluvatar Corex apps' Python${_pyvers} virtualenv at ${_pyvepath}" \
-     && mkdir -p `dirname ${_pyvepath}` \
+     && if [ -f ${_pyvepath}/bin/activate ]; then ((err_cnt-=1)); continue; else mkdir -p `dirname ${_pyvepath}`; fi \
      && if ! do_and_verify \
             "test -f ${_pyvepath}/bin/activate" \
             "env PYTHONPATH= python${_pyvers} -m virtualenv -p `command -v python${_pyvers}` ${_pyvepath}" \
@@ -4585,7 +4586,7 @@ function install_iluvatar_sdk() {
      && local _G_python_bin_bak=${G_python_bin} \
      && source ${_pyvepath}/bin/activate \
      && setup_pip_flags python \
-     && if grep -Esq "VERSION=\"18.04|ID=ubuntu" /etc/os-release; then true \
+     && if [ `grep -E "VERSION=\"18.04|ID=ubuntu" /etc/os-release | wc -l | awk '{print $1}'` -eq 2 ]; then true \
          && true "WA onnx build issue by ref: https://github.com/onnx/onnx/issues/3570" \
          && local -a pkgs=( \
                 "deb:libprotobuf-dev" \
@@ -4593,6 +4594,10 @@ function install_iluvatar_sdk() {
             ) \
          && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
          && export CMAKE_ARGS="-DONNX_USE_PROTOBUF_SHARED_LIBS=ON" \
+         && true; \
+        elif [ `grep -E "VERSION=\"20.04|ID=ubuntu" /etc/os-release | wc -l | awk '{print $1}'` -eq 2 -a "${_pyvers}" == "3.10" ]; then true \
+         && true "WA \"pip cannot import html5lib\" error" \
+         && get_pip python3 \
          && true; \
         fi \
      && { install_iluvatar_sdk_apps $_release ${_tf_ver} || true; } \
@@ -4766,6 +4771,16 @@ function setup_os() {
     fi \
  && true;
 }
+function get_pip() {
+    true set -x \
+ && local _sudo=${sudo:-/usr/bin/sudo} \
+ && local _python=${_python:-${1:-python3}} \
+ && if [ "$as_root" != "true" ]; then _sudo=""; fi \
+ && local _f=`download_by_cache https://bootstrap.pypa.io/get-pip.py` \
+ && ${_sudo} ${_sudo:+-n} ${_python} ${_f} \
+ && ${_sudo} ${_sudo:+-n} ${_python} -m pip list | grep pip \
+ && true; \
+}
 function setup_python3() {
     true \
  && local _sudo=${sudo:-sudo} \
@@ -4860,6 +4875,10 @@ EOF
         )  \
      && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
      && setup_pip_flags ${_G_python_bin_bak} \
+     && true; \
+    elif [ `grep -E "VERSION=\"20.04|ID=ubuntu" /etc/os-release | wc -l | awk '{print $1}'` -eq 2 ]; then true \
+     && true "WA \"pip cannot import html5lib\" error" \
+     && get_pip python3.10 \
      && true; \
     fi \
  && true;
