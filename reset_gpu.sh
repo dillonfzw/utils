@@ -328,4 +328,6 @@ function house_clean_gpu() {
 }
 
 
+if [ "x${cmd}" == "x" -a "x${1}" != "x" -a "x`type -t ${1}`" == "xfunction" ]; then cmd=${1}; shift; fi
+if [ "x${1}" == "--" ]; then shift; fi
 ${cmd:-reset_gpu_service} $@
