@@ -4509,6 +4509,24 @@ function scrape_iluvatar_sdk_pkgs() {
 function scrape_iluvatar_sdk_MRr230_pkgs() { scrape_iluvatar_sdk_pkgs MRr230; }
 function scrape_iluvatar_sdk_r230_pkgs() { scrape_iluvatar_sdk_pkgs r230; }
 function scrape_iluvatar_sdk_r221_pkgs() { scrape_iluvatar_sdk_pkgs r221; }
+function scrape_iluvatar_sdk_BI150r341_pkgs() {
+    true set -x \
+ && local -a _urls=`scrape_iluvatar_sdk_pkgs BI150r340` \
+ && function _filter_op() { echo "$@" | not_ grep -siE "corex-docker-installer-|corex-driver-|corex-installer-"; } \
+ && local -a _urls=`array_filter _urls[@] _filter_op` \
+ && _urls+=(
+        "http://10.113.3.1/corex/release_packages/3.4.1-BI150/x86/sdk/corex-driver-linux64-3.4.1_x86_64_10.2.run"
+        "http://10.113.3.1/corex/release_packages/3.4.1-BI150/x86/sdk/corex-installer-linux64-3.4.1_x86_64_10.2.run"
+        #"http://10.113.3.1/corex/release_packages/3.4.1-BI150/x86/sdk/corex-docker-installer-3.4.1-10.2-centos7.8.2003-py3.10-x86_64.run"
+        "http://10.113.3.1/corex/release_packages/3.4.1-BI150/x86/not_release/docker_installer/corex-docker-installer-3.4.1-10.2-ubuntu20.04-py3.10-x86_64.run"
+    ) \
+ && true "cache and output scrape result" \
+ && _val=`declare_p_val _urls` \
+ && G_iluvatar_sdk_pkgs_cache["BI150r341"]="${_val}" \
+ && echo "${_val}" \
+ && for _item in ${_urls[@]}; do log_info "${_item}"; done \
+ && true; \
+}
 function cache_iluvatar_sdk() {
     true set -x \
  && local _release=${1:-latest} \
