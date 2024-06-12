@@ -4289,6 +4289,12 @@ function install_iluvatar_sdk_apps() {
     pkg_install_pip ${_pkgs[@]}
 }
 function scrape_iluvatar_sdk_pkgs() {
+    if [ "x`type -t scrape_iluvatar_sdk_${1}_pkgs`" == "xfunction" ]; then
+        local _site_prefix_8yU6=${1}
+        shift
+        scrape_iluvatar_sdk_${_site_prefix_8yU6}_pkgs $@
+        return $?
+    fi
     if ! declare -p G_iluvatar_sdk_pkgs_cache >/dev/null 2>&1; then
         declare -gA G_iluvatar_sdk_pkgs_cache=()
     fi
