@@ -8,7 +8,7 @@ source ~/bin/utils.sh
 HOST_NAME_s=`hostname -s`
 
 
-function  start_socks_7070() { autossh -M 20010 -f seulogin.2alice.site       -D7070 -gfCN -T -e none; }
+function  start_socks_7070() { autossh -M 20010 -f tecs001.2alice.site        -D7070 -gfCN -T -e none; }
 function verify_socks_7070() { test_port localhost 7070; }
 function  start_socks_7071() { autossh -M 20012 -f fuzwvps1.2alice.site       -D7071 -gfCN -T -e none -o 'ProxyCommand nc -x localhost:7070 %h %p'; }
 function verify_socks_7071() { test_port localhost 7071; }
@@ -64,4 +64,4 @@ function main() {
 }
 
 
-main $@
+${cmd:-main} $@
