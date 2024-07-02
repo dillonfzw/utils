@@ -225,6 +225,15 @@ if ! command -v wiznote >/dev/null 2>&1 && [ -x $HOME/bin/apps/wiznote/bin/wizno
   export PATH=$PATH:$HOME/bin/apps/wiznote/bin
 fi
 
+############################################################
+# git-repo app
+#
+# https://storage.googleapis.com/git-repo-downloads/repo
+#
+if ! command -v repo >/dev/null 2>&1 && [ -x $HOME/bin/apps/git-repo/bin/repo ]; then true \
+ && export PATH=$PATH:$HOME/bin/apps/git-repo/bin \
+ && true; \
+fi
 
 ############################################################
 # Post process which MUST be in the last of this profile
