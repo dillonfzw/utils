@@ -80,6 +80,7 @@ function transfer() {
     rsync_args+=("--exclude=**/__pycache__")
     rsync_args+=("--exclude=**/.DS_Store")
     rsync_args+=("--exclude=**/.idea")
+    rsync_args+=("--exclude=**/.*.swp")
     if ${no_cscope}; then
         rsync_args+=("--exclude=**/cscope.*")
         rsync_args+=("--exclude=**/tags")
