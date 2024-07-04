@@ -4257,6 +4257,90 @@ function install_iluvatar_sdk_corex_samples() {
     fi
     true
 }
+function install_iluvatar_sdk_corex_driver() {
+    local _copy_only=false
+    if [ "x${1}" == "x--copy-only" ]; then local _copy_only=true; shift; fi
+    local _release=${1:-latest}
+    if [ -n "${1}" ]; then shift; fi
+    local _install_dir=${1:-/opt}
+    if [ -n "${1}" ]; then shift; fi
+    local _sudo=${sudo:-sudo}
+    if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi
+    local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
+    function _filter_op() { echo "$@" | grep -si "corex-driver"; }
+    local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op`
+    if [ ${#_pkgs[@]} -ne 1 ]; then
+        log_error "No unique corex-driver pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`"
+        return 1
+    fi
+    local _pkg_f=`download_by_cache ${_pkgs[0]}`
+    if [ "x$download_only" == "xtrue" ]; then return 0; fi
+    local _info=`bash ${_pkg_f} --info`
+
+    if [ "x${_copy_only}" == "xtrue" ]; then true \
+     && ${_sudo} ${_sudo:+-n} cp -p ${_pkg_f} ${_install_dir}/`basename ${_pkg_f}` \
+     && return 0; \
+    fi || return 1
+    if echo "$_info" | grep -sqF "2.3.0-iluvatar" >/dev/null 2>&1; then true \
+     && {
+        #
+        # $ bash ~/.cache/download/56/49/corex-driver-linux64-4.1.0_x86_64_10.2.run --info
+        # Identification: Corex Driver
+        # Target directory: corex-driver
+        # Uncompressed size: 18536 KB
+        # Compression: gzip
+        # Date of packaging: Mon Jun 24 10:15:52 CST 2024
+        # Built with Makeself version 2.3.0-iluvatar on linux-gnu
+        # Build command was: /home/corex/sw_home/local/bin/makeself \
+        #     "--help-header" \
+        #     "/home/corex/sw_home/integ/ixpkg/help/driver.txt" \
+        #     "/home/corex/sw_home/local/package/corex-driver" \
+        #     "/home/corex/sw_home/local/package/corex-driver-linux64-4.1.0_x86_64_10.2.run" \
+        #     "Corex Driver" \
+        #     "./corex-driver-installer"
+        # Script run after extraction:
+        #      ./corex-driver-installer
+        # corex-driver will be removed after extraction
+        #
+        # $ bash ~/.cache/download/56/49/corex-driver-linux64-4.1.0_x86_64_10.2.run --help
+        # Corex Driver Installer.
+        # Usage: [COMMAND] [OPTIONS] ...
+        #
+        # Options:
+        #   --kernel-source-path=<KERNEL_SOURCE_PATH>
+        #     Set <KERNEL_SOURCE_PATH> as the driver installation to use <path> as the kernel source directory when building the Corex kernel module. Required for systems where the kernel source is installed to a non-standard location.
+        #
+        #   --disable-dkms
+        #     DKMS infrastructure can automatically build a new kernel module when changing kernels. this option will bypass DKMS detect and disable use of it.
+        #
+        #   --module-signing-secret-key=<MODULE_SIGNING_SECRET_KEY>
+        #     Specify a path to a private key to use for signing the kernel module. The corresponding public key must also be provided.
+        #
+        #   --module-signing-public-key=<MODULE_SIGNING_PUBLIC_KEY>
+        #     Specify a path to a public key to use for verifying the signature of the kernel module. The corresponding private key must also be provided.
+        #
+        # Extras:
+        #   --tmpdir=<path>
+        #     Performs any temporary actions within <path> instead of /tmp. Useful in cases where /tmp cannot be used (doesn't exist, is full, is mounted with 'noexec', etc.).
+        #
+        #   --help
+        #     Prints this help message.
+            true;
+        } \
+     && if [ ! -d ${_install_dir} ]; then mkdir -p ${_install_dir}; fi \
+     && ${_sudo} bash ${_pkg_f} \
+     && true; \
+    else true \
+     && log_warn "Unknown version of corex-samples, use default install flags: ${_info}" \
+     && ${_sudo} bash ${_pkg_f} \
+          --prefix=${_install_dir} \
+     && true; \
+    fi
+    true
+}
 function install_iluvatar_sdk_apps() {
     local _release=${1:-latest}
     if [ -n "${1}" ]; then shift; fi
