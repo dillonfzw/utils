@@ -4378,7 +4378,7 @@ function install_iluvatar_sdk_apps() {
 
     # opencv-python uses skbuild now
     pkg_install_pip scikit-build && \
-    echo pkg_install_pip ${_pkgs[@]} $@
+    pkg_install_pip ${_pkgs[@]} $@
 }
 function install_iluvatar_sdk_BI150r410_apps() {
     true set -x \
