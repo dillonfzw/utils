@@ -4341,8 +4341,17 @@ function install_iluvatar_sdk_corex_driver() {
     true
 }
 function install_iluvatar_sdk_apps() {
+    if [ "x`type -t install_iluvatar_sdk_${1}_apps`" == "xfunction" ]; then
+        local _site_prefix_8yU6=${1}
+        if [ "${FUNCNAME[1]}" != "install_iluvatar_sdk_${_site_prefix_8yU6}_apps" ]; then
+            shift
+            install_iluvatar_sdk_${_site_prefix_8yU6}_apps $@
+            return $?
+        fi
+    fi
     local _release=${1:-latest}
     if [ -n "${1}" ]; then shift; fi
+    if [ "x${1}" == "x-" -o "x${1}" == "x--" ]; then shift; fi
     local _tf_ver=${_tf_ver:-2}
     local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release`
     function _filter_op() {
@@ -4369,14 +4378,28 @@ function install_iluvatar_sdk_apps() {
 
     # opencv-python uses skbuild now
     pkg_install_pip scikit-build && \
-    pkg_install_pip ${_pkgs[@]}
+    echo pkg_install_pip ${_pkgs[@]} $@
+}
+function install_iluvatar_sdk_BI150r410_apps() {
+    true set -x \
+ && local _pyvers=${_pyvers:-`python3 -c "import sys; print('{}.{}'.format(sys.version_info.major, sys.version_info.minor))"`} \
+ && if [ "${_pyvers}" == "3.10" ]; then true \
+     && install_iluvatar_sdk_apps BI150r410 -- SharedArray==3.2.1 \
+     && true; \
+    else true \
+     && install_iluvatar_sdk_apps BI150r410 \
+     && true; \
+    fi \
+ && true; \
 }
 function scrape_iluvatar_sdk_pkgs() {
     if [ "x`type -t scrape_iluvatar_sdk_${1}_pkgs`" == "xfunction" ]; then
         local _site_prefix_8yU6=${1}
-        shift
-        scrape_iluvatar_sdk_${_site_prefix_8yU6}_pkgs $@
-        return $?
+        if [ "${FUNCNAME[1]}" != "scrape_iluvatar_sdk_${_site_prefix_8yU6}_pkgs" ]; then
+            shift
+            scrape_iluvatar_sdk_${_site_prefix_8yU6}_pkgs $@
+            return $?
+        fi
     fi
     if ! declare -p G_iluvatar_sdk_pkgs_cache >/dev/null 2>&1; then
         declare -gA G_iluvatar_sdk_pkgs_cache=()
