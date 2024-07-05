@@ -4661,6 +4661,13 @@ function install_iluvatar_sdk() {
      && log_error "Fail to install iluvatar corex's samples" \
      && false; \
     fi \
+ && if ! do_and_verify \
+        'eval ls -1d /opt/corex-driver*.run' \
+        "install_iluvatar_sdk_corex_driver --copy-only $_release" \
+        'true'; then true \
+     && log_error "Fail to copy iluvatar corex's driver" \
+     && false; \
+    fi \
  && local -a _pyvers_a=() \
  && local _pyvers=${_pyvers:-`python3 -c "import sys; print('{}.{}'.format(sys.version_info.major, sys.version_info.minor))"`} \
  && _pyvers_a+=("${_pyvers}") \
@@ -4886,8 +4893,8 @@ function setup_os() {
 function get_pip() {
     true set -x \
  && local _sudo=${sudo:-/usr/bin/sudo} \
+ && if [ `id -u -g` == "root" -o "$as_root" != "true" ]; then _sudo=""; fi \
  && local _python=${_python:-${1:-python3}} \
- && if [ "$as_root" != "true" ]; then _sudo=""; fi \
  && local _f=`download_by_cache https://bootstrap.pypa.io/get-pip.py` \
  && ${_sudo} ${_sudo:+-n} ${_python} ${_f} \
  && ${_sudo} ${_sudo:+-n} ${_python} -m pip list | grep pip \
