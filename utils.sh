@@ -4893,7 +4893,7 @@ function setup_os() {
 function get_pip() {
     true set -x \
  && local _sudo=${sudo:-/usr/bin/sudo} \
- && if [ `id -u -g` == "root" -o "$as_root" != "true" ]; then _sudo=""; fi \
+ && if [ "`id -u -n`" == "root" -o "$as_root" != "true" ]; then _sudo=""; fi \
  && local _python=${_python:-${1:-python3}} \
  && local _f=`download_by_cache https://bootstrap.pypa.io/get-pip.py` \
  && ${_sudo} ${_sudo:+-n} ${_python} ${_f} \
