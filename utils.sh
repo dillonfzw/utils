@@ -4334,9 +4334,8 @@ function install_iluvatar_sdk_corex_driver() {
      && ${_sudo} bash ${_pkg_f} \
      && true; \
     else true \
-     && log_warn "Unknown version of corex-samples, use default install flags: ${_info}" \
+     && log_warn "Unknown version of corex-driver, use default install flags: ${_info}" \
      && ${_sudo} bash ${_pkg_f} \
-          --prefix=${_install_dir} \
      && true; \
     fi
     true
