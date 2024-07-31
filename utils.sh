@@ -3385,7 +3385,13 @@ EOF
      && true; \
     fi
 }
-function install_cuda_toolkit_repo_ubuntu2004() {
+function install_cuda_toolkit_repo_ubuntu() {
+    true set -x \
+ && local _key=`grep -E "^ID=|^VERSION_ID=" /etc/os-release | sort | cut -d= -f2 | xargs | sed -e 's/ *//g' -e 's/\.//g' -e 's/"//g'` \
+ && _install_cuda_toolkit_repo_${_key} $@ \
+ && true; \
+}
+function _install_cuda_toolkit_repo_ubuntu2004() {
     true set -x \
  && local _sudo=${_sudo:-${sudo:-/usr/bin/sudo}} \
  && if [ "x${as_root}" != "xtrue" ]; then _sudo=""; fi \
@@ -3395,19 +3401,19 @@ function install_cuda_toolkit_repo_ubuntu2004() {
  && ${_sudo} apt-get update \
  && true; \
 }
-function install_cuda_toolkit_repo_ubuntu2204() {
+function _install_cuda_toolkit_repo_ubuntu2204() {
     true set -x \
  && local _pkg_keyring_f_url=${_pkg_keyring_f_url:-https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb} \
  && install_cuda_toolkit_repo_ubuntu2004 $@ \
  && true; \
 }
-function install_cuda_toolkit_repo_ubuntu2404() {
+function _install_cuda_toolkit_repo_ubuntu2404() {
     true set -x \
  && local _pkg_keyring_f_url=${_pkg_keyring_f_url:-https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb} \
  && install_cuda_toolkit_repo_ubuntu2004 $@ \
  && true; \
 }
-function _install_ubuntu_nvidia_repo_bak() {
+function _install_ubuntu_nvidia_repo_deprecated() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
