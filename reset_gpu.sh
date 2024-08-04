@@ -23,7 +23,7 @@ function reset_gpu_service() {
  && local show_gpu=show_gpu_${gpu_type} \
  && while true; \
     do true \
-     && ${show_gpu} \
+     && if ! ${show_gpu}; then echo "[E]: Fail to list valid GPUs, Abort!" >&2; break; fi \
      && printf "Please input target gpu index: " \
      && local GPU_ID \
      && read GPU_ID \
