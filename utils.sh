@@ -4368,6 +4368,39 @@ function install_iluvatar_sdk_corex_driver() {
     fi
     true
 }
+function install_iluvatar_sdk_ixrt_cpp_lib() {
+    true \
+ && local _release=${1:-latest} \
+ && if [ -n "${1}" ]; then shift; fi \
+ && local _install_dir=${1:-$HOME/workspace} \
+ && if [ -n "${1}" ]; then shift; fi \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release` \
+ && function _filter_op() { echo "$@" | grep -si "^ixrt-.*\.run$"; } \
+ && local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op` \
+ && if [ ${#_pkgs[@]} -ne 1 ]; then true \
+     && log_error "No unique ixrt-xx.run pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`" \
+     && return 1; \
+    fi \
+ && local _pkg_f=`download_by_cache ${_pkgs[0]}` \
+ && if [ "x$download_only" == "xtrue" ]; then return 0; fi \
+ && if true; then true \
+     && {
+            true;
+        } \
+     && ${_sudo} bash ${_pkg_f} \
+     && true; \
+    else true \
+     && log_warn "Unknown version of ixrt-xx.run, use default install flags: ${_info}" \
+     && ${_sudo} bash ${_pkg_f} \
+     && true; \
+    fi \
+ && true; \
+}
 function install_iluvatar_sdk_apps() {
     if [ "x`type -t install_iluvatar_sdk_${1}_apps`" == "xfunction" ]; then
         local _site_prefix_8yU6=${1}
