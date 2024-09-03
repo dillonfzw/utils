@@ -4441,14 +4441,21 @@ function install_iluvatar_sdk_apps() {
     pkg_install_pip scikit-build && \
     pkg_install_pip ${_pkgs[@]} $@
 }
+function install_iluvatar_sdk_BI150r411_apps() {
+    true set -x \
+ && local _release=${_release:-BI150r411} \
+ && install_iluvatar_sdk_BI150r410_apps $@ \
+ && true; \
+}
 function install_iluvatar_sdk_BI150r410_apps() {
     true set -x \
+ && local _release=${_release:-BI150r410} \
  && local _pyvers=${_pyvers:-`python3 -c "import sys; print('{}.{}'.format(sys.version_info.major, sys.version_info.minor))"`} \
  && if [ "${_pyvers}" == "3.10" ]; then true \
-     && install_iluvatar_sdk_apps BI150r410 -- SharedArray==3.2.1 \
+     && install_iluvatar_sdk_apps ${_release} -- SharedArray==3.2.1 \
      && true; \
     else true \
-     && install_iluvatar_sdk_apps BI150r410 \
+     && install_iluvatar_sdk_apps ${_release} \
      && true; \
     fi \
  && true; \
@@ -4486,6 +4493,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r411"]="http://10.113.3.1/corex/release_packages/4.1.1-BI150/x86/"
         ["BI150r410"]="http://10.113.3.1/corex/release_packages/4.1.0-BI150/x86/"
         # http://10.113.3.6/download/corex/release_packages/4.1.0_BI150/latest/x86_64/sdk/corex-docker-installer-4.1.0-10.2-ubuntu20.04-py3.10-x86_64.run
         ["BI150r410d20240603"]="http://10.113.3.6/corex/release_packages/4.1.0-BI150/20240603/x86_64/"
@@ -4530,6 +4538,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r411"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410d20240603"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r340"]="\.sh\"|\.run\"|\.whl\""
