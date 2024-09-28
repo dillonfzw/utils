@@ -3723,7 +3723,14 @@ function setup_user() {
      && true; \
     fi \
  && _SSH_KEYS=`eval "echo \\$SSH_KEY_${_USR}" 2>/dev/null` \
- && if [ -n "$_SSH_KEYS" ]; then true \
+ && if [ "x$_SSH_KEYS" == "x@generate" ]; then true \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} mkdir -p ~${_USR}/.ssh \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} ssh-keygen -q -b 2048 -C ${_USR}@auto_gen -f ~${_USR}/.ssh/id_rsa -N \"\" \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} cat ~${_USR}/.ssh/id_rsa.pub | \
+        eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} tee -a ~${_USR}/.ssh/authorized_keys \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} chmod go-rwx ~${_USR}/.ssh \
+     && true; \
+    elif [ -n "$_SSH_KEYS" ]; then true \
      && if [ "`echo \"$_SSH_KEYS\" | wc -w`" = "1" ]; then true \
          && _ref_user=$_SSH_KEYS \
          && log_info "Reference ssh keys of user \"$_USR\" from \"$_ref_user\"" \
