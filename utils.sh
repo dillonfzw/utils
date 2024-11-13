@@ -2881,7 +2881,7 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
     #
     install_nginx_prereqs_on_ubuntu && \
     if do_and_verify \
-        'eval apt-key fingerprint 00A6F0A3C300EE8C | grep -sqi "00A6 F0A3 C300 EE8C"' \
+        'eval apt-key fingerprint | grep -sqi "Launchpad PPA for Nginx"' \
         'eval $sudo add-apt-repository -y ppa:nginx/stable' \
         'true'; then
         # /etc/apt/trusted.gpg.d/nginx_ubuntu_stable.gpg
@@ -2889,7 +2889,12 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
         # pub   1024R/C300EE8C 2010-07-21
         #       Key fingerprint = 8B39 81E7 A685 2F78 2CC4  9516 00A6 F0A3 C300 EE8C
         #       uid                  Launchpad Stable
-        apt-key fingerprint 00A6F0A3C300EE8C | log_lines debug
+        # /etc/apt/trusted.gpg.d/nginx_ubuntu_stable.gpg
+        # ----------------------------------------------
+        # pub   rsa4096 2024-05-02 [SC]
+        #       CE93 0E27 5FC4 DE69 BFC8  B9FF 6ABF A607 3131 CE23
+        #       uid           [ unknown] Launchpad PPA for Nginx
+        apt-key fingerprint | grep -B4 "Launchpad PPA for Nginx" | log_lines debug
     else
         log_error "Fail to setup nginx apt key"
         false
