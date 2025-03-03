@@ -1243,6 +1243,7 @@ function download_by_cache() {
 
         if [ $rc -eq 0 ]; then
             mv $cache_dir/.$f.$tmpn $cache_dir/$f && \
+            echo "${url}" >${cache_dir}/${f}.url && \
             ls -ld $cache_dir/$f | sed -e 's/^/>> /g' | log_lines debug
         else
             log_error "Fail to download url \"$url\" with rc equals to $rc"
@@ -4505,6 +4506,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r420"]="http://10.113.3.1/corex/release_packages/4.2.0/x86/"
         ["BI150r411"]="http://10.113.3.1/corex/release_packages/4.1.1-BI150/x86/"
         ["BI150r410"]="http://10.113.3.1/corex/release_packages/4.1.0-BI150/x86/"
         # http://10.113.3.6/download/corex/release_packages/4.1.0_BI150/latest/x86_64/sdk/corex-docker-installer-4.1.0-10.2-ubuntu20.04-py3.10-x86_64.run
@@ -4517,6 +4519,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # MR-V100/50
         #
+        ["MRr413"]="http://10.113.3.1/corex/release_packages/4.1.3/aarch64/"
         ["MRr401"]="http://10.113.3.1/corex/release_packages/4.0.1-MR/x86/"
         ["MRr400"]="http://10.113.3.1/corex/release_packages/4.0.0-MR/x86/"
         ["MRr321p1"]="http://10.113.3.1/corex/release_packages/frequent_version/x86/mr/3.2.1-patch1/"
@@ -4530,7 +4533,7 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRd20221105231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
     )
     local -A DEFAULT_pkg_patterns_map=(
-        ["latest"]="\.sh\"|\.run\"|\.whl\""
+        ["latest"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         #
         # BI-V100
         #
@@ -4550,6 +4553,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r420"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         ["BI150r411"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410d20240603"]="\.sh\"|\.run\"|\.whl\""
@@ -4561,6 +4565,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # MR-V100/50
         #
+        ["MRr413"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         ["MRr401"]="\.sh\"|\.run\"|\.whl\""
         ["MRr400"]="\.sh\"|\.run\"|\.whl\""
         ["MRr321p1"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
@@ -4665,11 +4670,18 @@ function scrape_iluvatar_sdk_pkgs() {
     # prepare sub-trees to be scrapped
     local -a urls=(
         "${site_prefix}"
-        "${site_prefix}/not_release/"
+        "${site_prefix}/sdk/"
+        "${site_prefix}/apps/"
         "${site_prefix}/add-on/"
         "${site_prefix}/tools/"
-        "${site_prefix}/sdk/"
-        `true && for _pyver_87tY in 3.{6,7,8,9,10} latest-wheels-3.{6,7,8,9,10};
+        "${site_prefix}/not_release/"
+        "${site_prefix}/not_release/docker_installer/"
+        "${site_prefix}/cloudnative/"
+        "${site_prefix}/cloudnative/ix-device-plugin/"
+        "${site_prefix}/cloudnative/ix-exporter/"
+        "${site_prefix}/cloudnative/ix-feature-discovery/"
+        "${site_prefix}/cloudnative/ix-gpu-operator/"
+        `true && for _pyver_87tY in 3.{6,7,8,9,10,11} latest-wheels-3.{6,7,8,9,10,11};
          do
             echo "${site_prefix}/${_pyver_87tY}/"
             echo "${site_prefix}/${_pyver_87tY}/paddle/"
@@ -4706,6 +4718,9 @@ function scrape_iluvatar_sdk_pkgs() {
     _val=`declare_p_val _target_urls`
     G_iluvatar_sdk_pkgs_cache[${site_prefix}]="${_val}"
     echo "${_val}"
+    # show formatted scrape result in stderr
+    local _item_idx
+    for _item_idx in ${!_target_urls[@]}; do log_info "[$((_item_idx+1))]: ${_target_urls[${_item_idx}]}"; done
 }
 function scrape_iluvatar_sdk_MRr230_pkgs() { scrape_iluvatar_sdk_pkgs MRr230; }
 function scrape_iluvatar_sdk_r230_pkgs() { scrape_iluvatar_sdk_pkgs r230; }
@@ -4735,6 +4750,9 @@ function cache_iluvatar_sdk() {
  && local _link=false \
  && if [ "x${1}" == "x--link" ]; then local _link=true; fi \
  && local -a _pkgs=`scrape_iluvatar_sdk_pkgs $_release` \
+ && true "[I]: [24]: http://10.113.3.1/corex/release_packages/4.2.0/x86/not_release/docker_installer/corex-docker-installer-4.2.0-10.2-centos7.8.2003-py3.8-x86_64.run" \
+ && function filter_op1() { ! echo $@ | grep -sq "\/not_release\/.*\/corex-docker-installer"; } \
+ && local -a _pkgs=`array_filter _pkgs[@] filter_op1` \
  && local _cache_home=${cache_home:-${default_cache_home:-~/.cache/download}} \
  && local -a _files=`array_map _pkgs[@] download_by_cache` \
  && local _file \
@@ -5219,7 +5237,7 @@ function setup_darwin_deps() {
      && _cmds="#disable" \
      && true; \
     else true \
-     && _cmds="stop mask" \
+     && _cmds="stop disable mask" \
      && true; \
     fi \
  && if command -v systemctl >/dev/null; then for _cmd in $_cmds; \
