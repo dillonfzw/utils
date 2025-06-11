@@ -14,7 +14,7 @@ function  start_socks_7071() { autossh -M 20012 -f fuzwvps1.2alice.site       -D
 function verify_socks_7071() { test_port localhost 7071; }
 function  start_socks_7072() { autossh -M 20014 -f vpn2c-bladesk1.2alice.site -D7072 -gfCN -T -e none; }
 function verify_socks_7072() { test_port localhost 7072; }
-function  start_socks_7073() { autossh -M 20016 -f atyx-c1-login1             -D7073 -gfCN -T -e none; }
+function  start_socks_7073() { autossh -M 20016 -f atyx-c1-n28                -D7073 -gfCN -T -e none; }
 function verify_socks_7073() { test_port localhost 7073; }
 function  start_socks_7077() { autossh -M 20020 -f localhost                  -D7077 -gfCN -T -e none; }
 function verify_socks_7077() { test_port localhost 7077; }

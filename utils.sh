@@ -1243,6 +1243,7 @@ function download_by_cache() {
 
         if [ $rc -eq 0 ]; then
             mv $cache_dir/.$f.$tmpn $cache_dir/$f && \
+            echo "${url}" >${cache_dir}/${f}.url && \
             ls -ld $cache_dir/$f | sed -e 's/^/>> /g' | log_lines debug
         else
             log_error "Fail to download url \"$url\" with rc equals to $rc"
@@ -2881,7 +2882,7 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
     #
     install_nginx_prereqs_on_ubuntu && \
     if do_and_verify \
-        'eval apt-key fingerprint 00A6F0A3C300EE8C | grep -sqi "00A6 F0A3 C300 EE8C"' \
+        'eval apt-key fingerprint | grep -sqi "Launchpad PPA for Nginx"' \
         'eval $sudo add-apt-repository -y ppa:nginx/stable' \
         'true'; then
         # /etc/apt/trusted.gpg.d/nginx_ubuntu_stable.gpg
@@ -2889,7 +2890,12 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
         # pub   1024R/C300EE8C 2010-07-21
         #       Key fingerprint = 8B39 81E7 A685 2F78 2CC4  9516 00A6 F0A3 C300 EE8C
         #       uid                  Launchpad Stable
-        apt-key fingerprint 00A6F0A3C300EE8C | log_lines debug
+        # /etc/apt/trusted.gpg.d/nginx_ubuntu_stable.gpg
+        # ----------------------------------------------
+        # pub   rsa4096 2024-05-02 [SC]
+        #       CE93 0E27 5FC4 DE69 BFC8  B9FF 6ABF A607 3131 CE23
+        #       uid           [ unknown] Launchpad PPA for Nginx
+        apt-key fingerprint | grep -B4 "Launchpad PPA for Nginx" | log_lines debug
     else
         log_error "Fail to setup nginx apt key"
         false
@@ -3385,7 +3391,35 @@ EOF
      && true; \
     fi
 }
-function _install_ubuntu_nvidia_repo() {
+function install_cuda_toolkit_repo_ubuntu() {
+    true set -x \
+ && local _key=`grep -E "^ID=|^VERSION_ID=" /etc/os-release | sort | cut -d= -f2 | xargs | sed -e 's/ *//g' -e 's/\.//g' -e 's/"//g'` \
+ && _install_cuda_toolkit_repo_${_key} $@ \
+ && true; \
+}
+function _install_cuda_toolkit_repo_ubuntu2004() {
+    true set -x \
+ && local _sudo=${_sudo:-${sudo:-/usr/bin/sudo}} \
+ && if [ "x${as_root}" != "xtrue" ]; then _sudo=""; fi \
+ && local _pkg_keyring_f_url=${_pkg_keyring_f_url:-https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb} \
+ && local _pkg_keyring=`download_by_cache ${_pkg_keyring_f_url}` \
+ && ${_sudo} dpkg -i ${_pkg_keyring} \
+ && ${_sudo} apt-get update \
+ && true; \
+}
+function _install_cuda_toolkit_repo_ubuntu2204() {
+    true set -x \
+ && local _pkg_keyring_f_url=${_pkg_keyring_f_url:-https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb} \
+ && install_cuda_toolkit_repo_ubuntu2004 $@ \
+ && true; \
+}
+function _install_cuda_toolkit_repo_ubuntu2404() {
+    true set -x \
+ && local _pkg_keyring_f_url=${_pkg_keyring_f_url:-https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb} \
+ && install_cuda_toolkit_repo_ubuntu2004 $@ \
+ && true; \
+}
+function _install_ubuntu_nvidia_repo_deprecated() {
     local _sudo=$sudo
     if [ "$as_root" != "true" ]; then
         _sudo=""
@@ -3695,7 +3729,14 @@ function setup_user() {
      && true; \
     fi \
  && _SSH_KEYS=`eval "echo \\$SSH_KEY_${_USR}" 2>/dev/null` \
- && if [ -n "$_SSH_KEYS" ]; then true \
+ && if [ "x$_SSH_KEYS" == "x@generate" ]; then true \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} mkdir -p ~${_USR}/.ssh \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} ssh-keygen -q -b 2048 -C ${_USR}@auto_gen -f ~${_USR}/.ssh/id_rsa -N \"\" \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} cat ~${_USR}/.ssh/id_rsa.pub | \
+        eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} tee -a ~${_USR}/.ssh/authorized_keys \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} chmod go-rwx ~${_USR}/.ssh \
+     && true; \
+    elif [ -n "$_SSH_KEYS" ]; then true \
      && if [ "`echo \"$_SSH_KEYS\" | wc -w`" = "1" ]; then true \
          && _ref_user=$_SSH_KEYS \
          && log_info "Reference ssh keys of user \"$_USR\" from \"$_ref_user\"" \
@@ -4340,6 +4381,39 @@ function install_iluvatar_sdk_corex_driver() {
     fi
     true
 }
+function install_iluvatar_sdk_ixrt_cpp_lib() {
+    true \
+ && local _release=${1:-latest} \
+ && if [ -n "${1}" ]; then shift; fi \
+ && local _install_dir=${1:-$HOME/workspace} \
+ && if [ -n "${1}" ]; then shift; fi \
+ && local _sudo=${sudo:-sudo} \
+ && if [ "$as_root" != "true" ]; then true \
+     && _sudo="" \
+     && true; \
+    fi \
+ && local -a _rel_pkgs=`scrape_iluvatar_sdk_pkgs $_release` \
+ && function _filter_op() { echo "$@" | grep -si "^ixrt-.*\.run$"; } \
+ && local -a _pkgs=`array_filter _rel_pkgs[@] _filter_op` \
+ && if [ ${#_pkgs[@]} -ne 1 ]; then true \
+     && log_error "No unique ixrt-xx.run pkg was scrapped for release \"${_release}\": `declare_p_val _pkgs`" \
+     && return 1; \
+    fi \
+ && local _pkg_f=`download_by_cache ${_pkgs[0]}` \
+ && if [ "x$download_only" == "xtrue" ]; then return 0; fi \
+ && if true; then true \
+     && {
+            true;
+        } \
+     && ${_sudo} bash ${_pkg_f} \
+     && true; \
+    else true \
+     && log_warn "Unknown version of ixrt-xx.run, use default install flags: ${_info}" \
+     && ${_sudo} bash ${_pkg_f} \
+     && true; \
+    fi \
+ && true; \
+}
 function install_iluvatar_sdk_apps() {
     if [ "x`type -t install_iluvatar_sdk_${1}_apps`" == "xfunction" ]; then
         local _site_prefix_8yU6=${1}
@@ -4380,14 +4454,21 @@ function install_iluvatar_sdk_apps() {
     pkg_install_pip scikit-build && \
     pkg_install_pip ${_pkgs[@]} $@
 }
+function install_iluvatar_sdk_BI150r411_apps() {
+    true set -x \
+ && local _release=${_release:-BI150r411} \
+ && install_iluvatar_sdk_BI150r410_apps $@ \
+ && true; \
+}
 function install_iluvatar_sdk_BI150r410_apps() {
     true set -x \
+ && local _release=${_release:-BI150r410} \
  && local _pyvers=${_pyvers:-`python3 -c "import sys; print('{}.{}'.format(sys.version_info.major, sys.version_info.minor))"`} \
  && if [ "${_pyvers}" == "3.10" ]; then true \
-     && install_iluvatar_sdk_apps BI150r410 -- SharedArray==3.2.1 \
+     && install_iluvatar_sdk_apps ${_release} -- SharedArray==3.2.1 \
      && true; \
     else true \
-     && install_iluvatar_sdk_apps BI150r410 \
+     && install_iluvatar_sdk_apps ${_release} \
      && true; \
     fi \
  && true; \
@@ -4425,6 +4506,8 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r420"]="http://10.113.3.1/corex/release_packages/4.2.0/x86/"
+        ["BI150r411"]="http://10.113.3.1/corex/release_packages/4.1.1-BI150/x86/"
         ["BI150r410"]="http://10.113.3.1/corex/release_packages/4.1.0-BI150/x86/"
         # http://10.113.3.6/download/corex/release_packages/4.1.0_BI150/latest/x86_64/sdk/corex-docker-installer-4.1.0-10.2-ubuntu20.04-py3.10-x86_64.run
         ["BI150r410d20240603"]="http://10.113.3.6/corex/release_packages/4.1.0-BI150/20240603/x86_64/"
@@ -4436,6 +4519,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # MR-V100/50
         #
+        ["MRr413"]="http://10.113.3.1/corex/release_packages/4.1.3/aarch64/"
         ["MRr401"]="http://10.113.3.1/corex/release_packages/4.0.1-MR/x86/"
         ["MRr400"]="http://10.113.3.1/corex/release_packages/4.0.0-MR/x86/"
         ["MRr321p1"]="http://10.113.3.1/corex/release_packages/frequent_version/x86/mr/3.2.1-patch1/"
@@ -4449,7 +4533,7 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRd20221105231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
     )
     local -A DEFAULT_pkg_patterns_map=(
-        ["latest"]="\.sh\"|\.run\"|\.whl\""
+        ["latest"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         #
         # BI-V100
         #
@@ -4469,6 +4553,8 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r420"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
+        ["BI150r411"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410d20240603"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r340"]="\.sh\"|\.run\"|\.whl\""
@@ -4479,6 +4565,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # MR-V100/50
         #
+        ["MRr413"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         ["MRr401"]="\.sh\"|\.run\"|\.whl\""
         ["MRr400"]="\.sh\"|\.run\"|\.whl\""
         ["MRr321p1"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
@@ -4583,11 +4670,18 @@ function scrape_iluvatar_sdk_pkgs() {
     # prepare sub-trees to be scrapped
     local -a urls=(
         "${site_prefix}"
-        "${site_prefix}/not_release/"
+        "${site_prefix}/sdk/"
+        "${site_prefix}/apps/"
         "${site_prefix}/add-on/"
         "${site_prefix}/tools/"
-        "${site_prefix}/sdk/"
-        `true && for _pyver_87tY in 3.{6,7,8,9,10} latest-wheels-3.{6,7,8,9,10};
+        "${site_prefix}/not_release/"
+        "${site_prefix}/not_release/docker_installer/"
+        "${site_prefix}/cloudnative/"
+        "${site_prefix}/cloudnative/ix-device-plugin/"
+        "${site_prefix}/cloudnative/ix-exporter/"
+        "${site_prefix}/cloudnative/ix-feature-discovery/"
+        "${site_prefix}/cloudnative/ix-gpu-operator/"
+        `true && for _pyver_87tY in 3.{6,7,8,9,10,11} latest-wheels-3.{6,7,8,9,10,11};
          do
             echo "${site_prefix}/${_pyver_87tY}/"
             echo "${site_prefix}/${_pyver_87tY}/paddle/"
@@ -4624,6 +4718,9 @@ function scrape_iluvatar_sdk_pkgs() {
     _val=`declare_p_val _target_urls`
     G_iluvatar_sdk_pkgs_cache[${site_prefix}]="${_val}"
     echo "${_val}"
+    # show formatted scrape result in stderr
+    local _item_idx
+    for _item_idx in ${!_target_urls[@]}; do log_info "[$((_item_idx+1))]: ${_target_urls[${_item_idx}]}"; done
 }
 function scrape_iluvatar_sdk_MRr230_pkgs() { scrape_iluvatar_sdk_pkgs MRr230; }
 function scrape_iluvatar_sdk_r230_pkgs() { scrape_iluvatar_sdk_pkgs r230; }
@@ -4649,8 +4746,23 @@ function scrape_iluvatar_sdk_BI150r341_pkgs() {
 function cache_iluvatar_sdk() {
     true set -x \
  && local _release=${1:-latest} \
+ && if [ -n "${1}" ]; then shift; fi \
+ && local _link=false \
+ && if [ "x${1}" == "x--link" ]; then local _link=true; fi \
  && local -a _pkgs=`scrape_iluvatar_sdk_pkgs $_release` \
- && array_map _pkgs[@] download_by_cache \
+ && true "[I]: [24]: http://10.113.3.1/corex/release_packages/4.2.0/x86/not_release/docker_installer/corex-docker-installer-4.2.0-10.2-centos7.8.2003-py3.8-x86_64.run" \
+ && function filter_op1() { ! echo $@ | grep -sq "\/not_release\/.*\/corex-docker-installer"; } \
+ && local -a _pkgs=`array_filter _pkgs[@] filter_op1` \
+ && local _cache_home=${cache_home:-${default_cache_home:-~/.cache/download}} \
+ && local -a _files=`array_map _pkgs[@] download_by_cache` \
+ && local _file \
+ && if ${_link}; then for _file in ${_files[@]}; do true \
+     && if [ ! -d ${_cache_home}/${_release} ]; then mkdir -p ${_cache_home}/${_release}; fi \
+     && local _rpath=`echo ${_file} | sed -e "s,^${_cache_home}/,,g"` \
+     && local _tfile=${_cache_home}/${_release}/`basename ${_rpath}` \
+     && if [ ! -L ${_tfile} ]; then ln -s ../${_rpath} ${_tfile}; fi \
+     && true; \
+    done; fi \
  && true; \
 }
 function install_iluvatar_sdk() {
@@ -5125,7 +5237,7 @@ function setup_darwin_deps() {
      && _cmds="#disable" \
      && true; \
     else true \
-     && _cmds="stop mask" \
+     && _cmds="stop disable mask" \
      && true; \
     fi \
  && if command -v systemctl >/dev/null; then for _cmd in $_cmds; \

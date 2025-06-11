@@ -9,7 +9,7 @@ function get_ssh_agent_sockets() {
     # /tmp/ssh-*/agent.*              <== ssh-agent, native or forwarded
     # /run/user/`id -u`/keyring/ssh   <== gnome-keyring
     # if there would be multiple agent, newest the first.
-    ls -1t /tmp/ssh-*/agent.* /run/user/${USER}/keyring/ssh 2>/dev/null | xargs
+    ls -1t /tmp/ssh-*/agent.* /run/user/{${USER},`id -u ${USER}`}/keyring/ssh 2>/dev/null | xargs
 }
 # get the agend pid from native agent socket
 # NOTE: only work for Linux procfs
@@ -46,8 +46,8 @@ function test_ssh_agent() {
     fi;
     line="$(ssh-add -l 2>&1)";
     rc=$?;
-    echo "$line";
-    if [ $rc -ne 0 ] && ! echo "$line" | grep -sq "The agent has no identities"; then
+    if [ $rc -eq 0 ] && ! echo "$line" | grep -sq "The agent has no identities"; then true; else
+        echo "$line";
         false;
     fi' >/dev/null
 }
