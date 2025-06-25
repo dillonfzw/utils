@@ -4537,6 +4537,7 @@ function scrape_iluvatar_sdk_pkgs() {
         # KC-V100
         #
         ["KC100r420TR4"]="http://10.113.3.1/corex/release_packages/4.2.0_TR4_KC/${_arch}/"
+        ["KC100r421TR5"]="http://10.113.3.1/corex/release_packages/4.2.1_TR5_KC/${_arch}/"
     )
     local -A DEFAULT_pkg_patterns_map=(
         ["latest"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
@@ -4588,6 +4589,7 @@ function scrape_iluvatar_sdk_pkgs() {
         # KC-V100
         #
         ["KC100r420TR4"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
+        ["KC100r421TR5"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
     )
     function _filter_87tY() {
         local _prefix_87tY=$1
