@@ -4507,6 +4507,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r430"]="http://10.113.3.1/corex/release_packages/4.3.0/${_arch}/"
         ["BI150r420"]="http://10.113.3.1/corex/release_packages/4.2.0/${_arch}/"
         ["BI150r411"]="http://10.113.3.1/corex/release_packages/4.1.1-BI150/${_arch}/"
         ["BI150r410"]="http://10.113.3.1/corex/release_packages/4.1.0-BI150/${_arch}/"
@@ -4560,6 +4561,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r430"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         ["BI150r420"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         ["BI150r411"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410"]="\.sh\"|\.run\"|\.whl\""
