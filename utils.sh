@@ -1267,7 +1267,7 @@ function download_by_cache() {
             fi
         # warn if purely cache hit w/o cksum verify
         elif ! $first_download; then
-            log_warn "Cache hit w/o checksum verification for \"$cache_dir/$f\""
+            log_warn "Cache hit w/o checksum verification for \"$cache_dir/$f\"" || true
         fi && \
         echo "$cache_dir/$f"
     else
@@ -4491,6 +4491,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V100
         #
+        ["BIr321"]="http://10.209.16.12:32643/BuildRelease/corex/release_packages/3.2.1-BI100/${_arch}/"
         ["BIr311"]="http://10.113.3.1/corex/release_packages/frequent_version/${_arch}/bi100/3.1.1/"
         ["BIr310"]="http://10.113.3.1/corex/release_packages/3.1.0-BI/${_arch}/"
         ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/${_arch}/"
@@ -4507,6 +4508,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r436"]="http://10.113.3.1/corex/release_packages/4.3.6/${_arch}/"
         ["BI150r430"]="http://10.113.3.1/corex/release_packages/4.3.0/${_arch}/"
         ["BI150r420"]="http://10.113.3.1/corex/release_packages/4.2.0/${_arch}/"
         ["BI150r411"]="http://10.113.3.1/corex/release_packages/4.1.1-BI150/${_arch}/"
@@ -4545,6 +4547,7 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V100
         #
+        ["BIr321"]="\.sh\"|\.run\"|\.whl\""
         ["BIr311"]="\.sh\"|\.run\"|\.whl\""
         ["BIr310"]="\.sh\"|\.run\"|\.whl\""
         ["BIr301"]="\.sh\"|\.run\"|\.whl\""
@@ -4713,6 +4716,10 @@ function scrape_iluvatar_sdk_pkgs() {
             echo "${site_prefix}/apps/py${_pyver_87tY}/not_installed/"
 
             echo "${site_prefix}/add-on/py${_pyver_87tY}/"
+
+            # http://10.209.16.12:32643/BuildRelease/corex/release_packages/3.2.1-BI100/x86/
+            echo "${site_prefix}/apps-py${_pyver_87tY}/"
+            echo "${site_prefix}/apps-py${_pyver_87tY}/not_installed/"
          done`
     )
     # scrape pkgs
@@ -6379,7 +6386,8 @@ if [ "$PROG_NAME" = "utils.sh" -o "$PROG_NAME" = "bash" ]; then
     for item in error warn info debug lines; do unset log_$item; done && \
     # load the lib
     if ! eval "$(if [ ! -f "${PROG_DIR}/log.sh" -o "`type -t log.sh`" != "file" ]; then
-        gen_lib_source_cmd log.sh https://github.com/dillonfzw/utils/raw/master/log.sh
+        gen_lib_source_cmd log.sh https://github.com/dillonfzw/utils/raw/master/log.sh || \
+        gen_lib_source_cmd log.sh https://gitee.com/dillonfzw/utils/raw/master/log.sh
     else
         echo "source ${PROG_DIR}/log.sh"
     fi)"; then
@@ -6390,7 +6398,8 @@ if [ "$PROG_NAME" = "utils.sh" -o "$PROG_NAME" = "bash" ]; then
     # loading getopt.sh
     #
     if ! eval "$(if [ ! -f "${PROG_DIR}/getopt.sh" -o "`type -t getopt.sh`" != "file" ]; then
-        gen_lib_source_cmd getopt.sh https://github.com/dillonfzw/utils/raw/master/getopt.sh
+        gen_lib_source_cmd getopt.sh https://github.com/dillonfzw/utils/raw/master/getopt.sh || \
+        gen_lib_source_cmd getopt.sh https://gitee.com/dillonfzw/utils/raw/master/getopt.sh
     else
         echo "source ${PROG_DIR}/getopt.sh"
     fi)"; then
