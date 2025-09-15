@@ -1243,6 +1243,7 @@ function download_by_cache() {
 
         if [ $rc -eq 0 ]; then
             mv $cache_dir/.$f.$tmpn $cache_dir/$f && \
+            echo "${url}" >${cache_dir}/${f}.url && \
             ls -ld $cache_dir/$f | sed -e 's/^/>> /g' | log_lines debug
         else
             log_error "Fail to download url \"$url\" with rc equals to $rc"
@@ -2881,7 +2882,7 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
     #
     install_nginx_prereqs_on_ubuntu && \
     if do_and_verify \
-        'eval apt-key fingerprint 00A6F0A3C300EE8C | grep -sqi "00A6 F0A3 C300 EE8C"' \
+        'eval apt-key fingerprint | grep -sqi "Launchpad PPA for Nginx"' \
         'eval $sudo add-apt-repository -y ppa:nginx/stable' \
         'true'; then
         # /etc/apt/trusted.gpg.d/nginx_ubuntu_stable.gpg
@@ -2889,7 +2890,12 @@ function setup_ubuntu_apt_repo_for_nginx_stable() {
         # pub   1024R/C300EE8C 2010-07-21
         #       Key fingerprint = 8B39 81E7 A685 2F78 2CC4  9516 00A6 F0A3 C300 EE8C
         #       uid                  Launchpad Stable
-        apt-key fingerprint 00A6F0A3C300EE8C | log_lines debug
+        # /etc/apt/trusted.gpg.d/nginx_ubuntu_stable.gpg
+        # ----------------------------------------------
+        # pub   rsa4096 2024-05-02 [SC]
+        #       CE93 0E27 5FC4 DE69 BFC8  B9FF 6ABF A607 3131 CE23
+        #       uid           [ unknown] Launchpad PPA for Nginx
+        apt-key fingerprint | grep -B4 "Launchpad PPA for Nginx" | log_lines debug
     else
         log_error "Fail to setup nginx apt key"
         false
@@ -3723,7 +3729,14 @@ function setup_user() {
      && true; \
     fi \
  && _SSH_KEYS=`eval "echo \\$SSH_KEY_${_USR}" 2>/dev/null` \
- && if [ -n "$_SSH_KEYS" ]; then true \
+ && if [ "x$_SSH_KEYS" == "x@generate" ]; then true \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} mkdir -p ~${_USR}/.ssh \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} ssh-keygen -q -b 2048 -C ${_USR}@auto_gen -f ~${_USR}/.ssh/id_rsa -N \"\" \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} cat ~${_USR}/.ssh/id_rsa.pub | \
+        eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} tee -a ~${_USR}/.ssh/authorized_keys \
+     && eval ${_dry_run_prefix} ${_sudo:+${_sudo} -u ${_USR}} chmod go-rwx ~${_USR}/.ssh \
+     && true; \
+    elif [ -n "$_SSH_KEYS" ]; then true \
      && if [ "`echo \"$_SSH_KEYS\" | wc -w`" = "1" ]; then true \
          && _ref_user=$_SSH_KEYS \
          && log_info "Reference ssh keys of user \"$_USR\" from \"$_ref_user\"" \
@@ -4472,53 +4485,63 @@ function scrape_iluvatar_sdk_pkgs() {
     if ! declare -p G_iluvatar_sdk_pkgs_cache >/dev/null 2>&1; then
         declare -gA G_iluvatar_sdk_pkgs_cache=()
     fi
+    local _arch=${_arch:-`uname -m`}
     local -A DEFAULT_download_url_prefix_map=(
-        ["latest"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
+        ["latest"]="http://10.150.9.95/corex/release_packages/3.0.1/${_arch}/"
         #
         # BI-V100
         #
-        ["BIr311"]="http://10.113.3.1/corex/release_packages/frequent_version/x86/bi100/3.1.1/"
-        ["BIr310"]="http://10.113.3.1/corex/release_packages/3.1.0-BI/x86/"
-        ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/x86/"
-        ["BIr300"]="http://10.150.9.95/corex/release_packages/3.0.0/x86/"
-        ["BIr231"]="http://10.150.9.95/corex/release_packages/2.3.1/x86/"
-        ["BIr230"]="http://10.150.9.95/corex/release_packages/2.3.0/x86/"
-        ["BIr221"]="http://10.150.9.95/corex/release_packages/2.2.1/x86/"
-        ["BIr220"]="http://10.150.9.95/corex/release_packages/2.2.0/x86/"
-        ["BIr211"]="http://10.150.9.95/corex/release_packages/2.1.1/x86/"
-        ["BIr210"]="http://10.150.9.95/corex/release_packages/2.1.0/x86/"
-        ["BIDailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/latest/"
+        ["BIr311"]="http://10.113.3.1/corex/release_packages/frequent_version/${_arch}/bi100/3.1.1/"
+        ["BIr310"]="http://10.113.3.1/corex/release_packages/3.1.0-BI/${_arch}/"
+        ["BIr301"]="http://10.150.9.95/corex/release_packages/3.0.1/${_arch}/"
+        ["BIr300"]="http://10.150.9.95/corex/release_packages/3.0.0/${_arch}/"
+        ["BIr231"]="http://10.150.9.95/corex/release_packages/2.3.1/${_arch}/"
+        ["BIr230"]="http://10.150.9.95/corex/release_packages/2.3.0/${_arch}/"
+        ["BIr221"]="http://10.150.9.95/corex/release_packages/2.2.1/${_arch}/"
+        ["BIr220"]="http://10.150.9.95/corex/release_packages/2.2.0/${_arch}/"
+        ["BIr211"]="http://10.150.9.95/corex/release_packages/2.1.1/${_arch}/"
+        ["BIr210"]="http://10.150.9.95/corex/release_packages/2.1.0/${_arch}/"
+        ["BIDailyLatest"]="http://10.113.3.1/corex/daily_packages/${_arch}/latest/"
         # 智源二期BF16
-        ["BId202307131382"]="http://10.113.3.1/corex/daily_packages/x86/20230713/1382/"
+        ["BId202307131382"]="http://10.113.3.1/corex/daily_packages/${_arch}/20230713/1382/"
         #
         # BI-V150
         #
-        ["BI150r411"]="http://10.113.3.1/corex/release_packages/4.1.1-BI150/x86/"
-        ["BI150r410"]="http://10.113.3.1/corex/release_packages/4.1.0-BI150/x86/"
-        # http://10.113.3.6/download/corex/release_packages/4.1.0_BI150/latest/x86_64/sdk/corex-docker-installer-4.1.0-10.2-ubuntu20.04-py3.10-x86_64.run
-        ["BI150r410d20240603"]="http://10.113.3.6/corex/release_packages/4.1.0-BI150/20240603/x86_64/"
-        ["BI150r340"]="http://10.113.3.1/corex/release_packages/3.4.0-BI150/x86/"
-        ["BI150r330"]="http://10.113.3.1/corex/release_packages/3.3.0-BI150/x86/"
-        ["BI150DailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/bi150/latest/"
-        ["BI150d2023101334"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231013/34/"
-        ["BI150d2023112376"]="http://10.113.3.1/corex/release_packages/x86/bi150/20231123/76/"
+        ["BI150r430"]="http://10.113.3.1/corex/release_packages/4.3.0/${_arch}/"
+        ["BI150r420"]="http://10.113.3.1/corex/release_packages/4.2.0/${_arch}/"
+        ["BI150r411"]="http://10.113.3.1/corex/release_packages/4.1.1-BI150/${_arch}/"
+        ["BI150r410"]="http://10.113.3.1/corex/release_packages/4.1.0-BI150/${_arch}/"
+        # http://10.113.3.6/download/corex/release_packages/4.1.0_BI150/latest/${_arch}/sdk/corex-docker-installer-4.1.0-10.2-ubuntu20.04-py3.10-${_arch}.run
+        ["BI150r410d20240603"]="http://10.113.3.6/corex/release_packages/4.1.0-BI150/20240603/${_arch}/"
+        ["BI150r340"]="http://10.113.3.1/corex/release_packages/3.4.0-BI150/${_arch}/"
+        ["BI150r330"]="http://10.113.3.1/corex/release_packages/3.3.0-BI150/${_arch}/"
+        ["BI150DailyLatest"]="http://10.113.3.1/corex/daily_packages/${_arch}/bi150/latest/"
+        ["BI150d2023101334"]="http://10.113.3.1/corex/release_packages/${_arch}/bi150/20231013/34/"
+        ["BI150d2023112376"]="http://10.113.3.1/corex/release_packages/${_arch}/bi150/20231123/76/"
         #
         # MR-V100/50
         #
-        ["MRr401"]="http://10.113.3.1/corex/release_packages/4.0.1-MR/x86/"
-        ["MRr400"]="http://10.113.3.1/corex/release_packages/4.0.0-MR/x86/"
-        ["MRr321p1"]="http://10.113.3.1/corex/release_packages/frequent_version/x86/mr/3.2.1-patch1/"
-        ["MRr320"]="http://10.113.3.1/corex/release_packages/3.2.0-MR/x86/"
-        ["MRr311"]="http://10.113.3.1/corex/release_packages/3.1.1-MR/x86/"
-        ["MRr310"]="http://10.150.9.95/corex/release_packages/3.1.0-MR/x86/"
-        ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/x86/"
-        ["MRr230Beta1"]="http://10.150.9.95/corex/release_packages/MR_Beta1/x86/"
-        ["MRDailyLatest"]="http://10.113.3.1/corex/daily_packages/x86/mr/latest/"
+        ["MRr414"]="http://10.113.3.1/corex/release_packages/4.1.4/${_arch}/"
+        ["MRr413"]="http://10.113.3.1/corex/release_packages/4.1.3/${_arch}/"
+        ["MRr401"]="http://10.113.3.1/corex/release_packages/4.0.1-MR/${_arch}/"
+        ["MRr400"]="http://10.113.3.1/corex/release_packages/4.0.0-MR/${_arch}/"
+        ["MRr321p1"]="http://10.113.3.1/corex/release_packages/frequent_version/${_arch}/mr/3.2.1-patch1/"
+        ["MRr320"]="http://10.113.3.1/corex/release_packages/3.2.0-MR/${_arch}/"
+        ["MRr311"]="http://10.113.3.1/corex/release_packages/3.1.1-MR/${_arch}/"
+        ["MRr310"]="http://10.150.9.95/corex/release_packages/3.1.0-MR/${_arch}/"
+        ["MRr300Beta2"]="http://10.150.9.95/corex/release_packages/MR_Beta2/${_arch}/"
+        ["MRr230Beta1"]="http://10.150.9.95/corex/release_packages/MR_Beta1/${_arch}/"
+        ["MRDailyLatest"]="http://10.113.3.1/corex/daily_packages/${_arch}/mr/latest/"
         # 移动集采
-        ["MRd20221105231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/x86/231/"
+        ["MRd20221105231"]="http://10.150.9.95/corex/release_packages/Customization/mr_beta/20221105/${_arch}/231/"
+        #
+        # KC-V100
+        #
+        ["KC100r420TR4"]="http://10.113.3.1/corex/release_packages/4.2.0_TR4_KC/${_arch}/"
+        ["KC100r421TR5"]="http://10.113.3.1/corex/release_packages/4.2.1_TR5_KC/${_arch}/"
     )
     local -A DEFAULT_pkg_patterns_map=(
-        ["latest"]="\.sh\"|\.run\"|\.whl\""
+        ["latest"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         #
         # BI-V100
         #
@@ -4538,6 +4561,8 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # BI-V150
         #
+        ["BI150r430"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
+        ["BI150r420"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         ["BI150r411"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410"]="\.sh\"|\.run\"|\.whl\""
         ["BI150r410d20240603"]="\.sh\"|\.run\"|\.whl\""
@@ -4549,6 +4574,8 @@ function scrape_iluvatar_sdk_pkgs() {
         #
         # MR-V100/50
         #
+        ["MRr414"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
+        ["MRr413"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
         ["MRr401"]="\.sh\"|\.run\"|\.whl\""
         ["MRr400"]="\.sh\"|\.run\"|\.whl\""
         ["MRr321p1"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
@@ -4560,6 +4587,11 @@ function scrape_iluvatar_sdk_pkgs() {
         ["MRDailyLatest"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
         # 移动集采
         ["MRd20221105231"]="^cmake-.*\.sh\"|^corex-driver.*\.run\"|^corex-installer.*\.run\"|^corex-samples.*\.run\"|\.whl\"|mr_iva_stress_pipeline.*\.run"
+        #
+        # KC-V100
+        #
+        ["KC100r420TR4"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
+        ["KC100r421TR5"]="\.sh\"|\.run\"|\.whl\"|\.tar.gz\"|\.tgz\"|\.yaml\""
     )
     function _filter_87tY() {
         local _prefix_87tY=$1
@@ -4653,11 +4685,18 @@ function scrape_iluvatar_sdk_pkgs() {
     # prepare sub-trees to be scrapped
     local -a urls=(
         "${site_prefix}"
-        "${site_prefix}/not_release/"
+        "${site_prefix}/sdk/"
+        "${site_prefix}/apps/"
         "${site_prefix}/add-on/"
         "${site_prefix}/tools/"
-        "${site_prefix}/sdk/"
-        `true && for _pyver_87tY in 3.{6,7,8,9,10} latest-wheels-3.{6,7,8,9,10};
+        "${site_prefix}/not_release/"
+        "${site_prefix}/not_release/docker_installer/"
+        "${site_prefix}/cloudnative/"
+        "${site_prefix}/cloudnative/ix-device-plugin/"
+        "${site_prefix}/cloudnative/ix-exporter/"
+        "${site_prefix}/cloudnative/ix-feature-discovery/"
+        "${site_prefix}/cloudnative/ix-gpu-operator/"
+        `true && for _pyver_87tY in 3.{6,7,8,9,10,11} latest-wheels-3.{6,7,8,9,10,11};
          do
             echo "${site_prefix}/${_pyver_87tY}/"
             echo "${site_prefix}/${_pyver_87tY}/paddle/"
@@ -4694,6 +4733,9 @@ function scrape_iluvatar_sdk_pkgs() {
     _val=`declare_p_val _target_urls`
     G_iluvatar_sdk_pkgs_cache[${site_prefix}]="${_val}"
     echo "${_val}"
+    # show formatted scrape result in stderr
+    local _item_idx
+    for _item_idx in ${!_target_urls[@]}; do log_info "[$((_item_idx+1))]: ${_target_urls[${_item_idx}]}"; done
 }
 function scrape_iluvatar_sdk_MRr230_pkgs() { scrape_iluvatar_sdk_pkgs MRr230; }
 function scrape_iluvatar_sdk_r230_pkgs() { scrape_iluvatar_sdk_pkgs r230; }
@@ -4723,6 +4765,14 @@ function cache_iluvatar_sdk() {
  && local _link=false \
  && if [ "x${1}" == "x--link" ]; then local _link=true; fi \
  && local -a _pkgs=`scrape_iluvatar_sdk_pkgs $_release` \
+ && true "[I]: [24]: http://10.113.3.1/corex/release_packages/4.2.0/x86/not_release/docker_installer/corex-docker-installer-4.2.0-10.2-centos7.8.2003-py3.8-x86_64.run" \
+ && function filter_op1() {
+        true \
+     && if echo $@ | grep -sq "corex-docker-installer-.*-ubuntu20.04-py3.10-.*\.run"; then return 0; fi \
+     && if echo $@ | grep -sq "corex-docker-installer"; then false; fi \
+     && true; \
+    } \
+ && local -a _pkgs=`array_filter _pkgs[@] filter_op1` \
  && local _cache_home=${cache_home:-${default_cache_home:-~/.cache/download}} \
  && local -a _files=`array_map _pkgs[@] download_by_cache` \
  && local _file \
@@ -4990,7 +5040,7 @@ function setup_os() {
      && true; \
     fi \
  && do_and_verify 'eval pkg_verify ${pkgs[@]}' 'eval pkg_install ${pkgs[@]}' 'true' \
- && if grep -sq "ID=ubuntu" /etc/os-release; then true \
+ && if grep -sq "ID=ubuntu" /etc/os-release && [ ! -f /.dockerenv ]; then true \
      && true "Setup repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64's apt-key" \
      && $_sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "0xA4B469963BF863CC" \
      && true; \
@@ -5207,7 +5257,7 @@ function setup_darwin_deps() {
      && _cmds="#disable" \
      && true; \
     else true \
-     && _cmds="stop mask" \
+     && _cmds="stop disable mask" \
      && true; \
     fi \
  && if command -v systemctl >/dev/null; then for _cmd in $_cmds; \
@@ -5455,7 +5505,12 @@ function setup_xfce_xrdp() {
      && { $_sudo yum erase -y xscreensaver || true; } \
      && true; \
     fi \
- && local run_sh=`download_by_cache "https://github.com/danchitnis/container-xrdp/raw/master/build/ubuntu-run.sh"` \
+ && local run_sh_url="https://github.com/danchitnis/container-xrdp/raw/master/build/ubuntu-run.sh" \
+ && if [ "${_BLD_REGION}" = "CN" ]; then true \
+     && run_sh_url="https://gitee.com/dillonfzw/container-xrdp/raw/master/build/ubuntu-run.sh" \
+     && true; \
+    fi \
+ && local run_sh=`download_by_cache "${run_sh_url}"` \
  && $_sudo cp -p ${run_sh} /usr/bin/run.sh \
  && $_sudo chmod a+x /usr/bin/run.sh \
  && $_sudo mkdir /var/run/dbus \
