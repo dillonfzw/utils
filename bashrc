@@ -49,7 +49,10 @@ export PYVER=${PYVER:-3}
 export WORKON_HOME=${WORKON_HOME:-~/.venvs}
 export VIRTUALENV_PYTHON=`command -v python${PYVER:-3}`
 export VIRTUALENVWRAPPER_PYTHON=${VIRTUALENVWRAPPER_PYTHON:-`command -v python3.8`}
-source /usr/share/virtualenvwrapper/virtualenvwrapper_lazy.sh
+for _FILE in `command -v virtualenvwrapper_lazy.sh` /usr/share/virtualenvwrapper/virtualenvwrapper_lazy.sh $HOME/.local/bin/virtualenvwrapper_lazy.sh; do true \
+ && if [ -n "${_FILE}" -a -f "${_FILE}" ]; then source ${_FILE}; break; fi \
+ && true; \
+done
 
 
 #
