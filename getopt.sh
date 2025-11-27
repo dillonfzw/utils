@@ -1,6 +1,6 @@
 # import cmd line arguments
-for _item_ieh7ef4och in $@
-do
+while [ $# -gt 0 ]; do
+    _item_ieh7ef4och="$1"
     if [ "$_item_ieh7ef4och" = "--" ]; then
         shift
         break
